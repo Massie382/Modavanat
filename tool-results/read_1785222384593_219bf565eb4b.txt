@@ -1,0 +1,980 @@
+     1→     1→@import "tailwindcss";
+     2→     2→@import "tw-animate-css";
+     3→     3→
+     4→     4→@custom-variant dark (&:is(.dark *));
+     5→     5→
+     6→     6→@theme inline {
+     7→     7→  --color-background: var(--background);
+     8→     8→  --color-foreground: var(--foreground);
+     9→     9→  --font-sans: var(--font-vazirmatn);
+    10→    10→  --font-mono: var(--font-vazirmatn);
+    11→    11→  --font-legal: var(--font-vazirmatn);
+    12→    12→  --color-sidebar-ring: var(--sidebar-ring);
+    13→    13→  --color-sidebar-border: var(--sidebar-border);
+    14→    14→  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    15→    15→  --color-sidebar-accent: var(--sidebar-accent);
+    16→    16→  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    17→    17→  --color-sidebar-primary: var(--sidebar-primary);
+    18→    18→  --color-sidebar-foreground: var(--sidebar-foreground);
+    19→    19→  --color-sidebar: var(--sidebar);
+    20→    20→  --color-chart-5: var(--chart-5);
+    21→    21→  --color-chart-4: var(--chart-4);
+    22→    22→  --color-chart-3: var(--chart-3);
+    23→    23→  --color-chart-2: var(--chart-2);
+    24→    24→  --color-chart-1: var(--chart-1);
+    25→    25→  --color-ring: var(--ring);
+    26→    26→  --color-input: var(--input);
+    27→    27→  --color-border: var(--border);
+    28→    28→  --color-destructive: var(--destructive);
+    29→    29→  --color-accent-foreground: var(--accent-foreground);
+    30→    30→  --color-accent: var(--accent);
+    31→    31→  --color-muted-foreground: var(--muted-foreground);
+    32→    32→  --color-muted: var(--muted);
+    33→    33→  --color-secondary-foreground: var(--secondary-foreground);
+    34→    34→  --color-secondary: var(--secondary);
+    35→    35→  --color-primary-foreground: var(--primary-foreground);
+    36→    36→  --color-primary: var(--primary);
+    37→    37→  --color-popover-foreground: var(--popover-foreground);
+    38→    38→  --color-popover: var(--popover);
+    39→    39→  --color-card-foreground: var(--card-foreground);
+    40→    40→  --color-card: var(--card);
+    41→    41→  --radius-sm: calc(var(--radius) - 4px);
+    42→    42→  --radius-md: calc(var(--radius) - 2px);
+    43→    43→  --radius-lg: var(--radius);
+    44→    44→  --radius-xl: calc(var(--radius) + 4px);
+    45→    45→}
+    46→    46→
+    47→    47→:root {
+    48→    48→  --radius: 0.25rem;
+    49→    49→  /* Neutral dark-grey / white / cream palette — inspired by legislation.gov.uk but desaturated */
+    50→    50→  --background: oklch(1 0 0);                  /* pure white */
+    51→    51→  --foreground: oklch(0.18 0 0);               /* near-black ink */
+    52→    52→  --card: oklch(1 0 0);
+    53→    53→  --card-foreground: oklch(0.18 0 0);
+    54→    54→  --popover: oklch(1 0 0);
+    55→    55→  --popover-foreground: oklch(0.18 0 0);
+    56→    56→  --primary: oklch(0.22 0 0);                  /* dark charcoal — for buttons / nav */
+    57→    57→  --primary-foreground: oklch(0.985 0 0);
+    58→    58→  --secondary: oklch(0.965 0 0);               /* very light grey */
+    59→    59→  --secondary-foreground: oklch(0.22 0 0);
+    60→    60→  --muted: oklch(0.97 0 0);
+    61→    61→  --muted-foreground: oklch(0.45 0 0);         /* mid-grey for secondary text */
+    62→    62→  --accent: oklch(0.95 0 0);
+    63→    63→  --accent-foreground: oklch(0.22 0 0);
+    64→    64→  --destructive: oklch(0.5 0.02 25);           /* muted brick — not screaming red */
+    65→    65→  --border: oklch(0.88 0 0);                   /* mid-light grey border */
+    66→    66→  --input: oklch(0.88 0 0);
+    67→    67→  --ring: oklch(0.4 0 0);
+    68→    68→  --chart-1: oklch(0.32 0 0);
+    69→    69→  --chart-2: oklch(0.55 0 0);
+    70→    70→  --chart-3: oklch(0.7 0 0);
+    71→    71→  --chart-4: oklch(0.4 0 0);
+    72→    72→  --chart-5: oklch(0.85 0 0);
+    73→    73→  --sidebar: oklch(0.985 0 0);
+    74→    74→  --sidebar-foreground: oklch(0.18 0 0);
+    75→    75→  --sidebar-primary: oklch(0.22 0 0);
+    76→    76→  --sidebar-primary-foreground: oklch(0.985 0 0);
+    77→    77→  --sidebar-accent: oklch(0.95 0 0);
+    78→    78→  --sidebar-accent-foreground: oklch(0.22 0 0);
+    79→    79→  --sidebar-border: oklch(0.88 0 0);
+    80→    80→  --sidebar-ring: oklch(0.4 0 0);
+    81→    81→
+    82→    82→  /* Custom semantic tokens for the legal site */
+    83→    83→  --ink: #1a1a1a;
+    84→    84→  --ink-soft: #3d3d3d;
+    85→    85→  --ink-muted: #6b6b6b;
+    86→    86→  --rule: #d8d6d2;          /* warm hairline divider */
+    87→    87→  --rule-soft: #ececea;
+    88→    88→  --surface: #ffffff;
+    89→    89→  --surface-raised: #fafaf8;
+    90→    90→  --surface-sunken: #f4f3f0;
+    91→    91→  --charcoal: #2b2b2b;      /* nav bar */
+    92→    92→  --charcoal-deep: #1f1f1f; /* nav bar hover / active */
+    93→    93→  --accent-stripe: #8a8a8a; /* subtle accent stripe */
+    94→    94→  --link: #1a1a1a;          /* monochrome links with underline */
+    95→    95→  --link-hover: #000000;
+    96→    96→  --marker: #2b2b2b;        /* F-marker */
+    97→    97→  --badge-revoked: #7a7a7a;
+    98→    98→  --badge-amended: #5a5a5a;
+    99→    99→  --badge-inforce: #2b2b2b;
+   100→   100→}
+   101→   101→
+   102→   102→.dark {
+   103→   103→  --background: oklch(0.145 0 0);
+   104→   104→  --foreground: oklch(0.985 0 0);
+   105→   105→  --card: oklch(0.205 0 0);
+   106→   106→  --card-foreground: oklch(0.985 0 0);
+   107→   107→  --popover: oklch(0.205 0 0);
+   108→   108→  --popover-foreground: oklch(0.985 0 0);
+   109→   109→  --primary: oklch(0.922 0 0);
+   110→   110→  --primary-foreground: oklch(0.205 0 0);
+   111→   111→  --secondary: oklch(0.269 0 0);
+   112→   112→  --secondary-foreground: oklch(0.985 0 0);
+   113→   113→  --muted: oklch(0.269 0 0);
+   114→   114→  --muted-foreground: oklch(0.708 0 0);
+   115→   115→  --accent: oklch(0.269 0 0);
+   116→   116→  --accent-foreground: oklch(0.985 0 0);
+   117→   117→  --destructive: oklch(0.704 0.0191 22.216);
+   118→   118→  --border: oklch(1 0 0 / 10%);
+   119→   119→  --input: oklch(1 0 0 / 15%);
+   120→   120→  --ring: oklch(0.556 0 0);
+   121→   121→  --chart-1: oklch(0.488 0 0);
+   122→   122→  --chart-2: oklch(0.696 0 0);
+   123→   123→  --chart-3: oklch(0.769 0 0);
+   124→   124→  --chart-4: oklch(0.627 0.0);
+   125→   125→  --chart-5: oklch(0.645 0.0);
+   126→   126→  --sidebar: oklch(0.205 0 0);
+   127→   127→  --sidebar-foreground: oklch(0.985 0 0);
+   128→   128→  --sidebar-primary: oklch(0.488 0 0);
+   129→   129→  --sidebar-primary-foreground: oklch(0.985 0 0);
+   130→   130→  --sidebar-accent: oklch(0.269 0 0);
+   131→   131→  --sidebar-accent-foreground: oklch(0.985 0 0);
+   132→   132→  --sidebar-border: oklch(1 0 0 / 10%);
+   133→   133→  --sidebar-ring: oklch(0.556 0 0);
+   134→   134→}
+   135→   135→
+   136→   136→@layer base {
+   137→   137→  * {
+   138→   138→    @apply border-border outline-ring/50;
+   139→   139→  }
+   140→   140→  html, body {
+   141→   141→    @apply bg-background text-foreground;
+   142→   142→    font-feature-settings: "ss01", "ss02", "cv01", "cv02";
+   143→   143→    -webkit-font-smoothing: antialiased;
+   144→   144→    -moz-osx-font-smoothing: grayscale;
+   145→   145→    text-rendering: optimizeLegibility;
+   146→   146→  }
+   147→   147→  body {
+   148→   148→    font-size: 15px;
+   149→   149→    line-height: 1.75;
+   150→   150→  }
+   151→   151→}
+   152→   152→
+   153→   153→/* ----------  Persian typography helpers  ---------- */
+   154→   154→.font-legal {
+   155→   155→  font-family: var(--font-vazirmatn), "Tahoma", sans-serif;
+   156→   156→  font-feature-settings: "ss01", "ss02";
+   157→   157→}
+   158→   158→
+   159→   159→/* Persian numerals helper - we render Persian digits directly in text */
+   160→   160→.nums-fa {
+   161→   161→  font-variant-numeric: lining-nums;
+   162→   162→  font-feature-settings: "ss01";
+   163→   163→}
+   164→   164→
+   165→   165→/* Monospace-ish for law numbers / citations — still Vazirmatn but tighter */
+   166→   166→.cite {
+   167→   167→  font-feature-settings: "tnum" 1;
+   168→   168→  letter-spacing: -0.01em;
+   169→   169→}
+   170→   170→
+   171→   171→/* ----------  Legal text styling (the "law itself")  ---------- */
+   172→   172→.legal-text {
+   173→   173→  font-size: 15.5px;
+   174→   174→  line-height: 2.05;
+   175→   175→  color: var(--ink);
+   176→   176→  text-align: justify;
+   177→   177→  text-justify: inter-word;
+   178→   178→}
+   179→   179→.legal-text p {
+   180→   180→  margin-bottom: 1rem;
+   181→   181→}
+   182→   182→.legal-text .article-number {
+   183→   183→  font-weight: 600;
+   184→   184→  color: var(--ink);
+   185→   185→}
+   186→   186→.legal-text .LegSubstitution {
+   187→   187→  background-color: transparent;
+   188→   188→}
+   189→   189→.legal-text .LegAddition {
+   190→   190→  background-color: transparent;
+   191→   191→}
+   192→   192→
+   193→   193→/* F-marker annotation system (borrowed from legislation.gov.uk) */
+   194→   194→.f-marker {
+   195→   195→  display: inline;
+   196→   196→  font-weight: 700;
+   197→   197→  font-size: 0.78em;
+   198→   198→  color: var(--marker);
+   199→   199→  vertical-align: super;
+   200→   200→  margin-inline-start: 1px;
+   201→   201→  margin-inline-end: 1px;
+   202→   202→  cursor: help;
+   203→   203→}
+   204→   204→.f-delimiter {
+   205→   205→  color: var(--ink-muted);
+   206→   206→  font-weight: 400;
+   207→   207→}
+   208→   208→.LegSubstitution {
+   209→   209→  /* substituted text — no decoration, just a subtle marker */
+   210→   210→}
+   211→   211→.LegAddition {
+   212→   212→  /* inserted text */
+   213→   213→}
+   214→   214→.LegRepeal {
+   215→   215→  color: var(--ink-muted);
+   216→   216→  letter-spacing: 0.05em;
+   217→   217→}
+   218→   218→
+   219→   219→/* Commentary footnotes */
+   220→   220→.commentary-item {
+   221→   221→  font-size: 13px;
+   222→   222→  line-height: 1.7;
+   223→   223→  color: var(--ink-soft);
+   224→   224→  padding-inline-start: 1.25rem;
+   225→   225→  border-inline-start: 2px solid var(--rule);
+   226→   226→  margin-bottom: 0.75rem;
+   227→   227→}
+   228→   228→.commentary-marker {
+   229→   229→  font-weight: 700;
+   230→   230→  color: var(--marker);
+   231→   231→}
+   232→   232→
+   233→   233→/* ----------  Layout primitives  ---------- */
+   234→   234→.container-legal {
+   235→   235→  max-width: 1240px;
+   236→   236→  margin-inline: auto;
+   237→   237→  padding-inline: 1.25rem;
+   238→   238→}
+   239→   239→@media (min-width: 768px) {
+   240→   240→  .container-legal { padding-inline: 2rem; }
+   241→   241→}
+   242→   242→
+   243→   243→/* Subtle hairline borders that don't feel Tailwind-default */
+   244→   244→.hairline {
+   245→   245→  border-color: var(--rule);
+   246→   246→}
+   247→   247→.hairline-b { border-bottom: 1px solid var(--rule); }
+   248→   248→.hairline-t { border-top: 1px solid var(--rule); }
+   249→   249→.hairline-r { border-inline-end: 1px solid var(--rule); }
+   250→   250→.hairline-l { border-inline-start: 1px solid var(--rule); }
+   251→   251→
+   252→   252→/* Charcoal nav */
+   253→   253→.nav-charcoal {
+   254→   254→  background-color: var(--charcoal);
+   255→   255→  color: #f4f4f4;
+   256→   256→}
+   257→   257→.nav-charcoal a {
+   258→   258→  color: #e6e6e6;
+   259→   259→  transition: color 0.15s ease, background-color 0.15s ease;
+   260→   260→}
+   261→   261→.nav-charcoal a:hover {
+   262→   262→  color: #ffffff;
+   263→   263→}
+   264→   264→.nav-charcoal .nav-item-active {
+   265→   265→  background-color: var(--charcoal-deep);
+   266→   266→  color: #ffffff;
+   267→   267→}
+   268→   268→
+   269→   269→/* Zebra table */
+   270→   270→.zebra-table { width: 100%; border-collapse: collapse; }
+   271→   271→.zebra-table thead th {
+   272→   272→  text-align: right;
+   273→   273→  font-weight: 600;
+   274→   274→  font-size: 13px;
+   275→   275→  color: var(--ink-soft);
+   276→   276→  background-color: var(--surface-sunken);
+   277→   277→  border-bottom: 2px solid var(--rule);
+   278→   278→  padding: 0.625rem 0.875rem;
+   279→   279→  white-space: nowrap;
+   280→   280→}
+   281→   281→.zebra-table tbody td {
+   282→   282→  padding: 0.75rem 0.875rem;
+   283→   283→  border-bottom: 1px solid var(--rule-soft);
+   284→   284→  font-size: 14px;
+   285→   285→  vertical-align: top;
+   286→   286→}
+   287→   287→.zebra-table tbody tr.odd-row { background-color: var(--surface-raised); }
+   288→   288→.zebra-table tbody tr:hover { background-color: #f0efeb; }
+   289→   289→.zebra-table a {
+   290→   290→  color: var(--ink);
+   291→   291→  text-decoration: underline;
+   292→   292→  text-underline-offset: 3px;
+   293→   293→  text-decoration-color: var(--rule);
+   294→   294→  text-decoration-thickness: 1px;
+   295→   295→}
+   296→   296→.zebra-table a:hover {
+   297→   297→  color: var(--link-hover);
+   298→   298→  text-decoration-color: var(--ink-muted);
+   299→   299→}
+   300→   300→
+   301→   301→/* Generic link styling — monochrome, underlined, refined */
+   302→   302→a.link-legal {
+   303→   303→  color: var(--ink);
+   304→   304→  text-decoration: underline;
+   305→   305→  text-decoration-color: var(--rule);
+   306→   306→  text-decoration-thickness: 1px;
+   307→   307→  text-underline-offset: 3px;
+   308→   308→  transition: color 0.12s ease, text-decoration-color 0.12s ease;
+   309→   309→}
+   310→   310→a.link-legal:hover {
+   311→   311→  color: var(--link-hover);
+   312→   312→  text-decoration-color: var(--ink-soft);
+   313→   313→}
+   314→   314→
+   315→   315→/* Status pills — desaturated */
+   316→   316→.pill {
+   317→   317→  display: inline-flex;
+   318→   318→  align-items: center;
+   319→   319→  gap: 0.35rem;
+   320→   320→  font-size: 11px;
+   321→   321→  font-weight: 600;
+   322→   322→  padding: 0.18rem 0.55rem;
+   323→   323→  border: 1px solid var(--rule);
+   324→   324→  border-radius: 2px;
+   325→   325→  letter-spacing: 0.02em;
+   326→   326→  color: var(--ink-soft);
+   327→   327→  background-color: var(--surface-raised);
+   328→   328→  text-transform: none;
+   329→   329→  white-space: nowrap;
+   330→   330→}
+   331→   331→.pill-in-force {
+   332→   332→  color: #1f1f1f;
+   333→   333→  background-color: #eceae6;
+   334→   334→  border-color: #c9c6bf;
+   335→   335→}
+   336→   336→.pill-amended {
+   337→   337→  color: #2b2b2b;
+   338→   338→  background-color: #f0eee9;
+   339→   339→  border-color: #c9c6bf;
+   340→   340→}
+   341→   341→.pill-revoked {
+   342→   342→  color: #6b6b6b;
+   343→   343→  background-color: #f5f4f1;
+   344→   344→  border-color: #d4d2cd;
+   345→   345→  text-decoration: line-through;
+   346→   346→  text-decoration-thickness: 1px;
+   347→   347→}
+   348→   348→.pill-pending {
+   349→   349→  color: #3d3d3d;
+   350→   350→  background-color: #faf7ed;
+   351→   351→  border-color: #d8d3bb;
+   352→   352→}
+   353→   353→
+   354→   354→/* Breadcrumb */
+   355→   355→.breadcrumb {
+   356→   356→  font-size: 13px;
+   357→   357→  color: var(--ink-muted);
+   358→   358→}
+   359→   359→.breadcrumb a {
+   360→   360→  color: var(--ink-soft);
+   361→   361→  text-decoration: underline;
+   362→   362→  text-decoration-color: var(--rule);
+   363→   363→  text-underline-offset: 3px;
+   364→   364→}
+   365→   365→.breadcrumb a:hover { color: var(--ink); }
+   366→   366→.breadcrumb .sep {
+   367→   367→  margin-inline: 0.5rem;
+   368→   368→  color: var(--ink-muted);
+   369→   369→  opacity: 0.6;
+   370→   370→}
+   371→   371→
+   372→   372→/* Sub-tabs (law detail) */
+   373→   373→.sub-tab-bar {
+   374→   374→  background-color: var(--charcoal);
+   375→   375→  border-bottom: 1px solid #000;
+   376→   376→}
+   377→   377→.sub-tab-bar ul {
+   378→   378→  display: flex;
+   379→   379→  flex-wrap: wrap;
+   380→   380→  align-items: stretch;
+   381→   381→  margin: 0;
+   382→   382→  padding: 0;
+   383→   383→  list-style: none;
+   384→   384→}
+   385→   385→.sub-tab-bar li {
+   386→   386→  display: flex;
+   387→   387→}
+   388→   388→.sub-tab-bar button {
+   389→   389→  background: transparent;
+   390→   390→  border: none;
+   391→   391→  border-bottom: 2px solid transparent;
+   392→   392→  color: #c9c9c9;
+   393→   393→  padding: 0.95rem 1.4rem;
+   394→   394→  display: inline-flex;
+   395→   395→  align-items: center;
+   396→   396→  gap: 0.5rem;
+   397→   397→  font-family: inherit;
+   398→   398→  font-size: 14px;
+   399→   399→  font-weight: 400;
+   400→   400→  line-height: 1.4;
+   401→   401→  cursor: pointer;
+   402→   402→  white-space: nowrap;
+   403→   403→  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
+   404→   404→  -webkit-tap-highlight-color: transparent;
+   405→   405→}
+   406→   406→.sub-tab-bar button:hover {
+   407→   407→  color: #ffffff;
+   408→   408→  background-color: rgba(255, 255, 255, 0.04);
+   409→   409→}
+   410→   410→.sub-tab-bar button.active {
+   411→   411→  color: #ffffff;
+   412→   412→  background-color: var(--charcoal-deep);
+   413→   413→  border-bottom-color: #ffffff;
+   414→   414→  font-weight: 500;
+   415→   415→}
+   416→   416→.sub-tab-bar .tab-count {
+   417→   417→  display: inline-flex;
+   418→   418→  align-items: center;
+   419→   419→  justify-content: center;
+   420→   420→  min-width: 18px;
+   421→   421→  height: 18px;
+   422→   422→  padding: 0 5px;
+   423→   423→  font-size: 10.5px;
+   424→   424→  font-weight: 500;
+   425→   425→  line-height: 1;
+   426→   426→  color: #c9c9c9;
+   427→   427→  background-color: rgba(255, 255, 255, 0.1);
+   428→   428→  border-radius: 9px;
+   429→   429→  font-feature-settings: "tnum";
+   430→   430→}
+   431→   431→.sub-tab-bar button.active .tab-count {
+   432→   432→  color: #ffffff;
+   433→   433→  background-color: rgba(255, 255, 255, 0.2);
+   434→   434→}
+   435→   435→@media (max-width: 767px) {
+   436→   436→  .sub-tab-bar button {
+   437→   437→    padding: 0.8rem 0.9rem;
+   438→   438→    font-size: 13px;
+   439→   439→  }
+   440→   440→  .sub-tab-bar .container-legal {
+   441→   441→    padding-inline: 0;
+   442→   442→  }
+   443→   443→  .sub-tab-bar ul {
+   444→   444→    overflow-x: auto;
+   445→   445→    scrollbar-width: none;
+   446→   446→    flex-wrap: nowrap;
+   447→   447→    -webkit-overflow-scrolling: touch;
+   448→   448→  }
+   449→   449→  .sub-tab-bar ul::-webkit-scrollbar { display: none; }
+   450→   450→}
+   451→   451→
+   452→   452→/* TOC tree */
+   453→   453→.toc-item {
+   454→   454→  display: flex;
+   455→   455→  align-items: baseline;
+   456→   456→  padding: 0.3rem 0;
+   457→   457→  font-size: 14px;
+   458→   458→  line-height: 1.65;
+   459→   459→}
+   460→   460→.toc-item .toc-label {
+   461→   461→  color: var(--ink);
+   462→   462→  text-decoration: underline;
+   463→   463→  text-decoration-color: var(--rule);
+   464→   464→  text-underline-offset: 3px;
+   465→   465→}
+   466→   466→.toc-item .toc-label:hover { color: var(--link-hover); text-decoration-color: var(--ink-soft); }
+   467→   467→.toc-item .toc-meta {
+   468→   468→  color: var(--ink-muted);
+   469→   469→  font-size: 12.5px;
+   470→   470→  margin-inline-start: 0.5rem;
+   471→   471→}
+   472→   472→
+   473→   473→/* Timeline rail */
+   474→   474→.timeline-rail {
+   475→   475→  position: relative;
+   476→   476→}
+   477→   477→.timeline-rail::before {
+   478→   478→  content: "";
+   479→   479→  position: absolute;
+   480→   480→  inset-inline-start: 7px;
+   481→   481→  top: 0;
+   482→   482→  bottom: 0;
+   483→   483→  width: 1px;
+   484→   484→  background-color: var(--rule);
+   485→   485→}
+   486→   486→.timeline-dot {
+   487→   487→  width: 11px;
+   488→   488→  height: 11px;
+   489→   489→  border-radius: 50%;
+   490→   490→  background-color: var(--surface);
+   491→   491→  border: 2px solid var(--ink);
+   492→   492→  position: absolute;
+   493→   493→  inset-inline-start: 2px;
+   494→   494→  top: 6px;
+   495→   495→}
+   496→   496→.timeline-dot.muted { border-color: var(--ink-muted); background-color: var(--surface-sunken); }
+   497→   497→
+   498→   498→/* Search input — flat, official-looking */
+   499→   499→.input-legal {
+   500→   500→  background-color: #ffffff;
+   501→   501→  border: 1px solid var(--rule);
+   502→   502→  border-radius: 2px;
+   503→   503→  padding: 0.55rem 0.75rem;
+   504→   504→  font-size: 14px;
+   505→   505→  color: var(--ink);
+   506→   506→  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+   507→   507→  width: 100%;
+   508→   508→}
+   509→   509→.input-legal:focus {
+   510→   510→  outline: none;
+   511→   511→  border-color: var(--ink);
+   512→   512→  box-shadow: inset 0 0 0 1px var(--ink);
+   513→   513→}
+   514→   514→.input-legal::placeholder { color: var(--ink-muted); }
+   515→   515→
+   516→   516→/* Buttons */
+   517→   517→.btn-legal {
+   518→   518→  display: inline-flex;
+   519→   519→  align-items: center;
+   520→   520→  justify-content: center;
+   521→   521→  gap: 0.45rem;
+   522→   522→  background-color: var(--charcoal);
+   523→   523→  color: #ffffff;
+   524→   524→  font-size: 14px;
+   525→   525→  font-weight: 500;
+   526→   526→  padding: 0.55rem 1.25rem;
+   527→   527→  border-radius: 2px;
+   528→   528→  border: 1px solid var(--charcoal);
+   529→   529→  cursor: pointer;
+   530→   530→  transition: background-color 0.15s ease, border-color 0.15s ease;
+   531→   531→}
+   532→   532→.btn-legal:hover {
+   533→   533→  background-color: var(--charcoal-deep);
+   534→   534→  border-color: var(--charcoal-deep);
+   535→   535→}
+   536→   536→.btn-legal-ghost {
+   537→   537→  background-color: transparent;
+   538→   538→  color: var(--ink);
+   539→   539→  border: 1px solid var(--rule);
+   540→   540→  font-weight: 500;
+   541→   541→}
+   542→   542→.btn-legal-ghost:hover {
+   543→   543→  background-color: var(--surface-sunken);
+   544→   544→  border-color: var(--ink-muted);
+   545→   545→  color: var(--ink);
+   546→   546→}
+   547→   547→.btn-legal-sm {
+   548→   548→  font-size: 13px;
+   549→   549→  padding: 0.35rem 0.85rem;
+   550→   550→}
+   551→   551→
+   552→   552→/* Section / article heading rules */
+   553→   553→.section-rule {
+   554→   554→  border-top: 1px solid var(--rule);
+   555→   555→  margin-top: 1.5rem;
+   556→   556→  margin-bottom: 1rem;
+   557→   557→  padding-top: 1rem;
+   558→   558→}
+   559→   559→
+   560→   560→/* Print / utility buttons */
+   561→   561→.utility-pill {
+   562→   562→  display: inline-flex;
+   563→   563→  align-items: center;
+   564→   564→  gap: 0.35rem;
+   565→   565→  font-size: 12.5px;
+   566→   566→  color: var(--ink-soft);
+   567→   567→  background-color: var(--surface-raised);
+   568→   568→  border: 1px solid var(--rule);
+   569→   569→  padding: 0.3rem 0.65rem;
+   570→   570→  border-radius: 2px;
+   571→   571→  cursor: pointer;
+   572→   572→  transition: all 0.15s ease;
+   573→   573→}
+   574→   574→.utility-pill:hover {
+   575→   575→  background-color: var(--surface-sunken);
+   576→   576→  color: var(--ink);
+   577→   577→}
+   578→   578→
+   579→   579→/* Citation block inside text */
+   580→   580→.cite-block {
+   581→   581→  font-size: 13.5px;
+   582→   582→  color: var(--ink-soft);
+   583→   583→  background-color: var(--surface-raised);
+   584→   584→  border-inline-start: 2px solid var(--ink);
+   585→   585→  padding: 0.6rem 0.85rem;
+   586→   586→  margin: 0.6rem 0;
+   587→   587→}
+   588→   588→
+   589→   589→/* Decade histogram bar */
+   590→   590→.decade-bar {
+   591→   591→  display: inline-block;
+   592→   592→  background-color: var(--ink);
+   593→   593→  width: 6px;
+   594→   594→  margin-inline-end: 1px;
+   595→   595→  vertical-align: bottom;
+   596→   596→}
+   597→   597→.decade-bar.muted { background-color: var(--ink-muted); opacity: 0.55; }
+   598→   598→
+   599→   599→/* Scrollbar — subtle */
+   600→   600→.scrollbar-subtle::-webkit-scrollbar { width: 8px; height: 8px; }
+   601→   601→.scrollbar-subtle::-webkit-scrollbar-track { background: transparent; }
+   602→   602→.scrollbar-subtle::-webkit-scrollbar-thumb { background: var(--rule); border-radius: 4px; }
+   603→   603→.scrollbar-subtle::-webkit-scrollbar-thumb:hover { background: var(--ink-muted); }
+   604→   604→
+   605→   605→/* Avoid hover scale / shadow — keep things flat and official */
+   606→   606→button, a { transition: color 0.12s ease, background-color 0.12s ease, border-color 0.12s ease; }
+   607→   607→
+   608→   608→/* Selection */
+   609→   609→::selection { background-color: #1f1f1f; color: #ffffff; }
+   610→   610→
+   611→   611→/* ============================================================
+   612→   612→   Article picker — iOS-style cylindrical scroll-snap selector
+   613→   613→   ============================================================ */
+   614→   614→.article-picker-list {
+   615→   615→  height: 280px;
+   616→   616→  overflow-y: auto;
+   617→   617→  scroll-snap-type: y proximity;
+   618→   618→  scroll-behavior: smooth;
+   619→   619→  position: relative;
+   620→   620→  /* Mask-image fade at top/bottom — gives the "cylinder" effect.
+   621→   621→     The fade is purely visual (via mask-image), so we DON'T need padding
+   622→   622→     for spacing. We use spacer items at the start/end of the list instead. */
+   623→   623→  -webkit-mask-image: linear-gradient(
+   624→   624→    to bottom,
+   625→   625→    transparent 0%,
+   626→   626→    black 18%,
+   627→   627→    black 82%,
+   628→   628→    transparent 100%
+   629→   629→  );
+   630→   630→  mask-image: linear-gradient(
+   631→   631→    to bottom,
+   632→   632→    transparent 0%,
+   633→   633→    black 18%,
+   634→   634→    black 82%,
+   635→   635→    transparent 100%
+   636→   636→  );
+   637→   637→  scrollbar-width: none;
+   638→   638→  display: flex;
+   639→   639→  flex-direction: column;
+   640→   640→}
+   641→   641→.article-picker-list::-webkit-scrollbar { display: none; }
+   642→   642→
+   643→   643→/* Spacer items at the top and bottom of the list so the first/last
+   644→   644→   real items can be centered in the selection band. */
+   645→   645→.article-picker-spacer {
+   646→   646→  height: 122px; /* (280 - 36) / 2 = 122 */
+   647→   647→  flex-shrink: 0;
+   648→   648→  scroll-snap-align: none;
+   649→   649→  pointer-events: none;
+   650→   650→}
+   651→   651→
+   652→   652→.article-picker-item {
+   653→   653→  display: block;
+   654→   654→  scroll-snap-align: center;
+   655→   655→  height: 36px;
+   656→   656→  min-height: 36px;
+   657→   657→  padding: 0.35rem 0.6rem;
+   658→   658→  text-align: center;
+   659→   659→  color: var(--ink-soft);
+   660→   660→  background-color: transparent;
+   661→   661→  border: none;
+   662→   662→  cursor: pointer;
+   663→   663→  width: 100%;
+   664→   664→  flex-shrink: 0;
+   665→   665→  line-height: 1.5;
+   666→   666→  transition: color 0.12s ease, background-color 0.12s ease;
+   667→   667→  position: relative;
+   668→   668→  z-index: 2;
+   669→   669→  box-sizing: border-box;
+   670→   670→}
+   671→   671→.article-picker-item:hover {
+   672→   672→  color: var(--ink);
+   673→   673→}
+   674→   674→.article-picker-item.is-active {
+   675→   675→  color: #ffffff;
+   676→   676→  font-weight: 600;
+   677→   677→  background-color: var(--charcoal);
+   678→   678→}
+   679→   679→.article-picker-item.is-active .picker-sub {
+   680→   680→  color: rgba(255, 255, 255, 0.65);
+   681→   681→}
+   682→   682→.article-picker-item .cite {
+   683→   683→  letter-spacing: -0.01em;
+   684→   684→}
+   685→   685→.article-picker-item .picker-sub {
+   686→   686→  display: block;
+   687→   687→  font-size: 10.5px;
+   688→   688→  color: var(--ink-muted);
+   689→   689→  line-height: 1.3;
+   690→   690→  margin-top: 1px;
+   691→   691→  max-width: 100%;
+   692→   692→  overflow: hidden;
+   693→   693→  text-overflow: ellipsis;
+   694→   694→  white-space: nowrap;
+   695→   695→}
+   696→   696→
+   697→   697→/* ============================================================
+   698→   698→   Article navigation buttons (Next / Previous article)
+   699→   699→   Shown in the main content area when a specific article is selected
+   700→   700→   ============================================================ */
+   701→   701→.article-nav-bar {
+   702→   702→  display: flex;
+   703→   703→  align-items: stretch;
+   704→   704→  justify-content: space-between;
+   705→   705→  gap: 0.5rem;
+   706→   706→  padding: 0.75rem 0;
+   707→   707→  margin-top: 1.25rem;
+   708→   708→  border-top: 1px solid var(--rule);
+   709→   709→  border-bottom: 1px solid var(--rule);
+   710→   710→}
+   711→   711→.article-nav-btn {
+   712→   712→  display: flex;
+   713→   713→  flex-direction: column;
+   714→   714→  align-items: flex-start;
+   715→   715→  justify-content: center;
+   716→   716→  gap: 0.15rem;
+   717→   717→  font-family: inherit;
+   718→   718→  font-size: 14px;
+   719→   719→  font-weight: 600;
+   720→   720→  color: var(--ink);
+   721→   721→  background-color: var(--surface);
+   722→   722→  border: 1px solid var(--rule);
+   723→   723→  padding: 0.7rem 1.1rem;
+   724→   724→  border-radius: 3px;
+   725→   725→  cursor: pointer;
+   726→   726→  flex: 1;
+   727→   727→  min-width: 0;
+   728→   728→  text-align: right;
+   729→   729→  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+   730→   730→  -webkit-tap-highlight-color: transparent;
+   731→   731→}
+   732→   732→.article-nav-btn.article-nav-next {
+   733→   733→  text-align: left;
+   734→   734→  align-items: flex-end;
+   735→   735→}
+   736→   736→.article-nav-btn:hover:not(:disabled) {
+   737→   737→  background-color: var(--charcoal);
+   738→   738→  border-color: var(--charcoal);
+   739→   739→  color: #ffffff;
+   740→   740→  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+   741→   741→}
+   742→   742→.article-nav-btn:active:not(:disabled) {
+   743→   743→  transform: translateY(1px);
+   744→   744→}
+   745→   745→.article-nav-btn:disabled {
+   746→   746→  opacity: 0.3;
+   747→   747→  cursor: not-allowed;
+   748→   748→}
+   749→   749→.article-nav-btn .nav-dir {
+   750→   750→  font-size: 10.5px;
+   751→   751→  color: var(--ink-muted);
+   752→   752→  font-weight: 500;
+   753→   753→  letter-spacing: 0.03em;
+   754→   754→  line-height: 1.2;
+   755→   755→  text-transform: none;
+   756→   756→}
+   757→   757→.article-nav-btn:hover:not(:disabled) .nav-dir {
+   758→   758→  color: rgba(255, 255, 255, 0.6);
+   759→   759→}
+   760→   760→.article-nav-btn .nav-article {
+   761→   761→  font-size: 14px;
+   762→   762→  font-weight: 600;
+   763→   763→  line-height: 1.3;
+   764→   764→  white-space: nowrap;
+   765→   765→  overflow: hidden;
+   766→   766→  text-overflow: ellipsis;
+   767→   767→  max-width: 100%;
+   768→   768→}
+   769→   769→.article-nav-btn .nav-arrow {
+   770→   770→  font-size: 16px;
+   771→   771→  line-height: 1;
+   772→   772→  flex-shrink: 0;
+   773→   773→}
+   774→   774→.article-nav-position {
+   775→   775→  display: flex;
+   776→   776→  align-items: center;
+   777→   777→  justify-content: center;
+   778→   778→  font-size: 12px;
+   779→   779→  color: var(--ink-muted);
+   780→   780→  font-feature-settings: "tnum";
+   781→   781→  padding: 0 0.5rem;
+   782→   782→  white-space: nowrap;
+   783→   783→}
+   784→   784→
+   785→   785→/* ============================================================
+   786→   786→   Mobile article drawer — circular FAB on the LEFT, slides LEFT→RIGHT
+   787→   787→   Only visible on law pages, below md breakpoint
+   788→   788→   ============================================================ */
+   789→   789→.article-drawer-fab {
+   790→   790→  position: fixed;
+   791→   791→  left: 14px;
+   792→   792→  top: 50%;
+   793→   793→  transform: translateY(-50%);
+   794→   794→  z-index: 40;
+   795→   795→  display: none;
+   796→   796→}
+   797→   797→@media (max-width: 767px) {
+   798→   798→  .article-drawer-fab {
+   799→   799→    display: flex;
+   800→   800→  }
+   801→   801→}
+   802→   802→.article-drawer-fab-btn {
+   803→   803→  width: 48px;
+   804→   804→  height: 48px;
+   805→   805→  border-radius: 50%;
+   806→   806→  background-color: var(--charcoal);
+   807→   807→  color: #ffffff;
+   808→   808→  border: 3px solid var(--surface);
+   809→   809→  cursor: pointer;
+   810→   810→  display: flex;
+   811→   811→  align-items: center;
+   812→   812→  justify-content: center;
+   813→   813→  font-family: inherit;
+   814→   814→  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+   815→   815→  transition: background-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+   816→   816→  -webkit-tap-highlight-color: transparent;
+   817→   817→  /* Subtle pulse to draw attention without being annoying */
+   818→   818→  animation: fab-attention 3s ease-in-out 2s 1;
+   819→   819→}
+   820→   820→.article-drawer-fab-btn:hover,
+   821→   821→.article-drawer-fab-btn:active {
+   822→   822→  background-color: var(--charcoal-deep);
+   823→   823→  transform: translateY(-50%) scale(1.06);
+   824→   824→  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+   825→   825→}
+   826→   826→@keyframes fab-attention {
+   827→   827→  0%, 100% { box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18); }
+   828→   828→  50% { box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18), 0 0 0 8px rgba(31, 31, 31, 0.08); }
+   829→   829→}
+   830→   830→.article-drawer-fab-btn svg {
+   831→   831→  width: 22px;
+   832→   832→  height: 22px;
+   833→   833→  flex-shrink: 0;
+   834→   834→}
+   835→   835→
+   836→   836→/* Drawer overlay + panel — slides in from LEFT */
+   837→   837→.article-drawer-overlay {
+   838→   838→  position: fixed;
+   839→   839→  inset: 0;
+   840→   840→  background-color: rgba(0, 0, 0, 0.4);
+   841→   841→  z-index: 49;
+   842→   842→  animation: drawer-overlay-fade 200ms ease-out;
+   843→   843→}
+   844→   844→.article-drawer-panel {
+   845→   845→  position: fixed;
+   846→   846→  top: 0;
+   847→   847→  bottom: 0;
+   848→   848→  left: 0;
+   849→   849→  width: min(320px, 88vw);
+   850→   850→  background-color: var(--surface);
+   851→   851→  z-index: 50;
+   852→   852→  display: flex;
+   853→   853→  flex-direction: column;
+   854→   854→  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.15);
+   855→   855→  animation: drawer-slide-in 280ms cubic-bezier(0.16, 0.84, 0.44, 1);
+   856→   856→}
+   857→   857→.article-drawer-panel.closing {
+   858→   858→  animation: drawer-slide-out 220ms cubic-bezier(0.4, 0, 1, 1) forwards;
+   859→   859→}
+   860→   860→.article-drawer-header {
+   861→   861→  display: flex;
+   862→   862→  align-items: center;
+   863→   863→  justify-content: space-between;
+   864→   864→  padding: 1rem 1.25rem;
+   865→   865→  border-bottom: 1px solid var(--rule);
+   866→   866→  background-color: var(--charcoal);
+   867→   867→  color: #ffffff;
+   868→   868→}
+   869→   869→.article-drawer-header h3 {
+   870→   870→  font-family: var(--font-vazirmatn), sans-serif;
+   871→   871→  font-size: 14px;
+   872→   872→  font-weight: 600;
+   873→   873→  margin: 0;
+   874→   874→}
+   875→   875→.article-drawer-close {
+   876→   876→  background: transparent;
+   877→   877→  border: none;
+   878→   878→  color: #d8d8d8;
+   879→   879→  cursor: pointer;
+   880→   880→  padding: 0.3rem;
+   881→   881→  display: flex;
+   882→   882→  align-items: center;
+   883→   883→  justify-content: center;
+   884→   884→  border-radius: 2px;
+   885→   885→  transition: color 0.15s ease, background-color 0.15s ease;
+   886→   886→}
+   887→   887→.article-drawer-close:hover {
+   888→   888→  color: #ffffff;
+   889→   889→  background-color: rgba(255, 255, 255, 0.1);
+   890→   890→}
+   891→   891→.article-drawer-body {
+   892→   892→  flex: 1;
+   893→   893→  overflow-y: auto;
+   894→   894→  padding: 1rem 1.25rem;
+   895→   895→  background-color: var(--surface);
+   896→   896→}
+   897→   897→
+   898→   898→@keyframes drawer-overlay-fade {
+   899→   899→  from { opacity: 0; }
+   900→   900→  to { opacity: 1; }
+   901→   901→}
+   902→   902→@keyframes drawer-slide-in {
+   903→   903→  from { transform: translateX(-100%); }
+   904→   904→  to { transform: translateX(0); }
+   905→   905→}
+   906→   906→@keyframes drawer-slide-out {
+   907→   907→  from { transform: translateX(0); }
+   908→   908→  to { transform: translateX(-100%); }
+   909→   909→}
+   910→   910→@media (prefers-reduced-motion: reduce) {
+   911→   911→  .article-drawer-overlay,
+   912→   912→  .article-drawer-panel,
+   913→   913→  .article-drawer-panel.closing,
+   914→   914→  .article-drawer-fab-btn {
+   915→   915→    animation: none;
+   916→   916→  }
+   917→   917→}
+   918→   918→
+   919→   919→/* ============================================================
+   920→   920→   Diff highlighting — for AmendmentComparisonView
+   921→   921→   Muted, desaturated red and green to fit the neutral palette
+   922→   922→   ============================================================ */
+   923→   923→.diff-removed {
+   924→   924→  background-color: #f7eded;
+   925→   925→  color: #8b3a3a;
+   926→   926→  text-decoration: line-through;
+   927→   927→  text-decoration-color: rgba(139, 58, 58, 0.45);
+   928→   928→  text-decoration-thickness: 1px;
+   929→   929→  padding: 0 2px;
+   930→   930→  border-radius: 2px;
+   931→   931→  margin: 0 0.5px;
+   932→   932→}
+   933→   933→.diff-added {
+   934→   934→  background-color: #eef2ec;
+   935→   935→  color: #1f4f3a;
+   936→   936→  font-weight: 500;
+   937→   937→  padding: 0 2px;
+   938→   938→  border-radius: 2px;
+   939→   939→  margin: 0 0.5px;
+   940→   940→}
+   941→   941→.diff-removed.inline,
+   942→   942→.diff-added.inline {
+   943→   943→  display: inline-block;
+   944→   944→  font-size: 11.5px;
+   945→   945→  font-weight: 400;
+   946→   946→  text-decoration-thickness: 1px;
+   947→   947→}
+   948→   948→
+   949→   949→/* ============================================================
+   950→   950→   Modal animations — AmendmentComparisonView
+   951→   951→   ============================================================ */
+   952→   952→@keyframes modal-backdrop-fade {
+   953→   953→  from { opacity: 0; }
+   954→   954→  to { opacity: 1; }
+   955→   955→}
+   956→   956→@keyframes modal-content-rise {
+   957→   957→  from { opacity: 0; transform: translateY(16px); }
+   958→   958→  to { opacity: 1; transform: translateY(0); }
+   959→   959→}
+   960→   960→.modal-backdrop {
+   961→   961→  animation: modal-backdrop-fade 180ms ease-out;
+   962→   962→}
+   963→   963→.modal-content {
+   964→   964→  animation: modal-content-rise 220ms cubic-bezier(0.16, 0.84, 0.44, 1);
+   965→   965→  border-radius: 2px;
+   966→   966→}
+   967→   967→@media (min-width: 768px) {
+   968→   968→  @keyframes modal-content-rise {
+   969→   969→    from { opacity: 0; transform: translateY(8px) scale(0.98); }
+   970→   970→    to { opacity: 1; transform: translateY(0) scale(1); }
+   971→   971→  }
+   972→   972→}
+   973→   973→
+   974→   974→/* Smooth scrolling for the article picker */
+   975→   975→@media (prefers-reduced-motion: no-preference) {
+   976→   976→  .article-picker-list {
+   977→   977→    scroll-behavior: smooth;
+   978→   978→  }
+   979→   979→}
+   980→   980→
