@@ -5,19 +5,20 @@ import Link from "next/link";
 interface AccountLayoutProps {
   /** The signed-in user's display name (or username) */
   userName: string;
-  /** The user's email or phone (shown as muted meta under the name) */
-  userIdentifier: string;
   /** Initials for the avatar circle */
   userInitials: string;
+  /** Hamburger click handler — opens the mobile drawer */
+  onMenuClick?: () => void;
   children: React.ReactNode;
 }
 
 /**
  * AccountLayout — the dedicated chrome for the signed-in /account panel.
  *
- * Same philosophy as the auth pages: NO main site Header, NO charcoal
- * nav bar, NO footer columns. Just a slim top bar with the logo + a
- * "back to site" escape hatch, then the panel body fills the rest.
+ * Top bar (3-zone, LTR grid so left/center/right are unambiguous):
+ *   • LEFT   — hamburger (mobile only) + "back to site" link
+ *   • CENTER — account-page logo
+ *   • RIGHT  — user circle (initials) + name (PC only)
  *
  * The panel body itself (sidebar + content) is rendered by the page
  * via AccountShell — this layout only owns the outer chrome + the
@@ -25,51 +26,78 @@ interface AccountLayoutProps {
  */
 export function AccountLayout({
   userName,
-  userIdentifier,
   userInitials,
+  onMenuClick,
   children,
 }: AccountLayoutProps) {
   return (
     <div className="panel-backdrop flex flex-col min-h-screen">
-      {/* Slim top bar — logo + back-to-site. NO nav. */}
+      {/* Slim top bar — 3 zones: left controls | center logo | right user */}
       <header className="panel-topbar">
-        <div className="container-legal py-2.5 flex items-center justify-between gap-3">
-          <Link href="/" className="flex items-center gap-2.5" aria-label="مدونات — صفحه نخست">
-            <img
-              src="/brand/logo.webp"
-              alt="مدونات"
-              width={1536}
-              height={1024}
-              className="h-[44px] sm:h-[52px] w-auto object-contain"
-              draggable={false}
-            />
-          </Link>
-          <div className="flex items-center gap-3 sm:gap-4">
-            {/* Mini user chip — name + initials avatar */}
-            <div className="hidden sm:flex items-center gap-2">
-              <span className="text-[12.5px] text-[#3d3d3d] truncate max-w-[140px]">
+        <div className="container-legal py-2.5">
+          <div className="panel-topbar-grid">
+            {/* LEFT — hamburger (mobile) + return-to-site */}
+            <div className="panel-topbar-left">
+              <button
+                type="button"
+                className="panel-hamburger"
+                aria-label="باز کردن منوی پنل"
+                onClick={onMenuClick}
+              >
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  aria-hidden
+                >
+                  <line x1="4" y1="7" x2="20" y2="7" />
+                  <line x1="4" y1="12" x2="20" y2="12" />
+                  <line x1="4" y1="17" x2="20" y2="17" />
+                </svg>
+              </button>
+              <Link href="/" className="auth-back-link">
+                <span aria-hidden className="text-[#8d8d8d]">→</span>
+                بازگشت به سایت
+              </Link>
+            </div>
+
+            {/* CENTER — account-page logo */}
+            <div className="panel-topbar-center">
+              <Link href="/" aria-label="مدونات — صفحه نخست">
+                <img
+                  src="/brand/logoaccount.webp"
+                  alt="مدونات"
+                  width={1536}
+                  height={1024}
+                  className="h-[40px] sm:h-[48px] w-auto object-contain"
+                  draggable={false}
+                />
+              </Link>
+            </div>
+
+            {/* RIGHT — user circle (initials) + name (PC only) */}
+            <div className="panel-topbar-right">
+              <span className="hidden sm:inline text-[12.5px] text-[#3d3d3d] truncate max-w-[140px]">
                 {userName}
               </span>
-              <span className="panel-user-avatar" style={{ width: 28, height: 28, fontSize: 12 }}>
+              <span
+                className="panel-user-avatar"
+                style={{ width: 32, height: 32, fontSize: 13 }}
+              >
                 {userInitials}
               </span>
             </div>
-            <Link
-              href="/"
-              className="auth-back-link"
-            >
-              <span aria-hidden className="text-[#8d8d8d]">→</span>
-              بازگشت به سایت
-            </Link>
           </div>
         </div>
       </header>
 
       {/* Panel body */}
       <main className="flex-1">
-        <div className="container-legal py-6 sm:py-8">
-          {children}
-        </div>
+        <div className="container-legal py-6 sm:py-8">{children}</div>
       </main>
 
       {/* Minimal bottom strip */}
@@ -127,7 +155,7 @@ interface SidebarItemProps {
   onClick: () => void;
 }
 
-/** Single sidebar nav entry. Doubles as a mobile horizontal tab. */
+/** Single sidebar nav entry. Used both in the PC sidebar and the mobile drawer. */
 export function SidebarItem({ id, label, icon, count, isActive, onClick }: SidebarItemProps) {
   return (
     <button

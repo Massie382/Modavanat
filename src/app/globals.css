@@ -1552,15 +1552,143 @@ button, a { transition: color 0.12s ease, background-color 0.12s ease, border-co
   min-height: 100vh;
 }
 
-/* Slim top bar — logo only + back-to-site. NO main nav. */
+/* Slim top bar — 3-zone: left controls | center logo | right user */
 .panel-topbar {
   background-color: #ffffff;
   border-bottom: 1px solid var(--rule);
 }
 
-/* The two-column layout: sidebar on the visual right (RTL) + content
-   on the visual left. On mobile, the sidebar collapses to a horizontal
-   scrollable tab strip ABOVE the content. */
+/* Three-zone grid. `direction: ltr` is forced on the grid so that
+   column 1 = visual LEFT, column 2 = CENTER, column 3 = visual RIGHT,
+   regardless of the page's RTL direction. Each cell restores
+   `direction: rtl` for its Persian-text children. */
+.panel-topbar-grid {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 0.75rem;
+  direction: ltr;
+}
+.panel-topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  direction: rtl;
+  min-width: 0;
+}
+.panel-topbar-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.panel-topbar-right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  direction: rtl;
+  min-width: 0;
+}
+
+/* Hamburger button — mobile only. Hidden on md+ where the inline
+   sidebar is always visible. */
+.panel-hamburger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  background-color: #ffffff;
+  color: var(--ink);
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+  flex-shrink: 0;
+  padding: 0;
+}
+.panel-hamburger:hover {
+  background-color: var(--surface-sunken);
+  border-color: var(--rule-strong, var(--rule));
+}
+@media (min-width: 768px) {
+  .panel-hamburger { display: none; }
+}
+
+/* ── Mobile drawer ── slides in from the visual LEFT, contains the
+   same sidebar nav that's inline on PC. Auto-closes on tab select. */
+
+.panel-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(20, 20, 20, 0.45);
+  z-index: 80;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+.panel-drawer-backdrop.is-open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.panel-drawer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: min(300px, 85vw);
+  background-color: #ffffff;
+  border-inline-end: 1px solid var(--rule);
+  box-shadow: 4px 0 18px rgba(0, 0, 0, 0.12);
+  z-index: 81;
+  transform: translateX(-100%);
+  transition: transform 0.25s ease;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+.panel-drawer.is-open {
+  transform: translateX(0);
+}
+/* Drawer is mobile-only — never shown on md+ where inline sidebar exists. */
+@media (min-width: 768px) {
+  .panel-drawer-backdrop,
+  .panel-drawer {
+    display: none !important;
+  }
+}
+
+.panel-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0.65rem 0.85rem;
+  border-bottom: 1px solid var(--rule-soft);
+  direction: rtl;
+}
+.panel-drawer-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  background-color: #ffffff;
+  color: var(--ink-soft);
+  cursor: pointer;
+  padding: 0;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.panel-drawer-close:hover {
+  background-color: var(--surface-sunken);
+  color: var(--ink);
+}
+
+/* The two-column layout: sidebar on the visual RIGHT (RTL) + content
+   on the visual LEFT. On mobile, only the content shows — the sidebar
+   is rendered inside the slide-in drawer instead. */
 .panel-grid {
   display: grid;
   grid-template-columns: 1fr;
@@ -1568,18 +1696,22 @@ button, a { transition: color 0.12s ease, background-color 0.12s ease, border-co
 }
 @media (min-width: 768px) {
   .panel-grid {
-    /* In RTL, the first column goes to the visual right. We want the
-       sidebar (260px) on the visual right, content on the visual left. */
-    grid-template-columns: 1fr 260px;
+    /* In RTL: col 1 → visual RIGHT (sidebar, 260px),
+                col 2 → visual LEFT  (content, 1fr). */
+    grid-template-columns: 260px 1fr;
   }
 }
 
-/* Sidebar nav card */
+/* Sidebar nav card — visible only on md+. On mobile it is hidden
+   because the same markup is rendered inside the drawer. */
 .panel-side {
   background-color: #ffffff;
   border: 1px solid var(--rule);
   border-radius: 4px;
   overflow: hidden;
+}
+@media (max-width: 767px) {
+  .panel-side { display: none; }
 }
 @media (min-width: 768px) {
   .panel-side {
@@ -1589,8 +1721,8 @@ button, a { transition: color 0.12s ease, background-color 0.12s ease, border-co
   }
 }
 
-/* On mobile, the sidebar becomes a horizontal scrollable strip of
-   tab buttons. */
+/* Legacy horizontal-scroll sidebar — kept for backward compatibility
+   but no longer used by the current AccountShell (drawer replaces it). */
 .panel-side-mobile-scroll {
   display: flex;
   overflow-x: auto;

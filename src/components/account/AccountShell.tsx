@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { AccountLayout, SidebarItem } from "./AccountLayout";
 
 export type AccountTab = "bookmarks" | "settings" | "tickets" | "purchases";
@@ -36,13 +37,98 @@ export function AccountShell({
   userInitials,
   children,
 }: AccountShellProps) {
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const items: AccountTab[] = ["bookmarks", "settings", "tickets", "purchases"];
+
+  // Lock body scroll while the mobile drawer is open.
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    if (drawerOpen) {
+      const prev = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = prev;
+      };
+    }
+  }, [drawerOpen]);
+
+  // Selecting a tab (from either the PC sidebar or the mobile drawer)
+  // updates the active tab AND auto-closes the drawer.
+  const handleTabSelect = (tab: AccountTab) => {
+    onTabChange(tab);
+    setDrawerOpen(false);
+  };
+
+  // The sidebar block — rendered twice: once inline (visible on md+)
+  // and once inside the mobile drawer. Same markup, same handlers.
+  const sidebarBlock = (
+    <>
+      {/* User mini-card */}
+      <div className="panel-user-card">
+        <div className="flex items-center gap-3">
+          <span className="panel-user-avatar">{userInitials}</span>
+          <div className="min-w-0">
+            <div className="panel-user-name truncate">{userName}</div>
+            <div
+              className="panel-user-meta truncate"
+              dir="ltr"
+              style={{ textAlign: "right" }}
+            >
+              {userIdentifier}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Nav */}
+      <nav aria-label="ناوبری پنل کاربری">
+        {items.map((tab) => (
+          <SidebarItem
+            key={tab}
+            id={tab}
+            label={TAB_LABELS[tab]}
+            icon={<TabIcon tab={tab} />}
+            count={counts[tab]}
+            isActive={activeTab === tab}
+            onClick={() => handleTabSelect(tab)}
+          />
+        ))}
+
+        {/* Sign out — always at the bottom */}
+        <button
+          type="button"
+          onClick={() => {
+            if (typeof window !== "undefined") window.location.href = "/signin";
+          }}
+          className="panel-nav-item"
+          style={{ borderTop: "1px solid var(--rule-soft)", marginTop: 4 }}
+        >
+          <svg
+            width="17"
+            height="17"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.7"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden
+          >
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+            <polyline points="16 17 21 12 16 7" />
+            <line x1="21" y1="12" x2="9" y2="12" />
+          </svg>
+          <span>خروج از حساب</span>
+        </button>
+      </nav>
+    </>
+  );
 
   return (
     <AccountLayout
       userName={userName}
-      userIdentifier={userIdentifier}
       userInitials={userInitials}
+      onMenuClick={() => setDrawerOpen(true)}
     >
       {/* Page heading */}
       <div className="mb-6">
@@ -54,62 +140,57 @@ export function AccountShell({
         </h1>
       </div>
 
-      {/* Two-column grid: content + sidebar. In RTL the sidebar appears
-          on the visual right because it's the second grid column. */}
+      {/* Two-column grid.
+          In RTL (dir="rtl") with grid-template-columns: 260px 1fr:
+            • col 1 (sidebar, 260px) → visual RIGHT
+            • col 2 (content, 1fr)   → visual LEFT
+          So we put sidebar first in DOM, content second. */}
       <div className="panel-grid">
+        {/* Sidebar — visible only on md+ (hidden on mobile, replaced by drawer) */}
+        <aside className="panel-side">{sidebarBlock}</aside>
+
         {/* Content */}
         <section className="panel-content panel-tab-enter" key={activeTab}>
           {children}
         </section>
-
-        {/* Sidebar */}
-        <aside className="panel-side">
-          {/* User mini-card */}
-          <div className="panel-user-card">
-            <div className="flex items-center gap-3">
-              <span className="panel-user-avatar">{userInitials}</span>
-              <div className="min-w-0">
-                <div className="panel-user-name truncate">{userName}</div>
-                <div className="panel-user-meta truncate" dir="ltr" style={{ textAlign: "right" }}>
-                  {userIdentifier}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Nav — horizontal scroll on mobile, vertical on md+ */}
-          <nav className="panel-side-mobile-scroll" aria-label="ناوبری پنل کاربری">
-            {items.map((tab) => (
-              <SidebarItem
-                key={tab}
-                id={tab}
-                label={TAB_LABELS[tab]}
-                icon={<TabIcon tab={tab} />}
-                count={counts[tab]}
-                isActive={activeTab === tab}
-                onClick={() => onTabChange(tab)}
-              />
-            ))}
-
-            {/* Sign out — always at the bottom */}
-            <button
-              type="button"
-              onClick={() => {
-                if (typeof window !== "undefined") window.location.href = "/signin";
-              }}
-              className="panel-nav-item"
-              style={{ borderTop: "1px solid var(--rule-soft)", marginTop: 4 }}
-            >
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                <polyline points="16 17 21 12 16 7" />
-                <line x1="21" y1="12" x2="9" y2="12" />
-              </svg>
-              <span>خروج از حساب</span>
-            </button>
-          </nav>
-        </aside>
       </div>
+
+      {/* Mobile drawer — slides in from the LEFT */}
+      <div
+        className={`panel-drawer-backdrop ${drawerOpen ? "is-open" : ""}`}
+        onClick={() => setDrawerOpen(false)}
+        aria-hidden={!drawerOpen}
+      />
+      <aside
+        className={`panel-drawer ${drawerOpen ? "is-open" : ""}`}
+        aria-hidden={!drawerOpen}
+        role="dialog"
+        aria-label="منوی پنل کاربری"
+      >
+        <div className="panel-drawer-header">
+          <button
+            type="button"
+            className="panel-drawer-close"
+            aria-label="بستن منو"
+            onClick={() => setDrawerOpen(false)}
+          >
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              aria-hidden
+            >
+              <line x1="6" y1="6" x2="18" y2="18" />
+              <line x1="18" y1="6" x2="6" y2="18" />
+            </svg>
+          </button>
+        </div>
+        {sidebarBlock}
+      </aside>
     </AccountLayout>
   );
 }
