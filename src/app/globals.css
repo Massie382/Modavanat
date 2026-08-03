@@ -1622,23 +1622,23 @@ button, a { transition: color 0.12s ease, background-color 0.12s ease, border-co
 }
 
 /* Visibility helpers for the top bar's swapped mobile/PC layout.
-   Used to put the user circle on the LEFT on mobile (and on the
-   RIGHT on PC), and to put the return-to-site link on the LEFT on
-   PC only (it moves into the drawer on mobile). */
+   `!important` is used so these reliably override `.panel-user-avatar`'s
+   own `display: inline-flex` (same specificity, but the avatar rule is
+   defined earlier and we want zero ambiguity here). */
 .panel-topbar-pc-only {
-  display: none;
+  display: none !important;
 }
 @media (min-width: 768px) {
   .panel-topbar-pc-only {
-    display: inline-flex;
+    display: inline-flex !important;
   }
 }
 .panel-topbar-mobile-only {
-  display: inline-flex;
+  display: inline-flex !important;
 }
 @media (min-width: 768px) {
   .panel-topbar-mobile-only {
-    display: none;
+    display: none !important;
   }
 }
 

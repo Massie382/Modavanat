@@ -22,14 +22,13 @@ interface AccountLayoutProps {
  *     • CENTER — account-page logo
  *     • RIGHT  — user name + circle
  *
- *   Mobile (swapped):
- *     • LEFT   — user circle
+ *   Mobile:
+ *     • LEFT   — "بازگشت به سایت" link (same as PC, no circle)
  *     • CENTER — account-page logo
  *     • RIGHT  — hamburger (opens drawer)
  *
- * The "بازگشت به سایت" link is NOT in the mobile top bar — it lives
- * at the bottom of the mobile drawer (and at the bottom of the PC
- * sidebar) instead, per the new IA.
+ * No circle appears in the top bar on mobile — the circle is PC-only
+ * (right cell). The return-to-site link is always on the left.
  *
  * The panel body itself (sidebar + content) is rendered by the page
  * via AccountShell — this layout only owns the outer chrome + the
@@ -47,23 +46,12 @@ export function AccountLayout({
       <header className="panel-topbar">
         <div className="container-legal py-2.5">
           <div className="panel-topbar-grid">
-            {/* LEFT
-                PC: return-to-site link (hidden on mobile — moves into drawer)
-                Mobile: user circle (hidden on PC — circle is in right cell on PC) */}
+            {/* LEFT — return-to-site link (always visible, PC + mobile) */}
             <div className="panel-topbar-left">
-              <Link
-                href="/"
-                className="auth-back-link panel-topbar-pc-only"
-              >
+              <Link href="/" className="auth-back-link">
                 <span aria-hidden className="text-[#8d8d8d]">→</span>
                 بازگشت به سایت
               </Link>
-              <span
-                className="panel-user-avatar panel-topbar-mobile-only"
-                style={{ width: 32, height: 32, fontSize: 13 }}
-              >
-                {userInitials}
-              </span>
             </div>
 
             {/* CENTER — account-page logo (always) */}
@@ -81,8 +69,8 @@ export function AccountLayout({
             </div>
 
             {/* RIGHT
-                PC: user name + circle (hidden on mobile)
-                Mobile: hamburger (hidden on PC via .panel-hamburger) */}
+                PC: user name + circle (circle hidden on mobile)
+                Mobile: hamburger (hidden on PC) */}
             <div className="panel-topbar-right">
               <span className="hidden sm:inline text-[12.5px] text-[#3d3d3d] truncate max-w-[140px]">
                 {userName}
