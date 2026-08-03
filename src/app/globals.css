@@ -1621,8 +1621,31 @@ button, a { transition: color 0.12s ease, background-color 0.12s ease, border-co
   .panel-hamburger { display: none; }
 }
 
-/* ── Mobile drawer ── slides in from the visual LEFT, contains the
-   same sidebar nav that's inline on PC. Auto-closes on tab select. */
+/* Visibility helpers for the top bar's swapped mobile/PC layout.
+   Used to put the user circle on the LEFT on mobile (and on the
+   RIGHT on PC), and to put the return-to-site link on the LEFT on
+   PC only (it moves into the drawer on mobile). */
+.panel-topbar-pc-only {
+  display: none;
+}
+@media (min-width: 768px) {
+  .panel-topbar-pc-only {
+    display: inline-flex;
+  }
+}
+.panel-topbar-mobile-only {
+  display: inline-flex;
+}
+@media (min-width: 768px) {
+  .panel-topbar-mobile-only {
+    display: none;
+  }
+}
+
+/* ── Mobile drawer ── slides in from the visual RIGHT, contains the
+   same sidebar nav that's inline on PC. Auto-closes on tab select.
+   The close button sits at the visual LEFT edge of the drawer
+   (i.e. the inner edge, closer to the page content). */
 
 .panel-drawer-backdrop {
   position: fixed;
@@ -1641,14 +1664,14 @@ button, a { transition: color 0.12s ease, background-color 0.12s ease, border-co
 .panel-drawer {
   position: fixed;
   top: 0;
-  left: 0;
+  right: 0;                       /* anchored to visual RIGHT */
   bottom: 0;
   width: min(300px, 85vw);
   background-color: #ffffff;
-  border-inline-end: 1px solid var(--rule);
-  box-shadow: 4px 0 18px rgba(0, 0, 0, 0.12);
+  border-inline-start: 1px solid var(--rule); /* border on the LEFT edge */
+  box-shadow: -4px 0 18px rgba(0, 0, 0, 0.12); /* shadow on the LEFT side */
   z-index: 81;
-  transform: translateX(-100%);
+  transform: translateX(100%);    /* off-screen to the RIGHT */
   transition: transform 0.25s ease;
   overflow-y: auto;
   display: flex;
@@ -1665,13 +1688,16 @@ button, a { transition: color 0.12s ease, background-color 0.12s ease, border-co
   }
 }
 
+/* Drawer header — close button at the visual LEFT edge of the drawer.
+   Using LTR + flex-start so the button reliably lands on the visual
+   left regardless of the page's RTL direction. */
 .panel-drawer-header {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: flex-start;    /* → visual LEFT */
   padding: 0.65rem 0.85rem;
   border-bottom: 1px solid var(--rule-soft);
-  direction: rtl;
+  direction: ltr;
 }
 .panel-drawer-close {
   display: inline-flex;
@@ -1690,6 +1716,15 @@ button, a { transition: color 0.12s ease, background-color 0.12s ease, border-co
 .panel-drawer-close:hover {
   background-color: var(--surface-sunken);
   color: var(--ink);
+}
+
+/* Return-to-site footer at the bottom of the sidebar / drawer.
+   Separated from the nav by a hairline divider. */
+.panel-side-footer {
+  padding: 0.85rem 1.1rem;
+  border-top: 1px solid var(--rule-soft);
+  background-color: var(--surface-raised);
+  direction: rtl;
 }
 
 /* The two-column layout: sidebar on the visual RIGHT (RTL) + content

@@ -16,9 +16,20 @@ interface AccountLayoutProps {
  * AccountLayout — the dedicated chrome for the signed-in /account panel.
  *
  * Top bar (3-zone, LTR grid so left/center/right are unambiguous):
- *   • LEFT   — hamburger (mobile only) + "back to site" link
- *   • CENTER — account-page logo
- *   • RIGHT  — user circle (initials) + name (PC only)
+ *
+ *   PC:
+ *     • LEFT   — "بازگشت به سایت" link
+ *     • CENTER — account-page logo
+ *     • RIGHT  — user name + circle
+ *
+ *   Mobile (swapped):
+ *     • LEFT   — user circle
+ *     • CENTER — account-page logo
+ *     • RIGHT  — hamburger (opens drawer)
+ *
+ * The "بازگشت به سایت" link is NOT in the mobile top bar — it lives
+ * at the bottom of the mobile drawer (and at the bottom of the PC
+ * sidebar) instead, per the new IA.
  *
  * The panel body itself (sidebar + content) is rendered by the page
  * via AccountShell — this layout only owns the outer chrome + the
@@ -32,12 +43,56 @@ export function AccountLayout({
 }: AccountLayoutProps) {
   return (
     <div className="panel-backdrop flex flex-col min-h-screen">
-      {/* Slim top bar — 3 zones: left controls | center logo | right user */}
+      {/* Slim top bar — 3 zones: left | center logo | right */}
       <header className="panel-topbar">
         <div className="container-legal py-2.5">
           <div className="panel-topbar-grid">
-            {/* LEFT — hamburger (mobile) + return-to-site */}
+            {/* LEFT
+                PC: return-to-site link (hidden on mobile — moves into drawer)
+                Mobile: user circle (hidden on PC — circle is in right cell on PC) */}
             <div className="panel-topbar-left">
+              <Link
+                href="/"
+                className="auth-back-link panel-topbar-pc-only"
+              >
+                <span aria-hidden className="text-[#8d8d8d]">→</span>
+                بازگشت به سایت
+              </Link>
+              <span
+                className="panel-user-avatar panel-topbar-mobile-only"
+                style={{ width: 32, height: 32, fontSize: 13 }}
+              >
+                {userInitials}
+              </span>
+            </div>
+
+            {/* CENTER — account-page logo (always) */}
+            <div className="panel-topbar-center">
+              <Link href="/" aria-label="مدونات — صفحه نخست">
+                <img
+                  src="/brand/logoaccount.webp"
+                  alt="مدونات"
+                  width={1536}
+                  height={1024}
+                  className="h-[40px] sm:h-[48px] w-auto object-contain"
+                  draggable={false}
+                />
+              </Link>
+            </div>
+
+            {/* RIGHT
+                PC: user name + circle (hidden on mobile)
+                Mobile: hamburger (hidden on PC via .panel-hamburger) */}
+            <div className="panel-topbar-right">
+              <span className="hidden sm:inline text-[12.5px] text-[#3d3d3d] truncate max-w-[140px]">
+                {userName}
+              </span>
+              <span
+                className="panel-user-avatar panel-topbar-pc-only"
+                style={{ width: 32, height: 32, fontSize: 13 }}
+              >
+                {userInitials}
+              </span>
               <button
                 type="button"
                 className="panel-hamburger"
@@ -59,37 +114,6 @@ export function AccountLayout({
                   <line x1="4" y1="17" x2="20" y2="17" />
                 </svg>
               </button>
-              <Link href="/" className="auth-back-link">
-                <span aria-hidden className="text-[#8d8d8d]">→</span>
-                بازگشت به سایت
-              </Link>
-            </div>
-
-            {/* CENTER — account-page logo */}
-            <div className="panel-topbar-center">
-              <Link href="/" aria-label="مدونات — صفحه نخست">
-                <img
-                  src="/brand/logoaccount.webp"
-                  alt="مدونات"
-                  width={1536}
-                  height={1024}
-                  className="h-[40px] sm:h-[48px] w-auto object-contain"
-                  draggable={false}
-                />
-              </Link>
-            </div>
-
-            {/* RIGHT — user circle (initials) + name (PC only) */}
-            <div className="panel-topbar-right">
-              <span className="hidden sm:inline text-[12.5px] text-[#3d3d3d] truncate max-w-[140px]">
-                {userName}
-              </span>
-              <span
-                className="panel-user-avatar"
-                style={{ width: 32, height: 32, fontSize: 13 }}
-              >
-                {userInitials}
-              </span>
             </div>
           </div>
         </div>
