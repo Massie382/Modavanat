@@ -78,15 +78,16 @@ export function Header({ onNavigate, onSearch, currentView }: HeaderProps) {
   return (
     <header ref={headerRef} className="bg-white site-header-sticky">
       {/* Top thin strip — context bar. Visible on ALL breakpoints.
-          On mobile the secondary links (دسترسی‌پذیری / راهنما / تماس)
-          are hidden to keep the strip a single tight line showing just
-          the tagline; they reappear from `sm:` upward. */}
+          On mobile the tagline + secondary links stack vertically
+          (tagline on top, links below) so both fit comfortably on a
+          narrow screen. From `sm:` upward they sit on a single row
+          (tagline left, links right). */}
       <div className="bg-[#1f1f1f] text-[#bdbdbd] text-[11.5px]">
-        <div className="container-legal flex items-center justify-between py-0.5">
-          <span className="tracking-wide truncate">
+        <div className="container-legal flex flex-col sm:flex-row items-start sm:items-center justify-between gap-0.5 sm:gap-4 py-0.5">
+          <span className="tracking-wide truncate w-full sm:w-auto">
             مرجع رسمی قوانین و مقررات جمهوری اسلامی ایران
           </span>
-          <span className="hidden sm:flex items-center gap-4 shrink-0">
+          <span className="flex items-center gap-3 sm:gap-4 shrink-0">
             <a href="/accessibility" className="hover:text-white transition-colors">دسترسی‌پذیری</a>
             <span className="opacity-40">|</span>
             <a href="/guide" className="hover:text-white transition-colors">راهنما</a>
