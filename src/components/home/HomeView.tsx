@@ -1,9 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { laws, decadeStats } from "@/data/laws";
 import type { Law } from "@/lib/types";
 import { toFa, statusLabel, statusPillClass, formatJalaliDate } from "@/lib/utils";
+import { Pager } from "@/components/ui/Pager";
+
+const HOME_PAGE_SIZE = 8;
 
 interface HomeViewProps {
   onOpenLaw: (law: Law) => void;
@@ -21,16 +24,38 @@ export function HomeView({ onOpenLaw, onBrowse, onSearch }: HomeViewProps) {
     onSearch(heroQuery || "");
   };
 
-  // Recent additions (simulated)
-  const recentAdditions = laws
-    .flatMap((l) =>
-      l.amendments.map((a) => ({
-        law: l,
-        amendment: a,
-      }))
-    )
-    .sort((a, b) => b.amendment.date.localeCompare(a.amendment.date))
-    .slice(0, 8);
+  // All recent amendments sorted by date (descending). Paginated
+  // client-side — HOME_PAGE_SIZE per page (default 8).
+  const allRecent = useMemo(
+    () =>
+      laws
+        .flatMap((l) =>
+          l.amendments.map((a) => ({
+            law: l,
+            amendment: a,
+          }))
+        )
+        .sort((a, b) => b.amendment.date.localeCompare(a.amendment.date)),
+    []
+  );
+
+  const [amendmentsPage, setAmendmentsPage] = useState(1);
+  const amendmentsTotalPages = Math.max(1, Math.ceil(allRecent.length / HOME_PAGE_SIZE));
+
+  // Reset to page 1 if the page ever overflows the new total (defensive —
+  // shouldn't normally happen since `allRecent` is stable, but cheap).
+  useEffect(() => {
+    if (amendmentsPage > amendmentsTotalPages) setAmendmentsPage(1);
+  }, [amendmentsPage, amendmentsTotalPages]);
+
+  const recentAdditions = useMemo(
+    () =>
+      allRecent.slice(
+        (amendmentsPage - 1) * HOME_PAGE_SIZE,
+        amendmentsPage * HOME_PAGE_SIZE
+      ),
+    [allRecent, amendmentsPage]
+  );
 
   // Featured laws
   const featured = laws.slice(0, 4);
@@ -292,6 +317,16 @@ export function HomeView({ onOpenLaw, onBrowse, onSearch }: HomeViewProps) {
                   </div>
                 ))}
               </div>
+
+              {/* Pager — 8 per page */}
+              <Pager
+                currentPage={amendmentsPage}
+                totalPages={amendmentsTotalPages}
+                onPageChange={setAmendmentsPage}
+                showSummary
+                unitLabel="اصلاح"
+                totalItems={allRecent.length}
+              />
             </div>
 
             {/* Side rail */}

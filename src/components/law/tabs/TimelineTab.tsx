@@ -1,9 +1,12 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import type { Law, AmendmentEvent } from "@/lib/types";
+import { useState, useMemo, useEffect } from "react";
+import type { Law, AmendmentEvent, EffectType } from "@/lib/types";
 import { toFa, formatJalaliDate, shortJalaliDate, provisionRefLabel } from "@/lib/utils";
 import { referencedLawTitles } from "@/data/laws";
+import { Pager } from "@/components/ui/Pager";
+
+const TIMELINE_PAGE_SIZE = 5;
 
 interface TimelineTabProps {
   law: Law;
@@ -12,6 +15,18 @@ interface TimelineTabProps {
 }
 
 type Direction = "affected" | "affecting";
+type AppliedFilter = "all" | "applied" | "pending";
+
+/** Parse a Jalali date string like "۱۳۹۲/۰۱/۱۵" into a comparable
+ *  "YYYY/MM/DD" string with ASCII digits. Returns "" if input is empty. */
+function normalizeJalaliDate(s: string): string {
+  if (!s) return "";
+  // The data uses Persian digits; convert to ASCII for safe string compare.
+  // We accept either Persian or ASCII digits in the filter inputs.
+  return s
+    .replace(/[\u06f0-\u06f9]/g, (d) => String(d.charCodeAt(0) - 0x06f0))
+    .trim();
+}
 
 export function TimelineTab({ law, onOpenLawById, onOpenComparison }: TimelineTabProps) {
   const [direction, setDirection] = useState<Direction>("affected");
@@ -19,11 +34,56 @@ export function TimelineTab({ law, onOpenLawById, onOpenComparison }: TimelineTa
   const [sortBy, setSortBy] = useState<"date" | "provision" | "effect">("date");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
+  // ===== Extended search filters =====
+  const [filterText, setFilterText] = useState("");
+  const [filterEffectType, setFilterEffectType] = useState<EffectType | "">("");
+  const [filterApplied, setFilterApplied] = useState<AppliedFilter>("all");
+  const [filterFromDate, setFilterFromDate] = useState("");
+  const [filterToDate, setFilterToDate] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
+
   // All amendment events (chronological) — these are "changes affecting this law"
   const changes: AmendmentEvent[] = law.amendments;
 
+  // Apply extended-search filters BEFORE sorting, so sort operates on the
+  // narrowed set (and so the count shown to the user matches what's listed).
+  const filtered = useMemo(() => {
+    const q = filterText.trim();
+    const from = normalizeJalaliDate(filterFromDate);
+    const to = normalizeJalaliDate(filterToDate);
+    return changes.filter((c) => {
+      if (q) {
+        const hay = `${c.description} ${c.affectedProvision} ${c.affectingLaw.title} ${c.affectingLaw.provisionLabel ?? ""}`;
+        if (!hay.includes(q)) return false;
+      }
+      if (filterEffectType && c.effectType !== filterEffectType) return false;
+      if (filterApplied === "applied" && !c.appliedToText) return false;
+      if (filterApplied === "pending" && c.appliedToText) return false;
+      const d = normalizeJalaliDate(c.date);
+      if (from && d < from) return false;
+      if (to && d > to) return false;
+      return true;
+    });
+  }, [changes, filterText, filterEffectType, filterApplied, filterFromDate, filterToDate]);
+
+  // Reset filters handler — restores the full list.
+  const resetFilters = () => {
+    setFilterText("");
+    setFilterEffectType("");
+    setFilterApplied("all");
+    setFilterFromDate("");
+    setFilterToDate("");
+  };
+
+  const hasActiveFilters =
+    !!filterText ||
+    !!filterEffectType ||
+    filterApplied !== "all" ||
+    !!filterFromDate ||
+    !!filterToDate;
+
   const sorted = useMemo(() => {
-    const arr = [...changes];
+    const arr = [...filtered];
     arr.sort((a, b) => {
       let cmp = 0;
       if (sortBy === "date") cmp = a.date.localeCompare(b.date);
@@ -32,7 +92,7 @@ export function TimelineTab({ law, onOpenLawById, onOpenComparison }: TimelineTa
       return sortDir === "asc" ? cmp : -cmp;
     });
     return arr;
-  }, [changes, sortBy, sortDir]);
+  }, [filtered, sortBy, sortDir]);
 
   const toggleSort = (col: "date" | "provision" | "effect") => {
     if (sortBy === col) setSortDir(sortDir === "asc" ? "desc" : "asc");
@@ -42,7 +102,44 @@ export function TimelineTab({ law, onOpenLawById, onOpenComparison }: TimelineTa
   const sortInd = (col: "date" | "provision" | "effect") =>
     sortBy === col ? (sortDir === "asc" ? " ▲" : " ▼") : null;
 
-  // Group amendments by year for the timeline rail
+  // ===== Pagination state — TWO independent pagers (vertical list + table) =====
+  const [listPage, setListPage] = useState(1);
+  const [tablePage, setTablePage] = useState(1);
+
+  // Reset both pagers to page 1 whenever the filtered/sorted set changes
+  // (otherwise we can end up on a stale page that no longer exists).
+  useEffect(() => {
+    setListPage(1);
+    setTablePage(1);
+  }, [filterText, filterEffectType, filterApplied, filterFromDate, filterToDate, sortBy, sortDir, law.id]);
+
+  const listTotalPages = Math.max(1, Math.ceil(sorted.length / TIMELINE_PAGE_SIZE));
+  const tableTotalPages = Math.max(1, Math.ceil(sorted.length / TIMELINE_PAGE_SIZE));
+
+  // Defensive clamps.
+  useEffect(() => { if (listPage > listTotalPages) setListPage(1); }, [listPage, listTotalPages]);
+  useEffect(() => { if (tablePage > tableTotalPages) setTablePage(1); }, [tablePage, tableTotalPages]);
+
+  const pagedList = useMemo(
+    () => sorted.slice((listPage - 1) * TIMELINE_PAGE_SIZE, listPage * TIMELINE_PAGE_SIZE),
+    [sorted, listPage]
+  );
+  const pagedTable = useMemo(
+    () => sorted.slice((tablePage - 1) * TIMELINE_PAGE_SIZE, tablePage * TIMELINE_PAGE_SIZE),
+    [sorted, tablePage]
+  );
+
+  // Distinct effect types present in this law's amendments — used to
+  // populate the effect-type filter dropdown without hardcoding the union.
+  const effectTypes = useMemo(() => {
+    const set = new Set<EffectType>();
+    changes.forEach((c) => set.add(c.effectType));
+    return Array.from(set).sort((a, b) => a.localeCompare(b, "fa"));
+  }, [changes]);
+
+  // Group amendments by year for the timeline rail. ALWAYS uses the full
+  // unfiltered set — the rail is a visual overview of the law's complete
+  // history, not a reflection of the current text filter.
   const yearGroups = useMemo(() => {
     const map = new Map<number, AmendmentEvent[]>();
     [...changes]
@@ -230,7 +327,133 @@ export function TimelineTab({ law, onOpenLawById, onOpenComparison }: TimelineTa
         >
           اصلاحات اعمال‌شده توسط این قانون ({toFa(law.references.filter(r => r.direction === "amended-by" || r.direction === "cited-by").length)})
         </button>
+
+        {/* Toggle button for the extended-search filter panel */}
+        <button
+          onClick={() => setShowFilters(!showFilters)}
+          className={`utility-pill mr-auto ${showFilters ? "!bg-[#1f1f1f] !text-white !border-[#1f1f1f]" : ""}`}
+          aria-expanded={showFilters}
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+          </svg>
+          جستجوی پیشرفته
+          {hasActiveFilters && (
+            <span className="cite text-[10.5px] bg-white/20 px-1.5 rounded-sm">
+              فیلتر فعال
+            </span>
+          )}
+        </button>
       </div>
+
+      {/* Extended-search filter panel */}
+      {showFilters && (
+        <div className="mb-6 border border-[#e0ddd6] bg-[#fdfdfb] p-4 md:p-5">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-legal text-[14px] font-semibold text-[#1a1a1a]">
+              فیلتر اصلاحات
+            </h3>
+            {hasActiveFilters && (
+              <button
+                onClick={resetFilters}
+                className="link-legal text-[12.5px]"
+              >
+                بازنشانی فیلترها
+              </button>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
+            {/* Free-text search */}
+            <div className="md:col-span-5">
+              <label className="block text-[12px] text-[#6b6b6b] mb-1.5">
+                متن جستجو
+              </label>
+              <input
+                type="text"
+                value={filterText}
+                onChange={(e) => setFilterText(e.target.value)}
+                placeholder="عنوان قانون اصلاح‌کننده، ماده، یا شرح…"
+                className="input-legal"
+              />
+            </div>
+
+            {/* Effect type */}
+            <div className="md:col-span-3">
+              <label className="block text-[12px] text-[#6b6b6b] mb-1.5">
+                نوع اثر
+              </label>
+              <select
+                value={filterEffectType}
+                onChange={(e) => setFilterEffectType(e.target.value as EffectType | "")}
+                className="input-legal bg-white"
+              >
+                <option value="">همه انواع</option>
+                {effectTypes.map((t) => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Applied status */}
+            <div className="md:col-span-4">
+              <label className="block text-[12px] text-[#6b6b6b] mb-1.5">
+                وضعیت اعمال در متن
+              </label>
+              <div className="flex items-center gap-1.5">
+                {([
+                  { v: "all", label: "همه" },
+                  { v: "applied", label: "اعمال‌شده" },
+                  { v: "pending", label: "در انتظار" },
+                ] as { v: AppliedFilter; label: string }[]).map((opt) => (
+                  <button
+                    key={opt.v}
+                    type="button"
+                    onClick={() => setFilterApplied(opt.v)}
+                    className={`utility-pill ${filterApplied === opt.v ? "!bg-[#1f1f1f] !text-white !border-[#1f1f1f]" : ""}`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Date range — from */}
+            <div className="md:col-span-6">
+              <label className="block text-[12px] text-[#6b6b6b] mb-1.5">
+                تاریخ از (YYYY/MM/DD خورشیدی)
+              </label>
+              <input
+                type="text"
+                value={filterFromDate}
+                onChange={(e) => setFilterFromDate(e.target.value)}
+                placeholder="مثلاً ۱۳۷۰/۰۱/۰۱"
+                className="input-legal cite"
+                dir="ltr"
+              />
+            </div>
+
+            {/* Date range — to */}
+            <div className="md:col-span-6">
+              <label className="block text-[12px] text-[#6b6b6b] mb-1.5">
+                تاریخ تا (YYYY/MM/DD خورشیدی)
+              </label>
+              <input
+                type="text"
+                value={filterToDate}
+                onChange={(e) => setFilterToDate(e.target.value)}
+                placeholder="مثلاً ۱۴۰۰/۱۲/۲۹"
+                className="input-legal cite"
+                dir="ltr"
+              />
+            </div>
+          </div>
+
+          <p className="text-[12px] text-[#6b6b6b] mt-3">
+            {toFa(filtered.length)} اصلاح از مجموع {toFa(changes.length)} مورد مطابق فیلتر فعلی.
+          </p>
+        </div>
+      )}
 
       {/* Detailed chronological list (vertical timeline) */}
       <section className="mb-8">
@@ -238,7 +461,7 @@ export function TimelineTab({ law, onOpenLawById, onOpenComparison }: TimelineTa
           فهرست تفصیلی اصلاحات به ترتیب زمانی
         </h3>
         <div className="timeline-rail pr-4">
-          {sorted.map((ev, idx) => {
+          {pagedList.map((ev, idx) => {
             const hasComparison = !!(ev.beforeText || ev.afterText || ev.diffSegments);
             return (
               <div
@@ -290,12 +513,22 @@ export function TimelineTab({ law, onOpenLawById, onOpenComparison }: TimelineTa
               </div>
             );
           })}
-          {sorted.length === 0 && (
+          {pagedList.length === 0 && (
             <p className="text-[13.5px] text-[#6b6b6b] py-6">
-              هیچ اصلاحی برای این قانون ثبت نشده است.
+              هیچ اصلاحی مطابق فیلترهای فعلی یافت نشد.
             </p>
           )}
         </div>
+
+        {/* Pager for the vertical list — 5 per page */}
+        <Pager
+          currentPage={listPage}
+          totalPages={listTotalPages}
+          onPageChange={setListPage}
+          showSummary
+          unitLabel="اصلاح"
+          totalItems={sorted.length}
+        />
       </section>
 
       {/* Sortable changes table */}
@@ -327,7 +560,7 @@ export function TimelineTab({ law, onOpenLawById, onOpenComparison }: TimelineTa
               </tr>
             </thead>
             <tbody>
-              {sorted.map((ev, idx) => {
+              {pagedTable.map((ev, idx) => {
                 const hasComparison = !!(ev.beforeText || ev.afterText || ev.diffSegments);
                 return (
                   <tr
@@ -362,9 +595,23 @@ export function TimelineTab({ law, onOpenLawById, onOpenComparison }: TimelineTa
                   </tr>
                 );
               })}
+              {pagedTable.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="text-center text-[13.5px] text-[#6b6b6b] py-6">
+                    هیچ اصلاحی مطابق فیلترهای فعلی یافت نشد.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
+
+        {/* Pager for the table — 5 per page */}
+        <Pager
+          currentPage={tablePage}
+          totalPages={tableTotalPages}
+          onPageChange={setTablePage}
+        />
 
         <div className="mt-4 flex items-center justify-between text-[12px] text-[#6b6b6b]">
           <p>

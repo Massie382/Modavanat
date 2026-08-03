@@ -1,9 +1,12 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { laws, decadeStats } from "@/data/laws";
 import type { Law } from "@/lib/types";
 import { toFa, statusLabel, statusPillClass } from "@/lib/utils";
+import { Pager } from "@/components/ui/Pager";
+
+const SEARCH_PAGE_SIZE = 10;
 
 interface SearchViewProps {
   onOpenLaw: (law: Law) => void;
@@ -13,6 +16,7 @@ interface SearchViewProps {
 export function SearchView({ onOpenLaw, initialQuery = "" }: SearchViewProps) {
   const [query, setQuery] = useState(initialQuery);
   const [yearFilter, setYearFilter] = useState<number | null>(null);
+  const [page, setPage] = useState(1);
 
   const results = useMemo(() => {
     const q = query.trim();
@@ -29,6 +33,28 @@ export function SearchView({ onOpenLaw, initialQuery = "" }: SearchViewProps) {
       return matchesQuery && matchesYear;
     });
   }, [query, yearFilter]);
+
+  // Reset to page 1 whenever the result set changes (new query, new filter).
+  // This prevents being stuck on e.g. page 5 of an old result set that now
+  // only has 2 pages.
+  useEffect(() => {
+    setPage(1);
+  }, [query, yearFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(results.length / SEARCH_PAGE_SIZE));
+  // Defensive clamp — if a state restoration lands us past the last page.
+  useEffect(() => {
+    if (page > totalPages) setPage(1);
+  }, [page, totalPages]);
+
+  const pagedResults = useMemo(
+    () =>
+      results.slice(
+        (page - 1) * SEARCH_PAGE_SIZE,
+        page * SEARCH_PAGE_SIZE
+      ),
+    [results, page]
+  );
 
   // Year facets — count by year
   const yearFacets = useMemo(() => {
@@ -136,7 +162,7 @@ export function SearchView({ onOpenLaw, initialQuery = "" }: SearchViewProps) {
 
           {/* Results list */}
           <div className="space-y-0 border border-[#e0ddd6] divide-y divide-[#ececea]">
-            {results.length === 0 ? (
+            {pagedResults.length === 0 ? (
               <div className="p-8 text-center">
                 <p className="text-[14px] text-[#3d3d3d] mb-2">
                   نتیجه‌ای یافت نشد.
@@ -146,7 +172,7 @@ export function SearchView({ onOpenLaw, initialQuery = "" }: SearchViewProps) {
                 </p>
               </div>
             ) : (
-              results.map((law) => (
+              pagedResults.map((law) => (
                 <button
                   key={law.id}
                   onClick={() => onOpenLaw(law)}
@@ -178,6 +204,16 @@ export function SearchView({ onOpenLaw, initialQuery = "" }: SearchViewProps) {
               ))
             )}
           </div>
+
+          {/* Pager — 10 per page */}
+          <Pager
+            currentPage={page}
+            totalPages={totalPages}
+            onPageChange={setPage}
+            showSummary
+            unitLabel="نتیجه"
+            totalItems={results.length}
+          />
         </div>
       </div>
     </div>
