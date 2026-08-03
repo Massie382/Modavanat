@@ -18,17 +18,15 @@ interface AuthLayoutProps {
 /**
  * AuthLayout — the dedicated minimal chrome for /signin and /signup.
  *
- * This is INTENTIONALLY separate from the main site's Header + Footer
- * and from StaticPageLayout. Auth pages should feel like a distinct,
- * focused "mode" of the app: a slim top bar with just the logo and a
- * back-to-home link (no nav strip, no search box, no charcoal nav bar),
- * a centered auth card on a warm cream backdrop, and a minimal
- * copyright strip at the bottom.
+ * No site nav at all: no top header strip, no logo bar, no charcoal
+ * nav, no footer columns. Just a centered auth card on a warm cream
+ * backdrop. The only "escape hatch" is a small "بازگشت به سایت" link
+ * at the top of the card itself, so users are never trapped but the
+ * page stays focused on the single task of authenticating.
  *
  * Visual language stays consistent with the rest of the site:
  *  - Vazirmatn font, RTL
  *  - charcoal buttons, hairline borders
- *  - container-legal max width
  */
 export function AuthLayout({
   eyebrow,
@@ -39,30 +37,7 @@ export function AuthLayout({
 }: AuthLayoutProps) {
   return (
     <div className="min-h-screen flex flex-col auth-backdrop">
-      {/* Slim top bar — logo only + back-to-home link. No nav. */}
-      <header className="hairline-b bg-white/70 backdrop-blur-sm">
-        <div className="container-legal py-2.5 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2.5" aria-label="مدونات — صفحه نخست">
-            <img
-              src="/brand/logo.webp"
-              alt="مدونات"
-              width={1536}
-              height={1024}
-              className="h-[44px] sm:h-[52px] w-auto object-contain"
-              draggable={false}
-            />
-          </Link>
-          <Link
-            href="/"
-            className="link-legal text-[12.5px] sm:text-[13px] flex items-center gap-1.5"
-          >
-            <span aria-hidden className="text-[#6b6b6b]">→</span>
-            بازگشت به سایت
-          </Link>
-        </div>
-      </header>
-
-      {/* Body — centered card */}
+      {/* Body — centered card. No site header above it. */}
       <main className="flex-1 flex items-center justify-center px-4 py-8 sm:py-12">
         <div className="w-full max-w-[440px]">
           {/* Eyebrow + title */}
@@ -82,6 +57,19 @@ export function AuthLayout({
 
           {/* Card */}
           <div className="auth-card auth-card-enter p-6 sm:p-8">
+            {/* Back-to-site escape hatch — lives at the top of the card,
+                not in a site header. Inline-end aligned (visual left in
+                RTL) so the eyebrow/title above stays visually centered. */}
+            <div className="flex justify-end mb-5">
+              <Link
+                href="/"
+                className="auth-back-link"
+              >
+                <span aria-hidden className="text-[#8d8d8d]">→</span>
+                بازگشت به سایت
+              </Link>
+            </div>
+
             {children}
           </div>
 
