@@ -21,6 +21,28 @@ type View =
 export default function Home() {
   const [view, setView] = useState<View>({ kind: "home" });
 
+  // Deep-link from static pages (/accessibility, /guide, /contact) and
+  // external links via ?view=browse|search|about[&q=query]. We read the
+  // params once on mount; subsequent in-page navigations use the SPA
+  // state directly.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const v = params.get("view");
+    const q = params.get("q");
+    if (v === "browse") setView({ kind: "browse" });
+    else if (v === "search") setView({ kind: "search", query: q ?? "" });
+    else if (v === "about") setView({ kind: "about" });
+    // Clean the URL so a refresh doesn't re-trigger the deep-link.
+    if (v) {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("view");
+      url.searchParams.delete("q");
+      window.history.replaceState({}, "", url.toString());
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Scroll to top on view change
   useEffect(() => {
     if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "instant" });

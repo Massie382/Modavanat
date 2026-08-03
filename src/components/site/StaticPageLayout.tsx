@@ -1,6 +1,7 @@
 "use client";
 
-import Link from "next/link";
+import { Header } from "./Header";
+import { Footer } from "./Footer";
 
 interface StaticPageLayoutProps {
   title: string;
@@ -9,37 +10,52 @@ interface StaticPageLayoutProps {
 }
 
 /**
- * Minimal layout for static utility pages (/accessibility, /guide, /contact).
+ * Layout for static utility pages (/accessibility, /guide, /contact).
  *
- * These pages live outside the SPA view-state in page.tsx, so they don't
- * have access to the Header/Footer's onNavigate callback. Instead they
- * render their own minimal chrome: a thin top bar with the logo + a
- * back-to-home link, the content, and a slim footer.
+ * IMPORTANT: these pages must look identical to the home page — same
+ * charcoal context strip, same logo + search + auth links, same
+ * charcoal nav bar, same 4-column footer. Earlier this component
+ * rendered its own minimal chrome (logo + back-to-home + slim footer)
+ * which made the static pages feel like a different site.
  *
- * Persian RTL, uses the same container-legal + font-legal classes as the
- * rest of the site so the visual style is consistent.
+ * Now we render the real <Header /> and <Footer /> components. The
+ * SPA-style onNavigate/onSearch callbacks the home page uses aren't
+ * available here (these are separate Next.js routes), so we route
+ * every navigation to "/" via a full page load — the home page then
+ * renders the appropriate view based on its own state.
  */
 export function StaticPageLayout({ title, subtitle, children }: StaticPageLayoutProps) {
+  // All navigations from the static pages go to the home route.
+  // The home page's Header/Footer then take over SPA-style routing.
+  const goHome = () => {
+    if (typeof window !== "undefined") window.location.href = "/";
+  };
+
+  const handleNavigate = (view: "home" | "browse" | "search" | "about") => {
+    // For non-home views, we still go to "/" — the home page renders
+    // its default (home) view. If we later want to deep-link to a
+    // specific view, we can use a query param like "/?view=browse".
+    if (typeof window !== "undefined") {
+      window.location.href = view === "home" ? "/" : `/?view=${view}`;
+    }
+  };
+
+  const handleSearch = (query: string) => {
+    if (typeof window !== "undefined") {
+      window.location.href = `/?view=search&q=${encodeURIComponent(query)}`;
+    }
+  };
+
+  // currentView is "home" by default for the static pages' header
+  // highlight state — none of the nav items should appear active
+  // because we're on a separate route.
   return (
     <div className="min-h-screen flex flex-col bg-white">
-      {/* Slim top bar */}
-      <header className="hairline-b">
-        <div className="container-legal py-2 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2.5">
-            <img
-              src="/brand/logo.webp"
-              alt="مدونات"
-              width={1536}
-              height={1024}
-              className="h-[56px] w-auto object-contain"
-              draggable={false}
-            />
-          </Link>
-          <Link href="/" className="link-legal text-[13px]">
-            بازگشت به سایت ←
-          </Link>
-        </div>
-      </header>
+      <Header
+        onNavigate={handleNavigate}
+        onSearch={handleSearch}
+        currentView=""
+      />
 
       {/* Page body */}
       <main className="flex-1 bg-white">
@@ -60,15 +76,7 @@ export function StaticPageLayout({ title, subtitle, children }: StaticPageLayout
         </div>
       </main>
 
-      {/* Slim footer */}
-      <footer className="mt-auto bg-[#1f1f1f] text-[#bdbdbd]">
-        <div className="container-legal py-4 flex flex-col items-center sm:flex-row sm:items-start sm:justify-between gap-3 text-[12px] text-[#8d8d8d] text-center sm:text-right">
-          <p>© ۱۴۰۴ مدونات (modavanat.ir). تمامی حقوق محفوظ است.</p>
-          <Link href="/" className="hover:text-white underline underline-offset-2">
-            بازگشت به صفحه نخست
-          </Link>
-        </div>
-      </footer>
+      <Footer onNavigate={handleNavigate} />
     </div>
   );
 }
