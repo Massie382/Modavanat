@@ -11,14 +11,13 @@ interface HeaderProps {
 
 export function Header({ onNavigate, onSearch, currentView }: HeaderProps) {
   const [searchInput, setSearchInput] = useState("");
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const headerRef = useRef<HTMLElement | null>(null);
 
   // Self-healing sticky offset: measure the actual header height and
   // publish it as a CSS custom property on <html> so any sticky element
   // (e.g. the sub-tab bar in LawDetailView) can use `top: var(--site-header-h)`
   // and stay correctly positioned even if the header height changes
-  // (logo swap, padding tweak, mobile menu open, etc.).
+  // (logo swap, padding tweak, etc.).
   useEffect(() => {
     const el = headerRef.current;
     if (!el || typeof window === "undefined") return;
@@ -34,8 +33,8 @@ export function Header({ onNavigate, onSearch, currentView }: HeaderProps) {
     publish();
 
     // ResizeObserver fires when the header's own height changes (e.g. a
-    // row collapses on mobile, the logo loads, padding kicks in via a
-    // breakpoint change).
+    // row collapses, the logo loads, padding kicks in via a breakpoint
+    // change).
     let ro: ResizeObserver | null = null;
     if (typeof ResizeObserver !== "undefined") {
       ro = new ResizeObserver(publish);
@@ -68,7 +67,6 @@ export function Header({ onNavigate, onSearch, currentView }: HeaderProps) {
 
   const handleNavClick = (id: "home" | "browse" | "search" | "about") => {
     onNavigate(id);
-    setMobileMenuOpen(false);
   };
 
   const isActive = (id: string) =>
@@ -79,7 +77,8 @@ export function Header({ onNavigate, onSearch, currentView }: HeaderProps) {
 
   return (
     <header ref={headerRef} className="bg-white site-header-sticky">
-      {/* Top thin strip — context */}
+      {/* Top thin strip — context (desktop only, hidden on mobile to
+          save vertical space) */}
       <div className="bg-[#1f1f1f] text-[#bdbdbd] text-[11.5px] hidden sm:block">
         <div className="container-legal flex items-center justify-between py-0.5">
           <span className="tracking-wide">
@@ -97,7 +96,7 @@ export function Header({ onNavigate, onSearch, currentView }: HeaderProps) {
 
       {/* Main header */}
       <div className="hairline-b">
-        <div className="container-legal py-0.5 sm:py-1 flex items-center justify-between gap-4 sm:gap-6">
+        <div className="container-legal py-0.5 sm:py-1 flex items-center justify-between gap-3 sm:gap-6">
           <button
             onClick={() => handleNavClick("home")}
             className="flex items-center gap-2.5 sm:gap-3 text-right group shrink-0"
@@ -115,7 +114,9 @@ export function Header({ onNavigate, onSearch, currentView }: HeaderProps) {
             />
           </button>
 
-          {/* Inline search — desktop only */}
+          {/* Inline search — desktop only. On mobile, users tap
+              "جستجوی پیشرفته" in the charcoal nav bar below to reach
+              the full search page. */}
           <form onSubmit={handleSearch} className="hidden md:flex flex-1 max-w-xl items-center gap-2">
             <div className="relative flex-1">
               <input
@@ -142,100 +143,29 @@ export function Header({ onNavigate, onSearch, currentView }: HeaderProps) {
             </button>
           </form>
 
-          {/* Desktop utility links */}
-          <div className="hidden lg:flex items-center gap-3 text-[13px] shrink-0">
+          {/* Auth links — visible on ALL breakpoints so mobile users can
+              still reach ورود / ثبت‌نام without a hamburger menu. Sits in
+              the same position the hamburger used to occupy. */}
+          <div className="flex items-center gap-2 sm:gap-3 text-[12px] sm:text-[13px] shrink-0">
             <a href="/signin" className="link-legal">ورود</a>
             <span className="text-[#cfcfcf]">/</span>
             <a href="/signup" className="link-legal">ثبت‌نام</a>
           </div>
-
-          {/* Mobile: search toggle / hamburger */}
-          <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden p-2 -mr-2 text-[#1a1a1a]"
-            aria-label={mobileMenuOpen ? "بستن منو" : "باز کردن منو"}
-            aria-expanded={mobileMenuOpen}
-          >
-            {mobileMenuOpen ? (
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18" />
-                <line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
-            ) : (
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="3" y1="6" x2="21" y2="6" />
-                <line x1="3" y1="12" x2="21" y2="12" />
-                <line x1="3" y1="18" x2="21" y2="18" />
-              </svg>
-            )}
-          </button>
         </div>
-
-        {/* Mobile menu panel (collapsible) */}
-        {mobileMenuOpen && (
-          <div className="md:hidden border-t border-[#ececea] bg-white">
-            <div className="container-legal py-4 space-y-3">
-              <form onSubmit={handleSearch} className="flex items-center gap-2">
-                <div className="relative flex-1">
-                  <input
-                    type="text"
-                    value={searchInput}
-                    onChange={(e) => setSearchInput(e.target.value)}
-                    placeholder="جستجوی قانون…"
-                    className="input-legal pl-9"
-                    style={{ paddingLeft: "2.25rem" }}
-                    aria-label="جستجو"
-                  />
-                  <span
-                    aria-hidden
-                    className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#6b6b6b] pointer-events-none"
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <circle cx="11" cy="11" r="7"></circle>
-                      <line x1="21" y1="21" x2="16.5" y2="16.5"></line>
-                    </svg>
-                  </span>
-                </div>
-                <button type="submit" className="btn-legal">جستجو</button>
-              </form>
-
-              <nav className="grid grid-cols-2 gap-2">
-                {navItems.map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={() => handleNavClick(item.id)}
-                    className={`text-right px-3 py-2.5 text-[14px] border ${
-                      isActive(item.id)
-                        ? "bg-[#1f1f1f] text-white border-[#1f1f1f]"
-                        : "bg-[#fafaf8] text-[#1a1a1a] border-[#ececea]"
-                    }`}
-                    style={{ borderRadius: "2px" }}
-                  >
-                    {item.label}
-                  </button>
-                ))}
-              </nav>
-
-              <div className="flex items-center justify-between pt-2 border-t border-[#ececea] text-[12.5px]">
-                <a href="/signin" className="link-legal">ورود</a>
-                <a href="/signup" className="link-legal">ثبت‌نام</a>
-                <a href="/guide" className="link-legal">راهنما</a>
-                <a href="/contact" className="link-legal">تماس</a>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
-      {/* Primary navigation — charcoal bar (desktop only) */}
-      <nav className="nav-charcoal hidden md:block" aria-label="ناوبری اصلی">
+      {/* Primary navigation — charcoal bar. Same on ALL breakpoints: no
+          hamburger menu, the nav items are always visible. Padding is
+          tighter on mobile (px-3 py-3) so all 4 items fit on a 375px
+          screen; flex-wrap lets them wrap gracefully on very narrow widths. */}
+      <nav className="nav-charcoal" aria-label="ناوبری اصلی">
         <div className="container-legal">
           <ul className="flex flex-wrap items-stretch">
             {navItems.map((item) => (
               <li key={item.id}>
                 <button
                   onClick={() => handleNavClick(item.id)}
-                  className={`px-5 py-3.5 inline-block text-[14px] ${
+                  className={`px-3 sm:px-5 py-3 sm:py-3.5 inline-block text-[13px] sm:text-[14px] ${
                     isActive(item.id) ? "nav-item-active" : "hover:bg-white/5"
                   }`}
                 >
