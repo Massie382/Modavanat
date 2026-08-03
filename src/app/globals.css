@@ -1642,6 +1642,15 @@ button, a { transition: color 0.12s ease, background-color 0.12s ease, border-co
   }
 }
 
+/* Belt-and-suspenders: hide the user circle in the top bar's right
+   cell on mobile. Higher specificity than `.panel-user-avatar` alone,
+   so it wins even without `!important`. */
+@media (max-width: 767px) {
+  .panel-topbar-right .panel-user-avatar {
+    display: none !important;
+  }
+}
+
 /* ── Mobile drawer ── slides in from the visual RIGHT, contains the
    same sidebar nav that's inline on PC. Auto-closes on tab select.
    The close button sits at the visual LEFT edge of the drawer

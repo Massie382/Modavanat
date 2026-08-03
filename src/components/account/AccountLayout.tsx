@@ -62,7 +62,7 @@ export function AccountLayout({
                   alt="مدونات"
                   width={1536}
                   height={1024}
-                  className="h-[40px] sm:h-[48px] w-auto object-contain"
+                  className="h-[60px] sm:h-[80px] w-auto object-contain"
                   draggable={false}
                 />
               </Link>
