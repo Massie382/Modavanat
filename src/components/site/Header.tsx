@@ -78,21 +78,21 @@ export function Header({ onNavigate, onSearch, currentView }: HeaderProps) {
   return (
     <header ref={headerRef} className="bg-white site-header-sticky">
       {/* Top thin strip — context bar. Visible on ALL breakpoints.
-          On mobile the tagline + secondary links stack vertically
-          (tagline on top, links below) so both fit comfortably on a
-          narrow screen. From `sm:` upward they sit on a single row
-          (tagline left, links right). Font shrinks on mobile so the
-          tagline fits on one line. */}
+          Layout is ALWAYS a single row: tagline on the right (RTL →
+          visually right) takes available space and truncates if needed,
+          the three links sit on the left with shrink-0 so they never
+          wrap to a second line. Font + gaps shrink on mobile; the `|`
+          dividers are hidden on mobile to save horizontal space. */}
       <div className="bg-[#1f1f1f] text-[#bdbdbd] text-[10px] sm:text-[11.5px]">
-        <div className="container-legal flex flex-col sm:flex-row items-start sm:items-center justify-between gap-0.5 sm:gap-4 py-0.5">
-          <span className="tracking-wide truncate w-full sm:w-auto">
+        <div className="container-legal flex flex-row items-center justify-between gap-2 sm:gap-4 py-0.5">
+          <span className="tracking-wide truncate flex-1 min-w-0 text-left sm:text-right">
             مرجع قوانین و مقررات جمهوری اسلامی ایران
           </span>
-          <span className="flex items-center gap-3 sm:gap-4 shrink-0">
+          <span className="flex items-center gap-2 sm:gap-4 shrink-0">
             <a href="/accessibility" className="hover:text-white transition-colors">دسترسی‌پذیری</a>
-            <span className="opacity-40">|</span>
+            <span className="opacity-40 hidden sm:inline">|</span>
             <a href="/guide" className="hover:text-white transition-colors">راهنما</a>
-            <span className="opacity-40">|</span>
+            <span className="opacity-40 hidden sm:inline">|</span>
             <a href="/contact" className="hover:text-white transition-colors">تماس با ما</a>
           </span>
         </div>
