@@ -238,9 +238,22 @@ export function ContentTab({
     <div className="container-legal py-8">
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 lg:gap-8">
         {/* Desktop article picker sidebar — hidden on mobile.
-            The mobile equivalent lives inside MobileLawDrawer (see LawDetailView). */}
+            The mobile equivalent lives inside MobileLawDrawer (see LawDetailView).
+            Sticky positioning: the sidebar follows the user as they scroll
+            through the article text. The top offset accounts for BOTH the
+            site header (variable, published as --site-header-h by <Header />)
+            AND the law-detail sub-tab bar (sticky at top: var(--site-header-h),
+            ~50px tall) so the picker sits just below the sub-tab bar with a
+            small gap, instead of being hidden behind it. */}
         <aside className="lg:col-span-1 order-1 hidden lg:block">
-          <div className="lg:sticky lg:top-4">
+          <div
+            className="lg:sticky"
+            style={
+              {
+                top: "calc(var(--site-header-h, 180px) + 4rem)",
+              } as React.CSSProperties
+            }
+          >
             <h3 className="font-legal text-[13px] font-semibold text-[#1a1a1a] mb-2.5">
               مواد این قانون
             </h3>

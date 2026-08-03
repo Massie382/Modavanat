@@ -230,7 +230,11 @@ export function ArticlePicker({
           {/* Top spacer so the first item can be centered in the selection band */}
           <div className="article-picker-spacer" aria-hidden />
 
-          {/* All-articles option */}
+          {/* All-articles option. The count uses `picker-count` (inline) so it
+              stays on the same line as "همه مواد" — `picker-sub` would force
+              it onto a second line because that class is `display: block`
+              (intentionally, for the per-article title which IS supposed to
+              wrap below the article number). */}
           <button
             type="button"
             data-id="all"
@@ -240,7 +244,7 @@ export function ArticlePicker({
             className={`article-picker-item ${effectiveId === null ? "is-active" : ""}`}
           >
             <span className="font-legal text-[13px]">همه مواد</span>
-            <span className="picker-sub cite">({toFa(totalCount)})</span>
+            <span className="picker-count cite">({toFa(totalCount)})</span>
           </button>
           {filtered.map((a) => (
             <button

@@ -732,6 +732,20 @@ button, a { transition: color 0.12s ease, background-color 0.12s ease, border-co
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* Inline count variant — used for the "همه مواد (N)" row so the count
+   stays on the same line as the label. The block `.picker-sub` variant
+   is for per-article titles, which ARE supposed to wrap below the
+   article number. */
+.article-picker-item .picker-count {
+  display: inline;
+  font-size: 11px;
+  color: var(--ink-muted);
+  margin-inline-start: 0.35rem;
+  letter-spacing: -0.01em;
+}
+.article-picker-item.is-active .picker-count {
+  color: rgba(255, 255, 255, 0.7);
+}
 
 /* ============================================================
    Article navigation buttons (Next / Previous article)
