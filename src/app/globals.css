@@ -1557,6 +1557,18 @@ button, a { transition: color 0.12s ease, background-color 0.12s ease, border-co
   background-color: #ffffff;
   border-bottom: 1px solid var(--rule);
 }
+/* On mobile, make the top bar sticky so the hamburger + logo +
+   return-to-site stay accessible while scrolling. z-index is below
+   the mobile drawer (80/81) so the drawer correctly overlays the
+   top bar when open. PC keeps the non-sticky top bar (the sidebar
+   is the sticky element there). */
+@media (max-width: 767px) {
+  .panel-topbar {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+  }
+}
 
 /* Three-zone grid. `direction: ltr` is forced on the grid AND on the
    side cells so that:
