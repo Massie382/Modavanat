@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { laws, decadeStats } from "@/data/laws";
 import type { Law } from "@/lib/types";
 import { toFa, statusLabel, statusPillClass, formatJalaliDate } from "@/lib/utils";
 import { Pager } from "@/components/ui/Pager";
+import { SearchSuggestions } from "@/components/ui/SearchSuggestions";
 
 const HOME_PAGE_SIZE = 8;
 
@@ -18,6 +19,7 @@ export function HomeView({ onOpenLaw, onBrowse, onSearch }: HomeViewProps) {
   const [heroQuery, setHeroQuery] = useState("");
   const [heroYear, setHeroYear] = useState("");
   const [heroType, setHeroType] = useState("");
+  const heroInputRef = useRef<HTMLInputElement | null>(null);
 
   const handleHeroSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -98,14 +100,33 @@ export function HomeView({ onOpenLaw, onBrowse, onSearch }: HomeViewProps) {
                 <label htmlFor="hero-title" className="block text-[12px] text-[#6b6b6b] mb-1.5">
                   عنوان قانون
                 </label>
-                <input
-                  id="hero-title"
-                  type="text"
-                  value={heroQuery}
-                  onChange={(e) => setHeroQuery(e.target.value)}
-                  placeholder="مثلاً: قانون مدنی، مجازات اسلامی، کار…"
-                  className="input-legal"
-                />
+                {/* Wrapper is position:relative so the absolutely-positioned
+                    suggestions dropdown anchors to it. */}
+                <div className="relative">
+                  <input
+                    ref={heroInputRef}
+                    id="hero-title"
+                    type="text"
+                    value={heroQuery}
+                    onChange={(e) => setHeroQuery(e.target.value)}
+                    placeholder="مثلاً: قانون مدنی، مجازات اسلامی، کار…"
+                    className="input-legal"
+                    autoComplete="off"
+                    aria-autocomplete="list"
+                    aria-expanded={!!heroQuery.trim()}
+                    aria-controls="hero-suggestions"
+                  />
+                  {/* Google-style suggestions dropdown — smoothly drops
+                      down below the input as the user types. */}
+                  <div id="hero-suggestions">
+                    <SearchSuggestions
+                      query={heroQuery}
+                      onPick={onOpenLaw}
+                      onSearch={onSearch}
+                      inputRef={heroInputRef}
+                    />
+                  </div>
+                </div>
               </div>
               <div className="md:col-span-2">
                 <label htmlFor="hero-year" className="block text-[12px] text-[#6b6b6b] mb-1.5">
