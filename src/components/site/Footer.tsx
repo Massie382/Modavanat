@@ -65,8 +65,8 @@ export function Footer({ onNavigate }: FooterProps) {
             <ul className="space-y-2 text-[13px]">
               <li><button onClick={() => onNavigate("about")} className="hover:text-white text-center md:text-right">درباره ما</button></li>
               <li><a href="/accessibility" className="hover:text-white">دسترسی‌پذیری</a></li>
-              <li><a href="#" className="hover:text-white">حریم خصوصی</a></li>
-              <li><a href="#" className="hover:text-white">شرایط استفاده</a></li>
+              <li><a href="/privacy" className="hover:text-white">حریم خصوصی</a></li>
+              <li><a href="/terms" className="hover:text-white">شرایط استفاده</a></li>
               <li><a href="/contact" className="hover:text-white">تماس با ما</a></li>
             </ul>
           </nav>
