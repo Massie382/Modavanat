@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import { AccountLayout, SidebarItem } from "./AccountLayout";
 
 export type AccountTab = "bookmarks" | "settings" | "tickets" | "purchases";
@@ -122,16 +121,6 @@ export function AccountShell({
           <span>خروج از حساب</span>
         </button>
       </nav>
-
-      {/* Return-to-site — at the very bottom. Lives here so it's
-          reachable from both the PC sidebar and the mobile drawer
-          (the mobile top bar no longer has it). */}
-      <div className="panel-side-footer">
-        <Link href="/" className="auth-back-link">
-          <span aria-hidden className="text-[#8d8d8d]">→</span>
-          بازگشت به سایت
-        </Link>
-      </div>
     </>
   );
 
