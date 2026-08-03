@@ -1533,3 +1533,567 @@ button, a { transition: color 0.12s ease, background-color 0.12s ease, border-co
 @media (prefers-reduced-motion: reduce) {
   .auth-card-enter { animation: none; }
 }
+
+/* =======================================================================
+   USER PANEL - /account
+   A focused dashboard for the signed-in user: bookmarks, settings,
+   tickets, purchases. Uses a dedicated minimal chrome (AccountLayout)
+   similar to the auth pages: slim logo bar + back-to-site, NO main
+   site nav. The body is a two-column layout (sidebar nav + content).
+   ======================================================================= */
+
+/* The cream backdrop — same warm tone as the auth pages so the panel
+   reads as a separate "signed-in" mode of the app. */
+.panel-backdrop {
+  background-color: #f4f3f0;
+  background-image:
+    radial-gradient(circle at 100% 0%, rgba(43, 43, 43, 0.025), transparent 40%),
+    radial-gradient(circle at 0% 100%, rgba(43, 43, 43, 0.025), transparent 40%);
+  min-height: 100vh;
+}
+
+/* Slim top bar — logo only + back-to-site. NO main nav. */
+.panel-topbar {
+  background-color: #ffffff;
+  border-bottom: 1px solid var(--rule);
+}
+
+/* The two-column layout: sidebar on the visual right (RTL) + content
+   on the visual left. On mobile, the sidebar collapses to a horizontal
+   scrollable tab strip ABOVE the content. */
+.panel-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+}
+@media (min-width: 768px) {
+  .panel-grid {
+    /* In RTL, the first column goes to the visual right. We want the
+       sidebar (260px) on the visual right, content on the visual left. */
+    grid-template-columns: 1fr 260px;
+  }
+}
+
+/* Sidebar nav card */
+.panel-side {
+  background-color: #ffffff;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  overflow: hidden;
+}
+@media (min-width: 768px) {
+  .panel-side {
+    position: sticky;
+    top: 1.5rem;
+    align-self: start;
+  }
+}
+
+/* On mobile, the sidebar becomes a horizontal scrollable strip of
+   tab buttons. */
+.panel-side-mobile-scroll {
+  display: flex;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.panel-side-mobile-scroll::-webkit-scrollbar { display: none; }
+@media (min-width: 768px) {
+  .panel-side-mobile-scroll {
+    flex-direction: column;
+    overflow: visible;
+  }
+}
+
+/* User mini-card at the top of the sidebar */
+.panel-user-card {
+  padding: 1rem 1.1rem;
+  border-bottom: 1px solid var(--rule);
+  background-color: var(--surface-raised);
+}
+.panel-user-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: var(--charcoal);
+  color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 600;
+  flex-shrink: 0;
+  letter-spacing: 0.02em;
+}
+.panel-user-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.4;
+  margin-bottom: 0.15rem;
+}
+.panel-user-meta {
+  font-size: 11.5px;
+  color: var(--ink-muted);
+  line-height: 1.4;
+}
+
+/* Sidebar nav items */
+.panel-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.75rem 1.1rem;
+  font-size: 13.5px;
+  color: var(--ink-soft);
+  background: transparent;
+  border: none;
+  border-inline-start: 2px solid transparent;
+  cursor: pointer;
+  text-align: start;
+  width: 100%;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  white-space: nowrap;
+}
+.panel-nav-item:hover {
+  background-color: var(--surface-raised);
+  color: var(--ink);
+}
+.panel-nav-item.is-active {
+  background-color: var(--surface-sunken);
+  color: var(--ink);
+  border-inline-start-color: var(--charcoal);
+  font-weight: 500;
+}
+.panel-nav-item svg {
+  flex-shrink: 0;
+  color: var(--ink-muted);
+}
+.panel-nav-item.is-active svg {
+  color: var(--ink);
+}
+.panel-nav-count {
+  margin-inline-start: auto;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-muted);
+  background-color: var(--surface-sunken);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  padding: 0.05rem 0.4rem;
+  min-width: 22px;
+  text-align: center;
+}
+.panel-nav-item.is-active .panel-nav-count {
+  background-color: #ffffff;
+  color: var(--ink);
+}
+
+/* Content area card */
+.panel-content {
+  background-color: #ffffff;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+}
+.panel-content-header {
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--rule);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.panel-content-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.4;
+}
+.panel-content-subtitle {
+  font-size: 12.5px;
+  color: var(--ink-muted);
+  margin-top: 0.2rem;
+  line-height: 1.5;
+}
+.panel-content-body {
+  padding: 1.5rem;
+}
+
+/* Stat row — small inline stats at the top of a tab */
+.panel-stat-row {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+@media (min-width: 640px) {
+  .panel-stat-row {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+.panel-stat {
+  background-color: var(--surface-raised);
+  border: 1px solid var(--rule-soft);
+  border-radius: 3px;
+  padding: 0.75rem 0.9rem;
+}
+.panel-stat-num {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--ink);
+  line-height: 1.2;
+}
+.panel-stat-label {
+  font-size: 11.5px;
+  color: var(--ink-muted);
+  margin-top: 0.2rem;
+  line-height: 1.4;
+}
+
+/* Bookmark list row */
+.panel-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  padding: 0.95rem 0;
+  border-bottom: 1px solid var(--rule-soft);
+}
+.panel-row:last-child {
+  border-bottom: none;
+}
+.panel-row-icon {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 3px;
+  background-color: var(--surface-sunken);
+  color: var(--ink-soft);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.panel-row-main {
+  flex: 1;
+  min-width: 0;
+}
+.panel-row-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink);
+  line-height: 1.5;
+}
+.panel-row-title a {
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-color: var(--rule);
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+  transition: text-decoration-color 0.15s ease, color 0.15s ease;
+}
+.panel-row-title a:hover {
+  color: var(--link-hover);
+  text-decoration-color: var(--ink-muted);
+}
+.panel-row-meta {
+  font-size: 12px;
+  color: var(--ink-muted);
+  margin-top: 0.2rem;
+  line-height: 1.5;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.panel-row-meta-dot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background-color: var(--ink-muted);
+  opacity: 0.6;
+}
+.panel-row-actions {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+/* Empty state — for tabs with no data */
+.panel-empty {
+  text-align: center;
+  padding: 3rem 1rem;
+}
+.panel-empty-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background-color: var(--surface-sunken);
+  color: var(--ink-muted);
+  margin-bottom: 1rem;
+}
+.panel-empty-title {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--ink);
+  margin-bottom: 0.35rem;
+}
+.panel-empty-text {
+  font-size: 13px;
+  color: var(--ink-muted);
+  line-height: 1.7;
+  max-width: 380px;
+  margin: 0 auto 1.25rem;
+}
+
+/* Settings form */
+.panel-form-section {
+  padding-top: 1.5rem;
+  margin-top: 1.5rem;
+  border-top: 1px solid var(--rule-soft);
+}
+.panel-form-section:first-child {
+  padding-top: 0;
+  margin-top: 0;
+  border-top: none;
+}
+.panel-form-section-title {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 0.25rem;
+}
+.panel-form-section-desc {
+  font-size: 12.5px;
+  color: var(--ink-muted);
+  line-height: 1.6;
+  margin-bottom: 1rem;
+}
+
+/* Ticket status pills */
+.panel-ticket-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 0.15rem 0.5rem;
+  border-radius: 2px;
+  border: 1px solid var(--rule);
+  white-space: nowrap;
+}
+.panel-ticket-status-open {
+  color: #2b5e2b;
+  background-color: #ecf3ec;
+  border-color: #c5d8c5;
+}
+.panel-ticket-status-pending {
+  color: #8a5a1a;
+  background-color: #faf3e6;
+  border-color: #e5d4b1;
+}
+.panel-ticket-status-closed {
+  color: var(--ink-muted);
+  background-color: var(--surface-sunken);
+}
+
+/* Purchase / invoice row in table */
+.panel-purchase-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.panel-purchase-table thead th {
+  text-align: right;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--ink-muted);
+  letter-spacing: 0.04em;
+  padding: 0.65rem 0.75rem;
+  border-bottom: 1px solid var(--rule);
+  background-color: var(--surface-raised);
+}
+.panel-purchase-table tbody td {
+  padding: 0.85rem 0.75rem;
+  border-bottom: 1px solid var(--rule-soft);
+  color: var(--ink-soft);
+  vertical-align: top;
+}
+.panel-purchase-table tbody tr:last-child td {
+  border-bottom: none;
+}
+.panel-purchase-table tbody tr:hover td {
+  background-color: var(--surface-raised);
+}
+.panel-purchase-table .num {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Slim mobile-friendly horizontal scroll for the purchases table */
+.panel-purchase-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.panel-purchase-wrap .panel-purchase-table {
+  min-width: 540px;
+}
+
+/* Mini toggle switch for settings preferences */
+.panel-toggle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.panel-toggle input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+.panel-toggle-track {
+  width: 36px;
+  height: 20px;
+  background-color: var(--surface-sunken);
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  position: relative;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+.panel-toggle-thumb {
+  position: absolute;
+  top: 2px;
+  inset-inline-start: 2px;
+  width: 14px;
+  height: 14px;
+  background-color: #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+  transition: transform 0.15s ease;
+}
+.panel-toggle input:checked + .panel-toggle-track {
+  background-color: var(--charcoal);
+  border-color: var(--charcoal);
+}
+.panel-toggle input:checked + .panel-toggle-track .panel-toggle-thumb {
+  /* In RTL we move the thumb to the visual left (negative X) */
+  transform: translateX(-16px);
+}
+[dir="ltr"] .panel-toggle input:checked + .panel-toggle-track .panel-toggle-thumb {
+  transform: translateX(16px);
+}
+.panel-toggle input:focus-visible + .panel-toggle-track {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+/* Preference row */
+.panel-pref {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 0;
+  border-bottom: 1px solid var(--rule-soft);
+}
+.panel-pref:last-child {
+  border-bottom: none;
+}
+.panel-pref-text {
+  flex: 1;
+  min-width: 0;
+}
+.panel-pref-title {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--ink);
+  line-height: 1.5;
+}
+.panel-pref-desc {
+  font-size: 12px;
+  color: var(--ink-muted);
+  margin-top: 0.15rem;
+  line-height: 1.5;
+}
+
+/* Tag filter pills row (used in bookmarks + tickets) */
+.panel-filters {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+.panel-filter-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 0.3rem 0.7rem;
+  border-radius: 2px;
+  border: 1px solid var(--rule);
+  background-color: #ffffff;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.panel-filter-pill:hover {
+  background-color: var(--surface-raised);
+  color: var(--ink);
+}
+.panel-filter-pill.is-active {
+  background-color: var(--charcoal);
+  color: #ffffff;
+  border-color: var(--charcoal);
+}
+
+/* Small ghost icon button (delete, download) */
+.panel-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 2px;
+  border: 1px solid transparent;
+  background-color: transparent;
+  color: var(--ink-muted);
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.panel-icon-btn:hover {
+  background-color: var(--surface-sunken);
+  color: var(--ink);
+  border-color: var(--rule);
+}
+.panel-icon-btn.is-danger:hover {
+  color: var(--destructive);
+  border-color: var(--destructive);
+  background-color: #faf0f0;
+}
+
+/* Panel entrance animation */
+@keyframes panel-tab-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.panel-tab-enter {
+  animation: panel-tab-enter 0.28s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel-tab-enter { animation: none; }
+}
