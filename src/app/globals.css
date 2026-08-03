@@ -1189,14 +1189,14 @@ button, a { transition: color 0.12s ease, background-color 0.12s ease, border-co
   }
 }
 
-/* ─────────────────────────────────────────────────────────────────────────
-   AUTH PAGES — /signin and /signup
+/* =======================================================================
+   AUTH PAGES - /signin and /signup
    These pages have their own dedicated minimal chrome (AuthLayout) that
    does NOT include the main site Header or Footer. The visual language
    is consistent with the rest of the site (charcoal buttons, hairline
    borders, Vazirmatn font, RTL) but the layout is a centered card on a
    warm cream backdrop, optimized for a single focused task.
-   ───────────────────────────────────────────────────────────────────────── */
+   ======================================================================= */
 
 /* The cream backdrop for auth pages — distinct from the pure-white
    surface of the main site so users immediately read this as a
@@ -1275,7 +1275,7 @@ button, a { transition: color 0.12s ease, background-color 0.12s ease, border-co
   line-height: 1.5;
 }
 
-/* ── Segmented selector (ایمیل / شماره تلفن) ──
+/* Segmented selector (email / phone)
    A two-button toggle that lets the user pick which identifier they
    are typing. The active segment is filled charcoal; the inactive one
    is the sunken surface. */
@@ -1313,7 +1313,7 @@ button, a { transition: color 0.12s ease, background-color 0.12s ease, border-co
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
-/* ── Password input wrapper ──
+/* Password input wrapper
    The input + an eye toggle button on the inline-end (visual left in RTL). */
 .auth-password {
   position: relative;
@@ -1344,8 +1344,8 @@ button, a { transition: color 0.12s ease, background-color 0.12s ease, border-co
   background-color: var(--surface-sunken);
 }
 
-/* ── Password strength meter ──
-   Four segments that fill from weak → strong. */
+/* Password strength meter
+   Four segments that fill from weak to strong. */
 .auth-strength {
   display: flex;
   gap: 4px;
@@ -1369,7 +1369,7 @@ button, a { transition: color 0.12s ease, background-color 0.12s ease, border-co
   line-height: 1.4;
 }
 
-/* ── Agreement checkbox ──
+/* Agreement checkbox
    A custom 16px checkbox (charcoal fill, white check) with label text
    that may contain links. */
 .auth-check {
@@ -1426,7 +1426,7 @@ button, a { transition: color 0.12s ease, background-color 0.12s ease, border-co
   border-color: var(--destructive);
 }
 
-/* ── Auth submit button ──
+/* Auth submit button
    Full-width variant of .btn-legal for the primary CTA on auth pages. */
 .auth-submit {
   display: inline-flex;
@@ -1457,7 +1457,7 @@ button, a { transition: color 0.12s ease, background-color 0.12s ease, border-co
   transform: none;
 }
 
-/* ── Auth divider ("یا") ──
+/* Auth divider
    Horizontal hairline with a small label in the middle. */
 .auth-divider {
   display: flex;
@@ -1474,8 +1474,8 @@ button, a { transition: color 0.12s ease, background-color 0.12s ease, border-co
   background-color: var(--rule);
 }
 
-/* ── Auth footer switch ──
-   The "حساب ندارید؟ ثبت‌نام کنید" link row at the bottom of the card. */
+/* Auth footer switch
+   The "no account? sign up" link row at the bottom of the card. */
 .auth-switch {
   text-align: center;
   font-size: 13px;
@@ -1494,9 +1494,9 @@ button, a { transition: color 0.12s ease, background-color 0.12s ease, border-co
   text-decoration-color: var(--ink);
 }
 
-/* ── Auth entrance animation ──
+/* Auth entrance animation
    Subtle fade + 4px upward translate on mount, so the card feels like
-   it "settles" into place. */
+   it settles into place. */
 @keyframes auth-card-enter {
   from {
     opacity: 0;
