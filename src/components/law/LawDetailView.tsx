@@ -12,14 +12,32 @@ import { AmendmentComparisonView } from "./AmendmentComparisonView";
 import { MobileLawDrawer } from "@/components/site/MobileLawDrawer";
 import { toFa, statusLabel, statusPillClass, formatJalaliDate } from "@/lib/utils";
 
+/**
+ * Wrapper around the article-selection state so it can be driven from BOTH:
+ *   - The desktop right-side ArticlePicker (inside ContentTab)
+ *   - The mobile drawer ArticlePicker (inside MobileLawDrawer)
+ * Whichever side the user picks an article from, the same state updates and
+ * both sides stay in sync. Selecting an article also auto-switches to the
+ * "content" tab so the user immediately sees the chosen article.
+ */
+function useArticleSelection(lawId: string) {
+  const [selectedArticleId, setSelectedArticleId] = useState<string | null>(null);
+
+  // Reset selection when the law itself changes — otherwise stale article
+  // IDs from the previous law would persist into the new law's view.
+  useEffect(() => {
+    setSelectedArticleId(null);
+  }, [lawId]);
+
+  return { selectedArticleId, setSelectedArticleId };
+}
+
 type TabId = "contents" | "content" | "timeline" | "references" | "resources";
 
 interface LawDetailViewProps {
   law: Law;
   onBack: () => void;
   onOpenLawById?: (id: string) => void;
-  onOpenLaw?: (law: Law) => void;
-  onSearch?: (query: string) => void;
 }
 
 const TABS: { id: TabId; label: string; help?: string }[] = [
@@ -42,9 +60,23 @@ const TABS: { id: TabId; label: string; help?: string }[] = [
   },
 ];
 
-export function LawDetailView({ law, onBack, onOpenLawById, onOpenLaw, onSearch }: LawDetailViewProps) {
+export function LawDetailView({ law, onBack, onOpenLawById }: LawDetailViewProps) {
   const [activeTab, setActiveTab] = useState<TabId>("contents");
   const [comparisonAmendment, setComparisonAmendment] = useState<AmendmentEvent | null>(null);
+  const { selectedArticleId, setSelectedArticleId } = useArticleSelection(law.id);
+
+  // Wrap setSelectedArticleId so that picking an article from the mobile
+  // drawer ALSO switches to the "content" tab — otherwise the drawer would
+  // set selection state but the user wouldn't see anything change because
+  // they're still on (e.g.) the timeline tab. On desktop this is a no-op
+  // because the picker only lives inside ContentTab (already on the content
+  // tab when it's visible).
+  const handleSelectArticle = (id: string | null) => {
+    setSelectedArticleId(id);
+    if (id !== null && activeTab !== "content") {
+      setActiveTab("content");
+    }
+  };
 
   // Sentinel + IntersectionObserver: toggle the .sub-tab-bar-sticky class
   // on the sub-tab bar when it's actively sticking. This lets us add a
@@ -236,6 +268,8 @@ export function LawDetailView({ law, onBack, onOpenLawById, onOpenLaw, onSearch 
         {activeTab === "content" && (
           <ContentTab
             law={law}
+            selectedArticleId={selectedArticleId}
+            onSelectArticle={handleSelectArticle}
             onOpenLawById={onOpenLawById}
             onOpenComparison={setComparisonAmendment}
           />
@@ -251,10 +285,15 @@ export function LawDetailView({ law, onBack, onOpenLawById, onOpenLaw, onSearch 
         {activeTab === "resources" && <ResourcesTab law={law} onOpenLawById={onOpenLawById} />}
       </div>
 
-      {/* Mobile law drawer — only shown on the article page, slides in
-          from the LEFT. Has its own confirm button so the user can scroll
-          and pick freely without the drawer auto-closing. */}
-      <MobileLawDrawer onOpenLaw={onOpenLaw} onSearch={onSearch} />
+      {/* Mobile article picker drawer — slides in from the LEFT, mirrors the
+          desktop right-side ArticlePicker UI (iOS-style scroll-snap list +
+          search). Tapping an article updates the article view underneath but
+          keeps the drawer open so the user can browse multiple articles. */}
+      <MobileLawDrawer
+        law={law}
+        selectedArticleId={selectedArticleId}
+        onSelectArticle={handleSelectArticle}
+      />
     </div>
   );
 }

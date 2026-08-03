@@ -87,8 +87,6 @@ export default function Home() {
             law={view.law}
             onBack={() => setView({ kind: "home" })}
             onOpenLawById={handleOpenLawById}
-            onOpenLaw={handleOpenLaw}
-            onSearch={handleSearch}
           />
         )}
       </main>

@@ -1026,7 +1026,9 @@ button, a { transition: color 0.12s ease, background-color 0.12s ease, border-co
   position: fixed;
   left: 0;
   top: 50%;
-  transform: translateY(-50%);
+  /* NOTE: keep BOTH axes in the transform — if :hover only sets translateX,
+     the vertical centering is lost and the button "jumps down" on hover. */
+  transform: translateY(-50%) translateX(0);
   z-index: 40;
   /* Charcoal rounded rectangle, hugging the left edge — matches the
      user-supplied design screenshot. */
@@ -1042,7 +1044,10 @@ button, a { transition: color 0.12s ease, background-color 0.12s ease, border-co
   justify-content: center;
   font-family: inherit;
   box-shadow: 2px 0 12px rgba(0, 0, 0, 0.18);
-  transition: background-color 0.15s ease, width 0.15s ease, box-shadow 0.15s ease;
+  /* Animate transform + bg + shadow only — NEVER width, because width
+     changes trigger a horizontal layout shift that, combined with the
+     fixed-position vertical centering, causes a perceived vertical jump. */
+  transition: background-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
   -webkit-tap-highlight-color: transparent;
   /* Hidden on desktop by default */
   display: none;
@@ -1055,7 +1060,9 @@ button, a { transition: color 0.12s ease, background-color 0.12s ease, border-co
 .mobile-law-fab-btn:hover,
 .mobile-law-fab-btn:active {
   background-color: var(--charcoal-deep);
-  width: 40px;
+  /* Nudge 2px to the right (off the screen edge) — purely visual cue.
+     Preserve the -50% Y centering so the button doesn't jump. */
+  transform: translateY(-50%) translateX(2px);
   box-shadow: 4px 0 18px rgba(0, 0, 0, 0.25);
 }
 .mobile-law-fab-btn svg {
@@ -1077,7 +1084,10 @@ button, a { transition: color 0.12s ease, background-color 0.12s ease, border-co
   top: 0;
   bottom: 0;
   left: 0;
-  width: min(360px, 60vw);
+  /* Wider than the old all-laws drawer — article numbers + titles need
+     room to breathe. ~88% of viewport on small phones, capped at 420px
+     on tablets. */
+  width: min(420px, 88vw);
   background-color: var(--surface);
   z-index: 50;
   display: flex;
@@ -1092,6 +1102,7 @@ button, a { transition: color 0.12s ease, background-color 0.12s ease, border-co
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 0.75rem;
   padding: 0.85rem 1rem;
   border-bottom: 1px solid var(--rule);
   background-color: var(--charcoal);
@@ -1103,6 +1114,16 @@ button, a { transition: color 0.12s ease, background-color 0.12s ease, border-co
   font-size: 14px;
   font-weight: 600;
   margin: 0;
+  line-height: 1.3;
+}
+.mobile-law-drawer-header-sub {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.65);
+  margin: 2px 0 0;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .mobile-law-drawer-close {
   background: transparent;
@@ -1123,47 +1144,16 @@ button, a { transition: color 0.12s ease, background-color 0.12s ease, border-co
 .mobile-law-drawer-body {
   flex: 1;
   overflow-y: auto;
-  padding: 0.75rem 1rem;
+  padding: 1rem 1.25rem 1.5rem;
   background-color: var(--surface);
-  padding-bottom: 0.5rem;
+  /* The ArticlePicker's iOS-style mask-image fade needs a solid backdrop
+     behind it so the fade reads correctly. var(--surface) is fine. */
 }
-.mobile-law-drawer-list {
-  overflow-y: auto;
-  max-height: calc(100vh - 220px);
-  scrollbar-width: thin;
-}
-.mobile-law-drawer-item {
-  display: block;
-  width: 100%;
-  text-align: right;
-  padding: 0.6rem 0.5rem;
-  border-bottom: 1px solid var(--rule-soft);
-  background: transparent;
-  border-left: none;
-  border-right: none;
-  border-top: none;
-  cursor: pointer;
-  transition: background-color 0.12s ease;
-  -webkit-tap-highlight-color: transparent;
-}
-.mobile-law-drawer-item:hover {
-  background-color: var(--surface-sunken);
-}
-.mobile-law-drawer-item.highlighted {
-  /* Brief highlight when the user has just tapped a law to view it.
-     Indicates "you are now viewing this law" without closing the drawer. */
-  background-color: #fff7e6;
-  box-shadow: inset 3px 0 0 var(--charcoal);
-}
-.mobile-law-drawer-item:last-child {
-  border-bottom: none;
-}
-.mobile-law-drawer-footer {
-  flex-shrink: 0;
-  padding: 0.75rem 1rem;
-  border-top: 1px solid var(--rule);
-  background-color: var(--surface-raised);
-}
+
+/* NOTE: the old .mobile-law-drawer-list / -item / -footer classes were
+   removed when the drawer was rewritten to use <ArticlePicker>. The
+   picker's own .article-picker-list / .article-picker-item classes
+   (defined earlier in this file) provide all the styling. */
 
 @media (prefers-reduced-motion: reduce) {
   .mobile-law-drawer-overlay,
