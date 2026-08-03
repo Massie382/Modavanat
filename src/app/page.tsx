@@ -10,7 +10,6 @@ import { HomeView } from "@/components/home/HomeView";
 import { BrowseView } from "@/components/browse/BrowseView";
 import { SearchView } from "@/components/search/SearchView";
 import { LawDetailView } from "@/components/law/LawDetailView";
-import { MobileLawDrawer } from "@/components/site/MobileLawDrawer";
 
 type View =
   | { kind: "home" }
@@ -88,14 +87,13 @@ export default function Home() {
             law={view.law}
             onBack={() => setView({ kind: "home" })}
             onOpenLawById={handleOpenLawById}
+            onOpenLaw={handleOpenLaw}
+            onSearch={handleSearch}
           />
         )}
       </main>
 
       <Footer onNavigate={handleNavigate} />
-
-      {/* Mobile law navigation FAB + drawer — visible on all pages */}
-      <MobileLawDrawer onOpenLaw={handleOpenLaw} onSearch={handleSearch} />
     </div>
   );
 }

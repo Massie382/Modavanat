@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { toFa } from "@/lib/utils";
 
 interface HeaderProps {
@@ -12,6 +12,47 @@ interface HeaderProps {
 export function Header({ onNavigate, onSearch, currentView }: HeaderProps) {
   const [searchInput, setSearchInput] = useState("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const headerRef = useRef<HTMLElement | null>(null);
+
+  // Self-healing sticky offset: measure the actual header height and
+  // publish it as a CSS custom property on <html> so any sticky element
+  // (e.g. the sub-tab bar in LawDetailView) can use `top: var(--site-header-h)`
+  // and stay correctly positioned even if the header height changes
+  // (logo swap, padding tweak, mobile menu open, etc.).
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el || typeof window === "undefined") return;
+
+    const publish = () => {
+      const h = el.offsetHeight;
+      // Clamp to a sane range so a measurement glitch never produces 0
+      // or a huge value.
+      const safe = Number.isFinite(h) && h > 0 ? `${h}px` : "175px";
+      document.documentElement.style.setProperty("--site-header-h", safe);
+    };
+
+    publish();
+
+    // ResizeObserver fires when the header's own height changes (e.g. a
+    // row collapses on mobile, the logo loads, padding kicks in via a
+    // breakpoint change).
+    let ro: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== "undefined") {
+      ro = new ResizeObserver(publish);
+      ro.observe(el);
+    }
+
+    // Fallbacks: window resize + a delayed re-measure after fonts/images
+    // settle. Cheap and belt-and-braces.
+    window.addEventListener("resize", publish);
+    const t = window.setTimeout(publish, 300);
+
+    return () => {
+      if (ro) ro.disconnect();
+      window.removeEventListener("resize", publish);
+      window.clearTimeout(t);
+    };
+  }, []);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,45 +78,41 @@ export function Header({ onNavigate, onSearch, currentView }: HeaderProps) {
     (id === "about" && currentView === "about");
 
   return (
-    <header className="bg-white">
+    <header ref={headerRef} className="bg-white site-header-sticky">
       {/* Top thin strip — context */}
       <div className="bg-[#1f1f1f] text-[#bdbdbd] text-[11.5px] hidden sm:block">
-        <div className="container-legal flex items-center justify-between py-1.5">
+        <div className="container-legal flex items-center justify-between py-0.5">
           <span className="tracking-wide">
             مرجع رسمی قوانین و مقررات جمهوری اسلامی ایران
           </span>
           <span className="flex items-center gap-4">
-            <a href="#" className="hover:text-white transition-colors">دسترسی‌پذیری</a>
+            <a href="/accessibility" className="hover:text-white transition-colors">دسترسی‌پذیری</a>
             <span className="opacity-40">|</span>
-            <a href="#" className="hover:text-white transition-colors">راهنما</a>
+            <a href="/guide" className="hover:text-white transition-colors">راهنما</a>
             <span className="opacity-40">|</span>
-            <a href="#" className="hover:text-white transition-colors">تماس با ما</a>
+            <a href="/contact" className="hover:text-white transition-colors">تماس با ما</a>
           </span>
         </div>
       </div>
 
       {/* Main header */}
       <div className="hairline-b">
-        <div className="container-legal py-4 sm:py-5 flex items-center justify-between gap-4 sm:gap-6">
+        <div className="container-legal py-0.5 sm:py-1 flex items-center justify-between gap-4 sm:gap-6">
           <button
             onClick={() => handleNavClick("home")}
             className="flex items-center gap-2.5 sm:gap-3 text-right group shrink-0"
+            aria-label="مدونات — صفحه نخست"
           >
-            <span
-              aria-hidden
-              className="inline-flex items-center justify-center w-9 h-9 sm:w-11 sm:h-11 bg-[#1f1f1f] text-white shrink-0"
-              style={{ borderRadius: "2px" }}
-            >
-              <span className="font-legal text-[18px] sm:text-[22px] font-bold leading-none">ق</span>
-            </span>
-            <span>
-              <span className="block font-legal text-[16px] sm:text-[19px] font-bold text-[#1a1a1a] leading-tight group-hover:text-black">
-                قانون‌یاب
-              </span>
-              <span className="hidden sm:block text-[11.5px] text-[#6b6b6b] tracking-wide leading-tight mt-0.5">
-                ghanunyab.ir
-              </span>
-            </span>
+            {/* Real brand logo — 3:2 landscape, scales with breakpoint.
+                No wordmark text beside it (per design decision). */}
+            <img
+              src="/brand/logo.webp"
+              alt="مدونات"
+              width={1536}
+              height={1024}
+              className="h-[96px] sm:h-[112px] w-auto object-contain"
+              draggable={false}
+            />
           </button>
 
           {/* Inline search — desktop only */}
@@ -107,9 +144,9 @@ export function Header({ onNavigate, onSearch, currentView }: HeaderProps) {
 
           {/* Desktop utility links */}
           <div className="hidden lg:flex items-center gap-3 text-[13px] shrink-0">
-            <a href="#" className="link-legal">ورود</a>
+            <a href="/signin" className="link-legal">ورود</a>
             <span className="text-[#cfcfcf]">/</span>
-            <a href="#" className="link-legal">ثبت‌نام</a>
+            <a href="/signup" className="link-legal">ثبت‌نام</a>
           </div>
 
           {/* Mobile: search toggle / hamburger */}
@@ -180,10 +217,10 @@ export function Header({ onNavigate, onSearch, currentView }: HeaderProps) {
               </nav>
 
               <div className="flex items-center justify-between pt-2 border-t border-[#ececea] text-[12.5px]">
-                <a href="#" className="link-legal">ورود</a>
-                <a href="#" className="link-legal">ثبت‌نام</a>
-                <a href="#" className="link-legal">راهنما</a>
-                <a href="#" className="link-legal">تماس</a>
+                <a href="/signin" className="link-legal">ورود</a>
+                <a href="/signup" className="link-legal">ثبت‌نام</a>
+                <a href="/guide" className="link-legal">راهنما</a>
+                <a href="/contact" className="link-legal">تماس</a>
               </div>
             </div>
           </div>

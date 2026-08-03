@@ -13,14 +13,14 @@ export function Footer({ onNavigate }: FooterProps) {
           {/* Brand */}
           <div className="flex flex-col items-center md:items-start">
             <div className="flex items-center gap-2.5 mb-3">
-              <span
-                aria-hidden
-                className="inline-flex items-center justify-center w-8 h-8 bg-white text-[#1f1f1f]"
-                style={{ borderRadius: "2px" }}
-              >
-                <span className="font-legal text-[16px] font-bold leading-none">ق</span>
-              </span>
-              <span className="font-legal text-[16px] font-bold text-white">قانون‌یاب</span>
+              <img
+                src="/brand/darklogo.webp"
+                alt="مدونات"
+                width={1536}
+                height={1024}
+                className="h-[96px] sm:h-[120px] w-auto object-contain"
+                draggable={false}
+              />
             </div>
             <p className="text-[12.5px] leading-7 text-[#9c9c9c] md:text-right">
               مرجع جامع قوانین و مقررات جمهوری اسلامی ایران. این پایگاه با هدف
@@ -49,7 +49,7 @@ export function Footer({ onNavigate }: FooterProps) {
               منابع و راهنما
             </h3>
             <ul className="space-y-2 text-[13px]">
-              <li><a href="#" className="hover:text-white">راهنمای استفاده</a></li>
+              <li><a href="/guide" className="hover:text-white">راهنمای استفاده</a></li>
               <li><a href="#" className="hover:text-white">واژه‌نامه حقوقی</a></li>
               <li><a href="#" className="hover:text-white">سؤالات رایج</a></li>
               <li><a href="#" className="hover:text-white">قواعد نقل قول</a></li>
@@ -60,14 +60,14 @@ export function Footer({ onNavigate }: FooterProps) {
           {/* About */}
           <nav aria-label="درباره" className="flex flex-col items-center md:items-start">
             <h3 className="text-[13px] font-semibold text-white mb-3 tracking-wide">
-              درباره قانون‌یاب
+              درباره مدونات
             </h3>
             <ul className="space-y-2 text-[13px]">
               <li><button onClick={() => onNavigate("about")} className="hover:text-white text-center md:text-right">درباره ما</button></li>
-              <li><a href="#" className="hover:text-white">سیاست محتوا</a></li>
+              <li><a href="/accessibility" className="hover:text-white">دسترسی‌پذیری</a></li>
               <li><a href="#" className="hover:text-white">حریم خصوصی</a></li>
               <li><a href="#" className="hover:text-white">شرایط استفاده</a></li>
-              <li><a href="#" className="hover:text-white">تماس با ما</a></li>
+              <li><a href="/contact" className="hover:text-white">تماس با ما</a></li>
             </ul>
           </nav>
         </div>
@@ -77,7 +77,7 @@ export function Footer({ onNavigate }: FooterProps) {
       <div className="border-t border-white/10">
         <div className="container-legal py-4 flex flex-col items-center sm:flex-row sm:items-start sm:justify-between gap-3 text-[12px] text-[#8d8d8d] text-center sm:text-right">
           <p>
-            © ۱۴۰۴ قانون‌یاب (ghanunyab.ir). تمامی حقوق محفوظ است. محتوای این
+            © ۱۴۰۴ مدونات (modavanat.ir). تمامی حقوق محفوظ است. محتوای این
             پایگاه بر اساس قوانین رسمی جمهوری اسلامی ایران تهیه شده و قابل نقل
             قول با ذکر منبع است.
           </p>

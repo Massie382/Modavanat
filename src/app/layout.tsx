@@ -11,12 +11,12 @@ const vazirmatn = Vazirmatn({
 });
 
 export const metadata: Metadata = {
-  title: "قانون‌یاب | مرجع جامع قوانین جمهوری اسلامی ایران",
+  title: "مدونات | مرجع جامع قوانین جمهوری اسلامی ایران",
   description:
     "جستجو، مرور و مطالعه قوانین و مقررات جمهوری اسلامی ایران به‌همراه خط زمانی اصلاحات و ارجاعات متقابل قانون‌ها.",
   keywords: [
     "قانون",
-    "قانون‌یاب",
+    "مدونات",
     "قوانین ایران",
     "قانون مدنی",
     "قانون مجازات اسلامی",
@@ -24,7 +24,7 @@ export const metadata: Metadata = {
     "قانون کار",
     "قانون اساسی",
   ],
-  authors: [{ name: "ghanunyab.ir" }],
+  authors: [{ name: "modavanat.ir" }],
 };
 
 export default function RootLayout({

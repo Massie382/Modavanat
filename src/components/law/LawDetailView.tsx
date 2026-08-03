@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { Law, AmendmentEvent } from "@/lib/types";
 import { Breadcrumb } from "@/components/site/Breadcrumb";
 import { TableOfContentsTab } from "./tabs/TableOfContentsTab";
@@ -9,6 +9,7 @@ import { TimelineTab } from "./tabs/TimelineTab";
 import { ReferencesTab } from "./tabs/ReferencesTab";
 import { ResourcesTab } from "./tabs/ResourcesTab";
 import { AmendmentComparisonView } from "./AmendmentComparisonView";
+import { MobileLawDrawer } from "@/components/site/MobileLawDrawer";
 import { toFa, statusLabel, statusPillClass, formatJalaliDate } from "@/lib/utils";
 
 type TabId = "contents" | "content" | "timeline" | "references" | "resources";
@@ -17,6 +18,8 @@ interface LawDetailViewProps {
   law: Law;
   onBack: () => void;
   onOpenLawById?: (id: string) => void;
+  onOpenLaw?: (law: Law) => void;
+  onSearch?: (query: string) => void;
 }
 
 const TABS: { id: TabId; label: string; help?: string }[] = [
@@ -39,9 +42,41 @@ const TABS: { id: TabId; label: string; help?: string }[] = [
   },
 ];
 
-export function LawDetailView({ law, onBack, onOpenLawById }: LawDetailViewProps) {
+export function LawDetailView({ law, onBack, onOpenLawById, onOpenLaw, onSearch }: LawDetailViewProps) {
   const [activeTab, setActiveTab] = useState<TabId>("contents");
   const [comparisonAmendment, setComparisonAmendment] = useState<AmendmentEvent | null>(null);
+
+  // Sentinel + IntersectionObserver: toggle the .sub-tab-bar-sticky class
+  // on the sub-tab bar when it's actively sticking. This lets us add a
+  // shadow / lift effect only while pinned, not when the user is reading
+  // the article header.
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const subTabBarRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    const subTabBar = subTabBarRef.current;
+    if (!sentinel || !subTabBar || typeof IntersectionObserver === "undefined") return;
+
+    // rootMargin: when the sentinel scrolls UP past the top of the viewport
+    // (i.e. crosses the header line), the bar is sticking. We use a small
+    // negative bottom margin so the toggle happens just as the bar reaches
+    // the header, not after it has visually "jumped".
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            subTabBar.classList.remove("sub-tab-bar-sticky");
+          } else {
+            subTabBar.classList.add("sub-tab-bar-sticky");
+          }
+        }
+      },
+      { rootMargin: "0px 0px -100% 0px", threshold: 0 }
+    );
+    io.observe(sentinel);
+    return () => io.disconnect();
+  }, []);
 
   return (
     <div>
@@ -164,8 +199,12 @@ export function LawDetailView({ law, onBack, onOpenLawById }: LawDetailViewProps
         </div>
       </div>
 
+      {/* Sentinel for IntersectionObserver — sits 1px above the sub-tab bar.
+          When this scrolls out of view (past the header), the bar is sticking. */}
+      <div ref={sentinelRef} aria-hidden style={{ height: 1, pointerEvents: "none" }} />
+
       {/* Sub-tab bar */}
-      <div className="sub-tab-bar">
+      <div ref={subTabBarRef} className="sub-tab-bar">
         <div className="container-legal">
           <ul>
             {TABS.map((tab) => (
@@ -211,6 +250,11 @@ export function LawDetailView({ law, onBack, onOpenLawById }: LawDetailViewProps
         {activeTab === "references" && <ReferencesTab law={law} onOpenLawById={onOpenLawById} />}
         {activeTab === "resources" && <ResourcesTab law={law} onOpenLawById={onOpenLawById} />}
       </div>
+
+      {/* Mobile law drawer — only shown on the article page, slides in
+          from the LEFT. Has its own confirm button so the user can scroll
+          and pick freely without the drawer auto-closing. */}
+      <MobileLawDrawer onOpenLaw={onOpenLaw} onSearch={onSearch} />
     </div>
   );
 }

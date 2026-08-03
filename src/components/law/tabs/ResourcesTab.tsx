@@ -180,7 +180,7 @@ export function ResourcesTab({ law, onOpenLawById }: ResourcesTabProps) {
               شناسه پایدار این قانون برای ارجاع پایدار در منابع علمی:
             </p>
             <code className="cite text-[11.5px] block p-2 bg-[#f5f3ef] border border-[#ececea] break-all">
-              https://ghanunyab.ir/id/{law.id}
+              https://modavanat.ir/id/{law.id}
             </code>
           </div>
         </aside>

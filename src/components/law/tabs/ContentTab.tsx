@@ -546,7 +546,7 @@ export function ContentTab({ law, onOpenLawById, onOpenComparison }: ContentTabP
             <div className="cite-block cite">
               {law.title}. مصوب {formatJalaliDate(law.approvedDate)}. شماره {law.number}.
               مرجع تصویب: {law.promulgatingAuthority}. آخرین بازنگری:{" "}
-              {formatJalaliDate(law.lastRevisionDate)}. قانون‌یاب (ghanunyab.ir).
+              {formatJalaliDate(law.lastRevisionDate)}. مدونات (modavanat.ir).
               دسترسی: {formatJalaliDate("۱۴۰۴/۰۵/۰۶")}.
             </div>
           </div>

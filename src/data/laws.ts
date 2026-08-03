@@ -1,7 +1,7 @@
 import type { Law, DecadeStat } from "@/lib/types";
 
 /**
- * Dataset of Iranian laws for ghanunyab.ir
+ * Dataset of Iranian laws for modavanat.ir
  * Content is realistic but illustrative — modeled on the structure of actual
  * Iranian statutes. Article text uses show [تN] markers for amendments with
  * matching commentary footnotes, mirroring legislation.gov.uk's F-marker system.
