@@ -1188,3 +1188,329 @@ button, a { transition: color 0.12s ease, background-color 0.12s ease, border-co
     transition: none;
   }
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   AUTH PAGES — /signin and /signup
+   These pages have their own dedicated minimal chrome (AuthLayout) that
+   does NOT include the main site Header or Footer. The visual language
+   is consistent with the rest of the site (charcoal buttons, hairline
+   borders, Vazirmatn font, RTL) but the layout is a centered card on a
+   warm cream backdrop, optimized for a single focused task.
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* The cream backdrop for auth pages — distinct from the pure-white
+   surface of the main site so users immediately read this as a
+   different "mode" of the app. */
+.auth-backdrop {
+  background-color: #f4f3f0; /* var(--surface-sunken) */
+  background-image:
+    radial-gradient(circle at 100% 0%, rgba(43, 43, 43, 0.025), transparent 40%),
+    radial-gradient(circle at 0% 100%, rgba(43, 43, 43, 0.025), transparent 40%);
+}
+
+/* Auth card — the white surface that holds the form. */
+.auth-card {
+  background-color: #ffffff;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.02),
+    0 8px 24px -8px rgba(0, 0, 0, 0.06);
+}
+
+/* Auth field label — sits above the input, smaller and tighter than
+   the main site's body text. */
+.auth-label {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--ink-soft);
+  margin-bottom: 0.4rem;
+  letter-spacing: 0.01em;
+}
+
+/* Auth input — slightly taller than .input-legal so it feels comfortable
+   on a focused auth screen. Inherits .input-legal's focus styling. */
+.auth-input {
+  width: 100%;
+  background-color: #ffffff;
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  padding: 0.7rem 0.85rem;
+  font-size: 14.5px;
+  color: var(--ink);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.auth-input:focus {
+  outline: none;
+  border-color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--ink);
+}
+.auth-input::placeholder {
+  color: var(--ink-muted);
+}
+/* Error state */
+.auth-input.is-error {
+  border-color: var(--destructive);
+  box-shadow: inset 0 0 0 1px var(--destructive);
+}
+.auth-input.is-error:focus {
+  border-color: var(--destructive);
+  box-shadow: inset 0 0 0 1px var(--destructive);
+}
+
+/* Auth error text — sits below the field */
+.auth-error {
+  font-size: 12px;
+  color: var(--destructive);
+  margin-top: 0.35rem;
+  line-height: 1.5;
+}
+
+/* Auth hint text — non-error helper text below the field */
+.auth-hint {
+  font-size: 12px;
+  color: var(--ink-muted);
+  margin-top: 0.35rem;
+  line-height: 1.5;
+}
+
+/* ── Segmented selector (ایمیل / شماره تلفن) ──
+   A two-button toggle that lets the user pick which identifier they
+   are typing. The active segment is filled charcoal; the inactive one
+   is the sunken surface. */
+.auth-segmented {
+  display: flex;
+  background-color: var(--surface-sunken);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  padding: 3px;
+  gap: 3px;
+}
+.auth-segment {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.75rem;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-muted);
+  background-color: transparent;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+.auth-segment:hover {
+  color: var(--ink-soft);
+}
+.auth-segment.is-active {
+  background-color: #ffffff;
+  color: var(--ink);
+  border-color: var(--rule);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+/* ── Password input wrapper ──
+   The input + an eye toggle button on the inline-end (visual left in RTL). */
+.auth-password {
+  position: relative;
+}
+.auth-password .auth-input {
+  padding-inline-start: 0.85rem;
+  padding-inline-end: 2.5rem; /* room for the eye toggle */
+}
+.auth-password-toggle {
+  position: absolute;
+  inset-inline-end: 0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  color: var(--ink-muted);
+  cursor: pointer;
+  border-radius: 2px;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+.auth-password-toggle:hover {
+  color: var(--ink);
+  background-color: var(--surface-sunken);
+}
+
+/* ── Password strength meter ──
+   Four segments that fill from weak → strong. */
+.auth-strength {
+  display: flex;
+  gap: 4px;
+  margin-top: 0.5rem;
+}
+.auth-strength-seg {
+  flex: 1;
+  height: 3px;
+  background-color: var(--surface-sunken);
+  border-radius: 2px;
+  transition: background-color 0.2s ease;
+}
+.auth-strength-seg.s1 { background-color: #b85c5c; }
+.auth-strength-seg.s2 { background-color: #c08a3e; }
+.auth-strength-seg.s3 { background-color: #4a7c4a; }
+.auth-strength-seg.s4 { background-color: #2b5e2b; }
+.auth-strength-label {
+  font-size: 11.5px;
+  color: var(--ink-muted);
+  margin-top: 0.3rem;
+  line-height: 1.4;
+}
+
+/* ── Agreement checkbox ──
+   A custom 16px checkbox (charcoal fill, white check) with label text
+   that may contain links. */
+.auth-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  cursor: pointer;
+  user-select: none;
+}
+.auth-check input[type="checkbox"] {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+.auth-check-box {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+  border: 1px solid var(--ink-muted);
+  border-radius: 2px;
+  background-color: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+.auth-check-box svg {
+  width: 11px;
+  height: 11px;
+  color: #ffffff;
+  opacity: 0;
+  transition: opacity 0.1s ease;
+}
+.auth-check input:checked + .auth-check-box {
+  background-color: var(--charcoal);
+  border-color: var(--charcoal);
+}
+.auth-check input:checked + .auth-check-box svg {
+  opacity: 1;
+}
+.auth-check input:focus-visible + .auth-check-box {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+.auth-check-label {
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--ink-soft);
+}
+.auth-check.is-error .auth-check-box {
+  border-color: var(--destructive);
+}
+
+/* ── Auth submit button ──
+   Full-width variant of .btn-legal for the primary CTA on auth pages. */
+.auth-submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  background-color: var(--charcoal);
+  color: #ffffff;
+  font-size: 14.5px;
+  font-weight: 500;
+  padding: 0.75rem 1.25rem;
+  border-radius: 2px;
+  border: 1px solid var(--charcoal);
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.05s ease;
+}
+.auth-submit:hover {
+  background-color: var(--charcoal-deep);
+  border-color: var(--charcoal-deep);
+}
+.auth-submit:active {
+  transform: translateY(1px);
+}
+.auth-submit:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ── Auth divider ("یا") ──
+   Horizontal hairline with a small label in the middle. */
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: var(--ink-muted);
+  font-size: 12px;
+}
+.auth-divider::before,
+.auth-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background-color: var(--rule);
+}
+
+/* ── Auth footer switch ──
+   The "حساب ندارید؟ ثبت‌نام کنید" link row at the bottom of the card. */
+.auth-switch {
+  text-align: center;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+.auth-switch a {
+  color: var(--ink);
+  font-weight: 500;
+  text-decoration: underline;
+  text-decoration-color: var(--rule);
+  text-underline-offset: 3px;
+  margin-inline-start: 0.35rem;
+  transition: text-decoration-color 0.15s ease;
+}
+.auth-switch a:hover {
+  text-decoration-color: var(--ink);
+}
+
+/* ── Auth entrance animation ──
+   Subtle fade + 4px upward translate on mount, so the card feels like
+   it "settles" into place. */
+@keyframes auth-card-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.auth-card-enter {
+  animation: auth-card-enter 0.32s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-card-enter { animation: none; }
+}
