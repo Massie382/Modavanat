@@ -97,7 +97,7 @@ export function AmendmentComparisonView({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end md:items-center justify-center"
+      className="fixed inset-0 z-[100] flex items-end md:items-center justify-center"
       role="dialog"
       aria-modal="true"
       aria-label="مقایسه نسخه‌های ماده"
