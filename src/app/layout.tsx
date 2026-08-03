@@ -1,14 +1,20 @@
 import type { Metadata } from "next";
-import { Vazirmatn } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 
-const vazirmatn = Vazirmatn({
-  subsets: ["arabic", "latin"],
-  variable: "--font-vazirmatn",
-  display: "swap",
-  weight: ["100", "200", "300", "400", "500", "600", "700", "800", "900"],
-});
+// Vazirmatn is loaded from LOCAL files — no build-time fetch to Google,
+// no runtime request to fonts.gstatic.com. The @font-face declarations
+// live in globals.css (with explicit unicode-range so the browser picks
+// the right subset file per character). Files are served from
+// /fonts/vazirmatn-*.woff2 in the public/ directory.
+//
+// To match the original next/font/google behavior we ship three subsets:
+//   - arabic     (Persian alphabet + Persian digits U+06F0-06F9 + extensions)
+//   - latin      (basic ASCII + Latin-1 supplement)
+//   - latin-ext  (extended Latin — included for completeness, used for
+//                 any rare extended-Latin glyph; harmless if unused)
+//
+// All three are variable fonts covering the full 100-900 weight range.
 
 export const metadata: Metadata = {
   title: "مدونات | مرجع جامع قوانین جمهوری اسلامی ایران",
@@ -34,9 +40,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fa" dir="rtl" suppressHydrationWarning>
-      <body
-        className={`${vazirmatn.variable} font-sans antialiased bg-background text-foreground`}
-      >
+      <body className="font-sans antialiased bg-background text-foreground">
         {children}
         <Toaster />
       </body>
