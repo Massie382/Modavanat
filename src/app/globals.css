@@ -1150,10 +1150,20 @@ button, a { transition: color 0.12s ease, background-color 0.12s ease, border-co
      behind it so the fade reads correctly. var(--surface) is fine. */
 }
 
-/* NOTE: the old .mobile-law-drawer-list / -item / -footer classes were
-   removed when the drawer was rewritten to use <ArticlePicker>. The
-   picker's own .article-picker-list / .article-picker-item classes
-   (defined earlier in this file) provide all the styling. */
+/* Confirm button footer — fixed at the bottom of the drawer. The picker
+   above is in preview mode (scroll/tap only update the preview); THIS
+   button is what actually commits the selection. */
+.mobile-law-drawer-footer {
+  flex-shrink: 0;
+  padding: 0.75rem 1rem;
+  border-top: 1px solid var(--rule);
+  background-color: var(--surface-raised);
+}
+
+/* NOTE: the old .mobile-law-drawer-list / -item classes were removed when
+   the drawer was rewritten to use <ArticlePicker>. The picker's own
+   .article-picker-list / .article-picker-item classes (defined earlier
+   in this file) provide all the styling. */
 
 @media (prefers-reduced-motion: reduce) {
   .mobile-law-drawer-overlay,

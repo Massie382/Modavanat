@@ -9,6 +9,20 @@ interface ArticlePickerProps {
   selectedId: string | null;
   onSelect: (id: string | null) => void;
   totalCount: number;
+  /**
+   * Optional preview mode. When `onPreviewChange` is provided, the picker
+   * enters preview mode: scroll + tap update `previewId` via the callback
+   * INSTEAD of committing `onSelect`. The caller is then responsible for
+   * committing the preview via a separate confirm action (e.g. a "تأیید"
+   * button in the mobile drawer). This prevents users from accidentally
+   * landing on the wrong article while scrolling — they have to
+   * explicitly press confirm to actually switch articles.
+   *
+   * When `onPreviewChange` is omitted (desktop use), the picker behaves
+   * as before: scroll + tap both commit `onSelect` immediately.
+   */
+  previewId?: string | null;
+  onPreviewChange?: (id: string | null) => void;
 }
 
 /**
@@ -30,6 +44,8 @@ export function ArticlePicker({
   selectedId,
   onSelect,
   totalCount,
+  previewId,
+  onPreviewChange,
 }: ArticlePickerProps) {
   const [filter, setFilter] = useState("");
   const listRef = useRef<HTMLDivElement>(null);
@@ -37,7 +53,23 @@ export function ArticlePicker({
   // programmatically scrolling OR while the user is still flinging.
   const scrollLockRef = useRef(false);
   const scrollTimerRef = useRef<number | null>(null);
-  const lastSelectedRef = useRef<string | null>(selectedId);
+
+  // Preview mode: when onPreviewChange is provided, scroll + tap update
+  // the *preview* (visual highlight) instead of committing the selection.
+  // The caller commits via a separate confirm action. This is used by the
+  // mobile drawer so users can scroll freely without accidentally switching
+  // articles — they have to press "تأیید" to actually switch.
+  const inPreviewMode = onPreviewChange !== undefined;
+  // The id that currently drives the "is-active" highlight + auto-scroll:
+  //   - Preview mode: previewId (falls back to selectedId if previewId is
+  //     undefined, e.g. before the user has interacted)
+  //   - Normal mode: selectedId
+  const effectiveId = inPreviewMode ? (previewId ?? selectedId) : selectedId;
+  // The callback that scroll/tap should fire:
+  //   - Preview mode: onPreviewChange
+  //   - Normal mode: onSelect
+  const handleChange = inPreviewMode ? onPreviewChange! : onSelect;
+  const lastSelectedRef = useRef<string | null>(effectiveId);
 
   const filtered = useMemo(() => {
     const q = filter.trim();
@@ -83,7 +115,7 @@ export function ArticlePicker({
           const idToCompare = id === "all" ? null : id;
           if (idToCompare !== lastSelectedRef.current) {
             lastSelectedRef.current = idToCompare;
-            onSelect(idToCompare);
+            handleChange(idToCompare);
           }
         }
       }, 180);
@@ -93,14 +125,16 @@ export function ArticlePicker({
       el.removeEventListener("scroll", onScroll);
       if (scrollTimerRef.current) window.clearTimeout(scrollTimerRef.current);
     };
-  }, [onSelect]);
+  }, [handleChange]);
 
-  // Smooth-scroll to the currently selected item when selection changes
-  // externally (e.g., from Next/Previous buttons or initial mount).
+  // Smooth-scroll to the currently effective item when it changes
+  // externally (e.g., from Next/Previous buttons, initial mount, or — in
+  // preview mode — when the caller resets the preview to selectedId on
+  // drawer open).
   useEffect(() => {
     const el = listRef.current;
     if (!el) return;
-    const targetId = selectedId || "all";
+    const targetId = effectiveId || "all";
     const target = el.querySelector<HTMLElement>(`[data-id="${targetId}"]`);
     if (target) {
       // Only auto-scroll if the target is not already centered (avoid loops)
@@ -117,8 +151,8 @@ export function ArticlePicker({
         }, 500);
       }
     }
-    lastSelectedRef.current = selectedId;
-  }, [selectedId]);
+    lastSelectedRef.current = effectiveId;
+  }, [effectiveId]);
 
   // When filter changes, re-scroll to the first matching item (or "all")
   useEffect(() => {
@@ -134,9 +168,12 @@ export function ArticlePicker({
     }
   }, [filter]);
 
+  // Tap handler. In preview mode this updates the preview (and centers the
+  // tapped item) but does NOT commit — the caller commits via confirm.
+  // In normal mode this commits immediately.
   const handleSelect = useCallback((id: string | null) => {
     lastSelectedRef.current = id;
-    onSelect(id);
+    handleChange(id);
     const el = listRef.current;
     if (!el) return;
     const targetId = id || "all";
@@ -151,7 +188,7 @@ export function ArticlePicker({
         scrollLockRef.current = false;
       }, 500);
     }
-  }, [onSelect]);
+  }, [handleChange]);
 
   return (
     <div>
@@ -198,9 +235,9 @@ export function ArticlePicker({
             type="button"
             data-id="all"
             role="option"
-            aria-selected={selectedId === null}
+            aria-selected={effectiveId === null}
             onClick={() => handleSelect(null)}
-            className={`article-picker-item ${selectedId === null ? "is-active" : ""}`}
+            className={`article-picker-item ${effectiveId === null ? "is-active" : ""}`}
           >
             <span className="font-legal text-[13px]">همه مواد</span>
             <span className="picker-sub cite">({toFa(totalCount)})</span>
@@ -211,9 +248,9 @@ export function ArticlePicker({
               key={a.id}
               data-id={a.id}
               role="option"
-              aria-selected={selectedId === a.id}
+              aria-selected={effectiveId === a.id}
               onClick={() => handleSelect(a.id)}
-              className={`article-picker-item ${selectedId === a.id ? "is-active" : ""}`}
+              className={`article-picker-item ${effectiveId === a.id ? "is-active" : ""}`}
             >
               <span className="cite text-[13px]">{a.number}</span>
               {a.title && (
@@ -232,7 +269,9 @@ export function ArticlePicker({
       </div>
 
       <p className="mt-2 text-[10.5px] text-[#6b6b6b] text-center leading-4">
-        برای انتخاب، بکشید یا شماره ماده را تایپ کنید
+        {inPreviewMode
+          ? "برای انتخاب بکشید، سپس «تأیید» را بزنید"
+          : "برای انتخاب، بکشید یا شماره ماده را تایپ کنید"}
       </p>
     </div>
   );

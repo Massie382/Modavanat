@@ -16,24 +16,27 @@ interface MobileLawDrawerProps {
  *
  * This is the mobile mirror of the desktop right-side ArticlePicker (the
  * iOS-style scroll-snap "iPhone-like" cylinder list). It uses the exact
- * same <ArticlePicker> component so the look + feel + behavior matches
- * the desktop experience 1:1 — only the wrapper (FAB + slide-in panel)
- * is mobile-specific.
+ * same <ArticlePicker> component so the look + feel matches the desktop
+ * experience 1:1 — only the wrapper (FAB + slide-in panel + confirm
+ * button) is mobile-specific.
  *
- * Interaction model:
+ * Interaction model (TWO-STEP — preview then confirm):
  *  - A small dark FAB is fixed on the LEFT edge of the screen (vertically
  *    centered). Tap it → drawer slides in from the LEFT, ~88% of viewport
  *    width (enough to comfortably read article numbers + titles).
  *  - Drawer contents:
  *      • Header (law title + close X)
- *      • <ArticlePicker> — same iOS scroll-snap list + search field as
- *        the desktop right sidebar.
- *  - Tapping an article fires onSelectArticle(id) immediately, which
- *    updates the article view underneath AND auto-switches to the
- *    "content" tab (handled by LawDetailView's handleSelectArticle).
- *    The drawer STAYS OPEN — the user can browse multiple articles
- *    without re-opening the drawer each time.
- *  - Escape key, overlay tap, and the X button all close the drawer.
+ *      • <ArticlePicker> in PREVIEW MODE — same iOS scroll-snap list +
+ *        search field as the desktop right sidebar. Scrolling/tapping
+ *        updates the preview highlight ONLY; the article view underneath
+ *        does NOT change yet.
+ *      • "تأیید" (Confirm) button at the bottom — commits the currently
+ *        previewed article as the actual selection and closes the drawer.
+ *  - The two-step model prevents users from accidentally landing on the
+ *    wrong article while scrolling past it. They have to explicitly tap
+ *    "تأیید" to actually switch articles.
+ *  - Escape key, overlay tap, and the X button all close the drawer
+ *    WITHOUT committing (cancel path — the selection is unchanged).
  *  - Body scroll is locked while the drawer is open so only the picker
  *    list scrolls.
  */
@@ -44,6 +47,14 @@ export function MobileLawDrawer({
 }: MobileLawDrawerProps) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerClosing, setDrawerClosing] = useState(false);
+  // Preview state — what the user is currently looking at in the picker but
+  // has NOT yet committed. Scrolling/tapping inside the picker updates this
+  // preview only; the article view underneath does NOT change until the
+  // user taps the "تأیید" button. This prevents users from accidentally
+  // landing on the wrong article while scrolling past it.
+  // Initialized from the current selection so the picker starts centered on
+  // the article the user is already viewing.
+  const [previewId, setPreviewId] = useState<string | null>(selectedArticleId);
 
   // Lock body scroll when drawer is open so the page behind doesn't scroll
   // — only the ArticlePicker list inside the drawer should scroll.
@@ -56,6 +67,15 @@ export function MobileLawDrawer({
       };
     }
   }, [drawerOpen]);
+
+  // Reset the preview to the current selection whenever the drawer opens.
+  // This way the picker always starts centered on the article the user is
+  // currently viewing — they don't have to scroll back to find it.
+  useEffect(() => {
+    if (drawerOpen) {
+      setPreviewId(selectedArticleId);
+    }
+  }, [drawerOpen, selectedArticleId]);
 
   const closeDrawer = useCallback(() => {
     setDrawerClosing(true);
@@ -82,6 +102,16 @@ export function MobileLawDrawer({
     },
     [closeDrawer]
   );
+
+  // Confirm button — commits the currently-previewed article as the actual
+  // selection, then closes the drawer. The picker's scroll/tap only updates
+  // the preview; THIS is the only path that actually switches the article
+  // view underneath. This prevents users from accidentally landing on the
+  // wrong article while scrolling past it.
+  const handleConfirm = useCallback(() => {
+    onSelectArticle(previewId);
+    closeDrawer();
+  }, [previewId, onSelectArticle, closeDrawer]);
 
   return (
     <>
@@ -156,17 +186,34 @@ export function MobileLawDrawer({
 
             <div className="mobile-law-drawer-body">
               {/* The exact same ArticlePicker component used on desktop —
-                  iOS-style scroll-snap list + search field. Selection
-                  state is shared with the desktop picker so both stay in
-                  sync; tapping an item here updates the article view
-                  underneath (and auto-switches to the content tab via
-                  LawDetailView's handleSelectArticle wrapper). */}
+                  iOS-style scroll-snap list + search field.
+
+                  Preview mode: scroll/tap update `previewId` only, NOT
+                  `selectedArticleId`. The user must tap the "تأیید" button
+                  below to actually commit the selection. This prevents
+                  accidental wrong-article selection while scrolling. */}
               <ArticlePicker
                 articles={law.articles}
                 selectedId={selectedArticleId}
                 onSelect={onSelectArticle}
                 totalCount={law.articles.length}
+                previewId={previewId}
+                onPreviewChange={setPreviewId}
               />
+            </div>
+
+            {/* Confirm button — fixed at the bottom of the drawer. Commits
+                the currently-previewed article as the actual selection and
+                closes the drawer. The picker above only previews; THIS is
+                the commit action. */}
+            <div className="mobile-law-drawer-footer">
+              <button
+                type="button"
+                onClick={handleConfirm}
+                className="btn-legal w-full"
+              >
+                تأیید
+              </button>
             </div>
           </aside>
         </>
