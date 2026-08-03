@@ -81,11 +81,12 @@ export function Header({ onNavigate, onSearch, currentView }: HeaderProps) {
           On mobile the tagline + secondary links stack vertically
           (tagline on top, links below) so both fit comfortably on a
           narrow screen. From `sm:` upward they sit on a single row
-          (tagline left, links right). */}
-      <div className="bg-[#1f1f1f] text-[#bdbdbd] text-[11.5px]">
+          (tagline left, links right). Font shrinks on mobile so the
+          tagline fits on one line. */}
+      <div className="bg-[#1f1f1f] text-[#bdbdbd] text-[10px] sm:text-[11.5px]">
         <div className="container-legal flex flex-col sm:flex-row items-start sm:items-center justify-between gap-0.5 sm:gap-4 py-0.5">
           <span className="tracking-wide truncate w-full sm:w-auto">
-            مرجع رسمی قوانین و مقررات جمهوری اسلامی ایران
+            مرجع قوانین و مقررات جمهوری اسلامی ایران
           </span>
           <span className="flex items-center gap-3 sm:gap-4 shrink-0">
             <a href="/accessibility" className="hover:text-white transition-colors">دسترسی‌پذیری</a>
