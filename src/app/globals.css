@@ -1558,10 +1558,15 @@ button, a { transition: color 0.12s ease, background-color 0.12s ease, border-co
   border-bottom: 1px solid var(--rule);
 }
 
-/* Three-zone grid. `direction: ltr` is forced on the grid so that
-   column 1 = visual LEFT, column 2 = CENTER, column 3 = visual RIGHT,
-   regardless of the page's RTL direction. Each cell restores
-   `direction: rtl` for its Persian-text children. */
+/* Three-zone grid. `direction: ltr` is forced on the grid AND on the
+   side cells so that:
+     • column 1 = visual LEFT, column 2 = CENTER, column 3 = visual RIGHT
+     • `justify-content: flex-start` on the left cell packs items toward
+       the absolute visual LEFT edge of the row
+     • `justify-content: flex-end` on the right cell packs items toward
+       the absolute visual RIGHT edge of the row
+   Persian text inside the cells still renders correctly because the
+   browser handles bidi internally for inline text runs. */
 .panel-topbar-grid {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
@@ -1572,8 +1577,9 @@ button, a { transition: color 0.12s ease, background-color 0.12s ease, border-co
 .panel-topbar-left {
   display: flex;
   align-items: center;
+  justify-content: flex-start; /* → absolute visual LEFT */
   gap: 0.5rem;
-  direction: rtl;
+  direction: ltr;
   min-width: 0;
 }
 .panel-topbar-center {
@@ -1584,9 +1590,9 @@ button, a { transition: color 0.12s ease, background-color 0.12s ease, border-co
 .panel-topbar-right {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: flex-end; /* → absolute visual RIGHT */
   gap: 0.6rem;
-  direction: rtl;
+  direction: ltr;
   min-width: 0;
 }
 
