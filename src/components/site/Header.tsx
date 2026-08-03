@@ -78,14 +78,16 @@ export function Header({ onNavigate, onSearch, currentView }: HeaderProps) {
   return (
     <header ref={headerRef} className="bg-white site-header-sticky">
       {/* Top thin strip — context bar. Visible on ALL breakpoints.
-          Layout is ALWAYS a single row: tagline on the right (RTL →
-          visually right) takes available space and truncates if needed,
-          the three links sit on the left with shrink-0 so they never
-          wrap to a second line. Font + gaps shrink on mobile; the `|`
-          dividers are hidden on mobile to save horizontal space. */}
+          Layout is ALWAYS a single row. In RTL the visual order is
+          right→left, so to put the tagline on the visual RIGHT and
+          the links on the visual LEFT we rely on the default DOM
+          order (tagline first → appears right in RTL) and let the
+          links come second → appear left. The tagline flexes+truncates
+          so the links (shrink-0) never wrap. The `|` dividers are
+          hidden on mobile to save horizontal space. */}
       <div className="bg-[#1f1f1f] text-[#bdbdbd] text-[10px] sm:text-[11.5px]">
         <div className="container-legal flex flex-row items-center justify-between gap-2 sm:gap-4 py-0.5">
-          <span className="tracking-wide truncate flex-1 min-w-0 text-left sm:text-right">
+          <span className="tracking-wide truncate flex-1 min-w-0">
             مرجع قوانین و مقررات جمهوری اسلامی ایران
           </span>
           <span className="flex items-center gap-2 sm:gap-4 shrink-0">
