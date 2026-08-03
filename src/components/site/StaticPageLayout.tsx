@@ -2,6 +2,7 @@
 
 import { Header } from "./Header";
 import { Footer } from "./Footer";
+import type { Law } from "@/lib/types";
 
 interface StaticPageLayoutProps {
   title: string;
@@ -19,10 +20,11 @@ interface StaticPageLayoutProps {
  * which made the static pages feel like a different site.
  *
  * Now we render the real <Header /> and <Footer /> components. The
- * SPA-style onNavigate/onSearch callbacks the home page uses aren't
- * available here (these are separate Next.js routes), so we route
- * every navigation to "/" via a full page load — the home page then
- * renders the appropriate view based on its own state.
+ * SPA-style onNavigate/onSearch/onOpenLaw callbacks the home page uses
+ * aren't available here (these are separate Next.js routes), so we
+ * route every navigation to "/" via a full page load — the home page
+ * then renders the appropriate view based on its own state (it reads
+ * ?view=… on mount and resolves ?view=law&id=<lawId> via getLawById).
  */
 export function StaticPageLayout({ title, subtitle, children }: StaticPageLayoutProps) {
   // All navigations from the static pages go to the home route.
@@ -46,6 +48,15 @@ export function StaticPageLayout({ title, subtitle, children }: StaticPageLayout
     }
   };
 
+  // Picking a law from the Header's search suggestions dropdown deep-
+  // links to "/?view=law&id=<lawId>" — the home page resolves the id
+  // via getLawById on mount and opens the LawDetailView.
+  const handleOpenLaw = (law: Law) => {
+    if (typeof window !== "undefined") {
+      window.location.href = `/?view=law&id=${encodeURIComponent(law.id)}`;
+    }
+  };
+
   // currentView is "home" by default for the static pages' header
   // highlight state — none of the nav items should appear active
   // because we're on a separate route.
@@ -54,6 +65,7 @@ export function StaticPageLayout({ title, subtitle, children }: StaticPageLayout
       <Header
         onNavigate={handleNavigate}
         onSearch={handleSearch}
+        onOpenLaw={handleOpenLaw}
         currentView=""
       />
 

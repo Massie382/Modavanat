@@ -2,16 +2,26 @@
 
 import { useState, useEffect, useRef } from "react";
 import { toFa } from "@/lib/utils";
+import type { Law } from "@/lib/types";
+import { SearchSuggestions } from "@/components/ui/SearchSuggestions";
 
 interface HeaderProps {
   onNavigate: (view: "home" | "browse" | "search" | "about") => void;
   onSearch: (query: string) => void;
+  /** Fired when the user picks a law from the desktop search suggestions
+   *  dropdown. Optional so static pages (which route via full page loads)
+   *  can omit it — in that case picking a suggestion still triggers
+   *  onSearch via the "search for" row. */
+  onOpenLaw?: (law: Law) => void;
   currentView: string;
 }
 
-export function Header({ onNavigate, onSearch, currentView }: HeaderProps) {
+export function Header({ onNavigate, onSearch, onOpenLaw, currentView }: HeaderProps) {
   const [searchInput, setSearchInput] = useState("");
   const headerRef = useRef<HTMLElement | null>(null);
+  // Ref for the desktop inline search input — used by SearchSuggestions
+  // to anchor its dropdown and to attach keyboard/focus listeners.
+  const navSearchInputRef = useRef<HTMLInputElement | null>(null);
 
   // Self-healing sticky offset: measure the actual header height and
   // publish it as a CSS custom property on <html> so any sticky element
@@ -122,10 +132,12 @@ export function Header({ onNavigate, onSearch, currentView }: HeaderProps) {
 
           {/* Inline search — desktop only. On mobile, users tap
               "جستجوی پیشرفته" in the charcoal nav bar below to reach
-              the full search page. */}
+              the full search page. Includes Google-style suggestions
+              dropdown that drops down below the input as the user types. */}
           <form onSubmit={handleSearch} className="hidden md:flex flex-1 max-w-xl items-center gap-2">
             <div className="relative flex-1">
               <input
+                ref={navSearchInputRef}
                 type="text"
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
@@ -133,6 +145,10 @@ export function Header({ onNavigate, onSearch, currentView }: HeaderProps) {
                 className="input-legal pl-9"
                 style={{ paddingRight: "0.75rem", paddingLeft: "2.25rem" }}
                 aria-label="جستجو"
+                autoComplete="off"
+                aria-autocomplete="list"
+                aria-expanded={!!searchInput.trim()}
+                aria-controls="nav-search-suggestions"
               />
               <span
                 aria-hidden
@@ -143,6 +159,29 @@ export function Header({ onNavigate, onSearch, currentView }: HeaderProps) {
                   <line x1="21" y1="21" x2="16.5" y2="16.5"></line>
                 </svg>
               </span>
+              {/* Google-style suggestions dropdown — same component as the
+                  homepage hero search. Anchored to this input via
+                  navSearchInputRef. onPick is optional so static pages
+                  (which navigate via full page loads) can omit it; when
+                  omitted, picking a law is a no-op and the user is
+                  expected to use the "search for" row at the top of the
+                  dropdown to reach the full search page. */}
+              <div id="nav-search-suggestions">
+                <SearchSuggestions
+                  query={searchInput}
+                  inputRef={navSearchInputRef}
+                  onPick={(law: Law) => {
+                    if (onOpenLaw) onOpenLaw(law);
+                    // Clear the input after picking so the dropdown
+                    // closes and the header returns to its idle state.
+                    setSearchInput("");
+                  }}
+                  onSearch={(q: string) => {
+                    onSearch(q);
+                    setSearchInput("");
+                  }}
+                />
+              </div>
             </div>
             <button type="submit" className="btn-legal">
               جستجو
