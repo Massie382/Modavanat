@@ -85,7 +85,8 @@ export function PurchasesTab({ purchases }: PurchasesTabProps) {
               <FilterPill label="بازگشت‌داده‌شده" active={filter === "refunded"} onClick={() => { setFilter("refunded"); setPage(1); }} />
             </div>
 
-            {/* Table */}
+            {/* Table — responsive: on mobile, each row becomes a stacked
+                card with inline labels (via data-label attributes). */}
             <div className="panel-purchase-wrap">
               <table className="panel-purchase-table">
                 <thead>
@@ -101,21 +102,21 @@ export function PurchasesTab({ purchases }: PurchasesTabProps) {
                 <tbody>
                   {pageItems.map((p) => (
                     <tr key={p.id}>
-                      <td className="num">{p.date}</td>
-                      <td>
+                      <td className="num" data-label="تاریخ">{p.date}</td>
+                      <td data-label="شرح">
                         <div style={{ fontWeight: 500, color: "var(--ink)" }}>{p.description}</div>
                         <div style={{ fontSize: "11.5px", color: "var(--ink-muted)", marginTop: 2 }}>
                           فاکتور #{p.invoiceNumber}
                         </div>
                       </td>
-                      <td>{p.method}</td>
-                      <td className="num">{toFa(p.amount.toLocaleString("fa-IR"))}</td>
-                      <td>
+                      <td data-label="روش پرداخت">{p.method}</td>
+                      <td className="num" data-label="مبلغ (تومان)">{toFa(p.amount.toLocaleString("fa-IR"))}</td>
+                      <td data-label="وضعیت">
                         <span className={`panel-ticket-status panel-ticket-status-${statusToPill(p.status)}`}>
                           {statusLabel(p.status)}
                         </span>
                       </td>
-                      <td>
+                      <td data-label="">
                         {p.status === "paid" && (
                           <button
                             type="button"

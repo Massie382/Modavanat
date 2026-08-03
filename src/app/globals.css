@@ -2115,13 +2115,87 @@ button, a { transition: color 0.12s ease, background-color 0.12s ease, border-co
   white-space: nowrap;
 }
 
-/* Slim mobile-friendly horizontal scroll for the purchases table */
+/* Slim mobile-friendly horizontal scroll for the purchases table.
+   Below 768px, the table converts to a stack of cards — each <tr>
+   becomes a card and each <td> shows its column name (from the
+   data-label attribute) as a tiny inline label. */
 .panel-purchase-wrap {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 }
 .panel-purchase-wrap .panel-purchase-table {
   min-width: 540px;
+}
+
+/* ── Mobile card layout ── */
+@media (max-width: 767px) {
+  /* Hide the wrap's horizontal scroll on mobile — cards fit naturally. */
+  .panel-purchase-wrap {
+    overflow-x: visible;
+  }
+  /* Drop the forced min-width so the table can shrink to card width. */
+  .panel-purchase-wrap .panel-purchase-table {
+    min-width: 0;
+  }
+
+  /* Hide the header row — labels are shown inline via ::before. */
+  .panel-purchase-table thead {
+    display: none;
+  }
+  /* The table itself stays as a table so screen readers still get the
+     row/column semantics; we just restyle each tr/td. */
+  .panel-purchase-table,
+  .panel-purchase-table tbody,
+  .panel-purchase-table tr,
+  .panel-purchase-table td {
+    display: block;
+    width: 100%;
+  }
+  .panel-purchase-table tbody tr {
+    background-color: var(--surface-raised);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: 0.4rem 0.85rem 0.55rem;
+    margin-bottom: 0.65rem;
+  }
+  .panel-purchase-table tbody tr:last-child {
+    margin-bottom: 0;
+  }
+  .panel-purchase-table tbody tr:hover td {
+    background-color: transparent;
+  }
+  .panel-purchase-table tbody td {
+    padding: 0.45rem 0;
+    border-bottom: 1px dashed var(--rule-soft);
+    color: var(--ink);
+    /* Two-column row inside the card: label on the inline-start,
+       value on the inline-end. */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+    text-align: start;
+  }
+  .panel-purchase-table tbody td:last-child {
+    border-bottom: none;
+  }
+  /* The inline label, sourced from the data-label attribute. Empty
+     data-label (action column) renders nothing, keeping the button
+     right-aligned. */
+  .panel-purchase-table tbody td::before {
+    content: attr(data-label);
+    font-size: 11.5px;
+    font-weight: 500;
+    color: var(--ink-muted);
+    letter-spacing: 0.02em;
+    flex-shrink: 0;
+  }
+  /* Numeric cells (date, amount) stay on the inline-end with tabular
+     figures; the ::before label sits on the inline-start. */
+  .panel-purchase-table tbody td.num {
+    font-variant-numeric: tabular-nums;
+    white-space: normal;
+  }
 }
 
 /* Mini toggle switch for settings preferences */
