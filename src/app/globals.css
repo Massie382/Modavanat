@@ -3117,6 +3117,7 @@ button, a { transition: color 0.12s ease, background-color 0.12s ease, border-co
   transition: background-color 0.15s;
   flex-shrink: 0;
   border: none;
+  overflow: hidden;
 }
 .admin-switch.is-on { background-color: var(--admin-accent); }
 .admin-switch::after {
@@ -3128,10 +3129,11 @@ button, a { transition: color 0.12s ease, background-color 0.12s ease, border-co
   height: 16px;
   background-color: #fff;
   border-radius: 50%;
-  transition: transform 0.15s;
+  transition: inset-inline-start 0.18s ease;
 }
-.admin-switch.is-on::after { transform: translateX(16px); }
-[dir="rtl"] .admin-switch.is-on::after { transform: translateX(-16px); }
+.admin-switch.is-on::after {
+  inset-inline-start: 18px;
+}
 
 /* ─── Checkbox ─── */
 .admin-check {
