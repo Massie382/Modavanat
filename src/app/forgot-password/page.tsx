@@ -1,0 +1,452 @@
+"use client";
+
+import { useState, FormEvent, useEffect, useRef } from "react";
+import Link from "next/link";
+import { AuthLayout } from "@/components/auth/AuthLayout";
+import { Field, PasswordInput } from "@/components/auth/AuthFields";
+
+type IdentifierKind = "email" | "phone";
+type Step = "request" | "verify" | "reset" | "done";
+
+// Persian digit → ASCII digit map for normalizing user input.
+const PERSIAN_DIGITS = "۰۱۲۳۴۵۶۷۸۹";
+const toAsciiDigits = (s: string) =>
+  s.replace(/[۰-۹]/g, (d) => String(PERSIAN_DIGITS.indexOf(d)));
+
+// Mask an identifier so we don't leak the full email/phone on the verify screen.
+function maskIdentifier(kind: IdentifierKind, value: string): string {
+  const v = value.trim();
+  if (kind === "email") {
+    const [name, domain] = v.split("@");
+    if (!domain) return v;
+    const visible = name.slice(0, Math.min(2, name.length));
+    return `${visible}${"•".repeat(Math.max(2, name.length - 2))}@${domain}`;
+  }
+  // phone — keep first 3 and last 2 digits
+  const normalized = toAsciiDigits(v).replace(/\D/g, "");
+  if (normalized.length < 6) return normalized;
+  return `${normalized.slice(0, 3)}${"•".repeat(normalized.length - 5)}${normalized.slice(-2)}`;
+}
+
+export default function ForgotPasswordPage() {
+  const [step, setStep] = useState<Step>("request");
+  const [identifierKind, setIdentifierKind] = useState<IdentifierKind>("email");
+  const [identifier, setIdentifier] = useState("");
+  const [code, setCode] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [errors, setErrors] = useState<Record<string, string | null>>({});
+  const [submitting, setSubmitting] = useState(false);
+  const [resendIn, setResendIn] = useState(0);
+  const resendTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Resend cooldown timer — counts down from 60s after a code is "sent".
+  useEffect(() => {
+    if (resendIn <= 0) {
+      if (resendTimer.current) {
+        clearInterval(resendTimer.current);
+        resendTimer.current = null;
+      }
+      return;
+    }
+    if (!resendTimer.current) {
+      resendTimer.current = setInterval(() => {
+        setResendIn((s) => Math.max(0, s - 1));
+      }, 1000);
+    }
+    return () => {
+      if (resendIn <= 0 && resendTimer.current) {
+        clearInterval(resendTimer.current);
+        resendTimer.current = null;
+      }
+    };
+  }, [resendIn]);
+
+  const startResendCooldown = () => setResendIn(60);
+
+  const identifierLabel = identifierKind === "email" ? "ایمیل" : "شماره تلفن";
+  const placeholder =
+    identifierKind === "email"
+      ? "example@modavanat.ir"
+      : "۰۹۱۲۳۴۵۶۷۸۹";
+
+  /* ─── Step 1: Request — validate identifier ─── */
+  const validateRequest = () => {
+    const next: typeof errors = {};
+    const v = identifier.trim();
+    if (!v) {
+      next.identifier = `${identifierLabel} را وارد کنید.`;
+    } else if (identifierKind === "email") {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) {
+        next.identifier = "قالب ایمیل معتبر نیست.";
+      }
+    } else {
+      const normalized = toAsciiDigits(v);
+      if (!/^0?9\d{9}$/.test(normalized)) {
+        next.identifier = "شماره تلفن باید با ۰۹ شروع شود و ۱۱ رقم باشد.";
+      }
+    }
+    return next;
+  };
+
+  const handleRequestSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    const next = validateRequest();
+    setErrors(next);
+    if (Object.keys(next).length > 0) return;
+
+    setSubmitting(true);
+    // Simulated API call — wire to real endpoint when ready.
+    await new Promise((r) => setTimeout(r, 700));
+    setSubmitting(false);
+    setStep("verify");
+    startResendCooldown();
+  };
+
+  /* ─── Step 2: Verify — validate OTP code ─── */
+  const validateVerify = () => {
+    const next: typeof errors = {};
+    const normalized = toAsciiDigits(code).replace(/\D/g, "");
+    if (!normalized) {
+      next.code = "کد تأیید را وارد کنید.";
+    } else if (normalized.length !== 6) {
+      next.code = "کد تأیید باید ۶ رقم باشد.";
+    }
+    return next;
+  };
+
+  const handleVerifySubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    const next = validateVerify();
+    setErrors(next);
+    if (Object.keys(next).length > 0) return;
+
+    setSubmitting(true);
+    // Simulated verify — accept any 6-digit code in this demo.
+    await new Promise((r) => setTimeout(r, 700));
+    setSubmitting(false);
+    setStep("reset");
+  };
+
+  const handleResend = async () => {
+    if (resendIn > 0 || submitting) return;
+    setErrors({});
+    setSubmitting(true);
+    await new Promise((r) => setTimeout(r, 500));
+    setSubmitting(false);
+    startResendCooldown();
+    setCode("");
+  };
+
+  /* ─── Step 3: Reset — validate new password ─── */
+  const validateReset = () => {
+    const next: typeof errors = {};
+    if (!password) {
+      next.password = "رمز عبور جدید را وارد کنید.";
+    } else if (password.length < 8) {
+      next.password = "رمز عبور باید حداقل ۸ نویسه باشد.";
+    }
+    if (!confirm) {
+      next.confirm = "تکرار رمز عبور را وارد کنید.";
+    } else if (confirm !== password) {
+      next.confirm = "تکرار رمز عبور با رمز عبور مطابقت ندارد.";
+    }
+    return next;
+  };
+
+  const handleResetSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    const next = validateReset();
+    setErrors(next);
+    if (Object.keys(next).length > 0) return;
+
+    setSubmitting(true);
+    // Simulated reset — wire to real endpoint when ready.
+    await new Promise((r) => setTimeout(r, 800));
+    setSubmitting(false);
+    setStep("done");
+  };
+
+  /* ─── Render ─── */
+  if (step === "done") {
+    return (
+      <AuthLayout
+        eyebrow="بازیابی رمز عبور"
+        title="رمز عبور تغییر کرد"
+        subtitle="اکنون می‌توانید با رمز عبور جدید وارد حساب خود شوید."
+        footer={
+          <div className="auth-switch">
+            حساب کاربری ندارید؟
+            <Link href="/signup">ثبت‌نام کنید</Link>
+          </div>
+        }
+      >
+        <div className="text-center py-2">
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-[#f4f3f0] mb-4">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2b2b2b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          </div>
+          <p className="text-[14px] text-[#3d3d3d] leading-7">
+            رمز عبور شما با موفقیت بازنشانی شد. برای ادامه وارد حساب خود شوید.
+          </p>
+          <Link href="/signin" className="auth-submit mt-5" style={{ textDecoration: "none" }}>
+            ورود به حساب
+          </Link>
+        </div>
+      </AuthLayout>
+    );
+  }
+
+  if (step === "verify") {
+    return (
+      <AuthLayout
+        eyebrow="بازیابی رمز عبور"
+        title="کد تأیید را وارد کنید"
+        subtitle={`یک کد ۶ رقمی به ${maskIdentifier(identifierKind, identifier)} ارسال شد.`}
+        footer={
+          <div className="auth-switch">
+            شماره/ایمیل اشتباه بود؟
+            <button
+              type="button"
+              onClick={() => {
+                setStep("request");
+                setCode("");
+                setErrors({});
+                setResendIn(0);
+              }}
+              className="link-legal bg-transparent p-0 border-0 cursor-pointer font-inherit"
+            >
+              تغییر شناسه
+            </button>
+          </div>
+        }
+      >
+        <form onSubmit={handleVerifySubmit} noValidate className="space-y-5">
+          <Field
+            label="کد تأیید"
+            htmlFor="code"
+            error={errors.code}
+            hint={errors.code ? undefined : "کد ۶ رقمی ارسال‌شده را وارد کنید."}
+          >
+            <input
+              id="code"
+              type="text"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              value={code}
+              onChange={(e) => {
+                const normalized = toAsciiDigits(e.target.value).replace(/\D/g, "").slice(0, 6);
+                setCode(normalized);
+              }}
+              placeholder="••••••"
+              dir="ltr"
+              className={`auth-input auth-code-input ${errors.code ? "is-error" : ""}`}
+              style={{ textAlign: "center", letterSpacing: "0.5em" }}
+              autoFocus
+            />
+          </Field>
+
+          <button
+            type="submit"
+            className="auth-submit"
+            disabled={submitting}
+          >
+            {submitting ? (
+              <>
+                <span className="inline-block w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                در حال بررسی…
+              </>
+            ) : (
+              "تأیید کد"
+            )}
+          </button>
+
+          <div className="text-center text-[12.5px] text-[#6b6b6b]">
+            {resendIn > 0 ? (
+              <>ارسال مجدد کد تا {resendIn} ثانیه دیگر</>
+            ) : (
+              <button
+                type="button"
+                onClick={handleResend}
+                disabled={submitting}
+                className="link-legal bg-transparent p-0 border-0 cursor-pointer font-inherit disabled:opacity-50"
+              >
+                ارسال مجدد کد
+              </button>
+            )}
+          </div>
+        </form>
+      </AuthLayout>
+    );
+  }
+
+  if (step === "reset") {
+    return (
+      <AuthLayout
+        eyebrow="بازیابی رمز عبور"
+        title="رمز عبور جدید"
+        subtitle="رمز عبور جدید خود را وارد کنید و تکرار آن را تأیید نمایید."
+        footer={
+          <div className="auth-switch">
+            حساب دارید؟
+            <Link href="/signin">ورود به حساب</Link>
+          </div>
+        }
+      >
+        <form onSubmit={handleResetSubmit} noValidate className="space-y-5">
+          <Field
+            label="رمز عبور جدید"
+            htmlFor="password"
+            error={errors.password}
+            hint={errors.password ? undefined : "حداقل ۸ نویسه؛ ترجیحاً ترکیب حروف، عدد و نماد."}
+          >
+            <PasswordInput
+              id="password"
+              value={password}
+              onChange={setPassword}
+              placeholder="حداقل ۸ نویسه"
+              autoComplete="new-password"
+              hasError={!!errors.password}
+              showStrength
+              ariaLabel="رمز عبور جدید"
+            />
+          </Field>
+
+          <Field
+            label="تکرار رمز عبور"
+            htmlFor="confirm"
+            error={errors.confirm}
+          >
+            <PasswordInput
+              id="confirm"
+              value={confirm}
+              onChange={setConfirm}
+              placeholder="رمز عبور را دوباره وارد کنید"
+              autoComplete="new-password"
+              hasError={!!errors.confirm}
+              ariaLabel="تکرار رمز عبور"
+            />
+          </Field>
+
+          <button
+            type="submit"
+            className="auth-submit"
+            disabled={submitting}
+          >
+            {submitting ? (
+              <>
+                <span className="inline-block w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                در حال بازنشانی…
+              </>
+            ) : (
+              "بازنشانی رمز عبور"
+            )}
+          </button>
+        </form>
+      </AuthLayout>
+    );
+  }
+
+  /* ─── Step: request (default) ─── */
+  return (
+    <AuthLayout
+      eyebrow="بازیابی رمز عبور"
+      title="رمز عبور را فراموش کرده‌اید؟"
+      subtitle="ایمیل یا شماره تلفن خود را وارد کنید تا کد بازنشانی برای شما ارسال شود."
+      footer={
+        <div className="auth-switch">
+          حساب دارید؟
+          <Link href="/signin">ورود به حساب</Link>
+        </div>
+      }
+    >
+      <form onSubmit={handleRequestSubmit} noValidate className="space-y-5">
+        {/* Identifier selector */}
+        <div>
+          <span className="auth-label">ایمیل یا شماره تلفن</span>
+          <div className="auth-segmented" role="tablist" aria-label="نوع شناسه">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={identifierKind === "email"}
+              onClick={() => {
+                setIdentifierKind("email");
+                setIdentifier("");
+                setErrors({});
+              }}
+              className={`auth-segment ${identifierKind === "email" ? "is-active" : ""}`}
+            >
+              ایمیل
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={identifierKind === "phone"}
+              onClick={() => {
+                setIdentifierKind("phone");
+                setIdentifier("");
+                setErrors({});
+              }}
+              className={`auth-segment ${identifierKind === "phone" ? "is-active" : ""}`}
+            >
+              شماره تلفن
+            </button>
+          </div>
+        </div>
+
+        {/* Identifier */}
+        <Field
+          label={identifierLabel}
+          htmlFor="identifier"
+          error={errors.identifier}
+        >
+          <input
+            id="identifier"
+            type={identifierKind === "email" ? "email" : "tel"}
+            value={identifier}
+            onChange={(e) => setIdentifier(e.target.value)}
+            placeholder={placeholder}
+            autoComplete={identifierKind === "email" ? "email" : "tel"}
+            inputMode={identifierKind === "phone" ? "tel" : "email"}
+            dir="ltr"
+            className={`auth-input ${errors.identifier ? "is-error" : ""}`}
+            style={{ textAlign: "right" }}
+            autoFocus
+          />
+        </Field>
+
+        {/* Submit */}
+        <button
+          type="submit"
+          className="auth-submit"
+          disabled={submitting}
+        >
+          {submitting ? (
+            <>
+              <span className="inline-block w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+              در حال ارسال کد…
+            </>
+          ) : (
+            "ارسال کد بازنشانی"
+          )}
+        </button>
+
+        {/* Divider + back to signin */}
+        <div className="auth-divider">یا</div>
+
+        <Link
+          href="/signin"
+          className="auth-submit"
+          style={{
+            backgroundColor: "transparent",
+            color: "var(--ink)",
+            borderColor: "var(--rule)",
+          }}
+        >
+          بازگشت به ورود
+        </Link>
+      </form>
+    </AuthLayout>
+  );
+}
