@@ -121,6 +121,14 @@ export function AdminShell({ children }: { children: ReactNode }) {
           </div>
         </aside>
 
+        {sidebarOpen && (
+          <div
+            className="admin-sidebar-backdrop"
+            onClick={() => setSidebarOpen(false)}
+            aria-hidden="true"
+          />
+        )}
+
         <header className="admin-topbar">
           <button
             className="admin-topbar-hamburger"
