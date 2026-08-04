@@ -17,7 +17,7 @@ export default function PagesManager() {
         actions={<button className="admin-btn admin-btn-primary">+ صفحه جدید</button>}
       />
 
-      <div style={{ display: "grid", gridTemplateColumns: "260px 1fr", gap: "1rem" }}>
+      <div className="admin-split">
         <Card title="صفحات" tight>
           {defaultStaticPages.map((p) => (
             <button

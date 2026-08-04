@@ -91,7 +91,7 @@ export default function AppearanceSettingsPage() {
 
 function TokenGrid({ tokens }: { tokens: ThemeToken[] }) {
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem" }}>
+    <div className="admin-grid-2" style={{ gap: "0.5rem" }}>
       {tokens.map((t) => (
         <div key={t.key} className="admin-row" style={{ justifyContent: "space-between" }}>
           <div>

@@ -3348,8 +3348,15 @@ button, a { transition: color 0.12s ease, background-color 0.12s ease, border-co
 .admin-grid-2 > * { min-width: 0; }
 .admin-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
 .admin-grid-3 > * { min-width: 0; }
+/* Master-detail split: fixed sidebar + fluid content.
+   Collapses to single column on tablets/phones. */
+.admin-split { display: grid; grid-template-columns: 280px 1fr; gap: 1rem; align-items: start; }
+.admin-split > * { min-width: 0; }
+.admin-split-side { position: sticky; top: 0.5rem; max-height: calc(100vh - 1rem); overflow: auto; }
 @media (max-width: 880px) {
   .admin-grid-2, .admin-grid-3 { grid-template-columns: 1fr; }
+  .admin-split { grid-template-columns: 1fr; gap: 0.75rem; }
+  .admin-split-side { position: static; max-height: none; }
 }
 .admin-muted { color: var(--admin-ink-muted); font-size: 12px; }
 .admin-mono { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 11.5px; }

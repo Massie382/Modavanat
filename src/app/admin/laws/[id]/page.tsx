@@ -201,7 +201,7 @@ function ArticlesTab({ law }: { law: NonNullable<ReturnType<typeof getLawByIdFor
   const article = law.articles.find((a) => a.id === selectedId) || law.articles[0];
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "280px 1fr", gap: "1rem" }}>
+    <div className="admin-split">
       {/* Article list */}
       <Card title={`مواد (${faNum(law.articles.length)})`} tight>
         <div style={{ maxHeight: 600, overflowY: "auto" }}>
