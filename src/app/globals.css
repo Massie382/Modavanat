@@ -2510,7 +2510,7 @@ button, a { transition: color 0.12s ease, background-color 0.12s ease, border-co
   scrollbar-width: thin;
   scrollbar-color: #2f3540 transparent;
 }
-.admin-sidebar { grid-area: sidebar; min-width: 0; }
+.admin-sidebar { grid-area: sidebar; min-width: 0; display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
 .admin-topbar { grid-area: topbar; min-width: 0; }
 .admin-main {
   grid-area: main;
@@ -2568,16 +2568,10 @@ button, a { transition: color 0.12s ease, background-color 0.12s ease, border-co
   to { opacity: 1; }
 }
 
-/* ─── Sidebar ─── */
+/* ─── Sidebar ─── */ 
 .admin-sidebar {
   background-color: var(--admin-surface-sunken);
   border-inline-end: 1px solid var(--admin-border);
-  display: flex;
-  flex-direction: column;
-  position: sticky;
-  top: 0;
-  height: 100vh;
-  overflow-y: auto;
 }
 .admin-brand {
   display: flex;
@@ -2883,8 +2877,8 @@ button, a { transition: color 0.12s ease, background-color 0.12s ease, border-co
   background-color: var(--admin-surface-raised);
   color: var(--admin-ink);
   border: 1px solid var(--admin-border);
-  border-radius: 6px;
-  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  padding: 0.55rem 1.1rem;
   font-size: 12.5px;
   font-weight: 500;
   line-height: 1.4;
@@ -2896,51 +2890,55 @@ button, a { transition: color 0.12s ease, background-color 0.12s ease, border-co
   -webkit-tap-highlight-color: transparent;
 }
 .admin-btn:hover {
-  background-color: #252a35;
-  border-color: #3a4150;
+  background-color: #2a3140;
+  border-color: #3f4757;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
-.admin-btn:active { transform: translateY(1px); }
+.admin-btn:active { transform: translateY(1px); box-shadow: none; }
 .admin-btn:focus-visible {
   outline: none;
   box-shadow: 0 0 0 2px var(--admin-bg), 0 0 0 4px var(--admin-accent);
 }
 .admin-btn-primary {
-  background-color: var(--admin-accent);
-  color: #1a1a1a;
-  border-color: var(--admin-accent);
+  background-image: linear-gradient(180deg, #e3b886 0%, #d4a574 55%, #c2955f 100%);
+  color: #1a1208;
+  border-color: #b88a52;
   font-weight: 600;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  box-shadow: 0 2px 4px rgba(212, 165, 116, 0.25), inset 0 1px 0 rgba(255, 240, 220, 0.4);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 .admin-btn-primary:hover {
-  background-color: #e0b88a;
-  border-color: #e0b88a;
-  box-shadow: 0 2px 6px rgba(212, 165, 116, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  background-image: linear-gradient(180deg, #eecaa0 0%, #ddb583 55%, #cb9f68 100%);
+  border-color: #d4a574;
+  box-shadow: 0 3px 10px rgba(212, 165, 116, 0.4), inset 0 1px 0 rgba(255, 240, 220, 0.5);
 }
 .admin-btn-primary:active {
-  background-color: #c2955f;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), inset 0 1px 2px rgba(0, 0, 0, 0.15);
+  background-image: linear-gradient(180deg, #c2955f 0%, #b88a52 100%);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 .admin-btn-secondary {
-  background-color: var(--admin-accent-soft);
+  background-color: rgba(212, 165, 116, 0.12);
   color: var(--admin-accent);
-  border-color: #4a3a25;
+  border-color: rgba(212, 165, 116, 0.35);
 }
 .admin-btn-secondary:hover {
-  background-color: #4a3a25;
+  background-color: rgba(212, 165, 116, 0.2);
   border-color: var(--admin-accent);
-  color: #e8c89a;
+  color: #ecc89a;
+  box-shadow: 0 1px 3px rgba(212, 165, 116, 0.18);
 }
 .admin-btn-danger {
   background-color: transparent;
   color: var(--admin-danger);
-  border-color: var(--admin-danger);
+  border-color: rgba(184, 92, 92, 0.6);
 }
 .admin-btn-danger:hover {
   background-color: var(--admin-danger);
   color: #fff;
   border-color: var(--admin-danger);
+  box-shadow: 0 2px 6px rgba(184, 92, 92, 0.3);
 }
-.admin-btn-danger:active { background-color: #a04d4d; }
+.admin-btn-danger:active { background-color: #a04d4d; box-shadow: none; }
 .admin-btn-ghost {
   background-color: transparent;
   border-color: transparent;
@@ -2949,13 +2947,18 @@ button, a { transition: color 0.12s ease, background-color 0.12s ease, border-co
 .admin-btn-ghost:hover {
   background-color: var(--admin-surface-raised);
   color: var(--admin-ink);
+  box-shadow: none;
 }
-.admin-btn-sm { padding: 0.3rem 0.7rem; font-size: 11.5px; border-radius: 5px; }
-.admin-btn-lg { padding: 0.65rem 1.25rem; font-size: 13.5px; }
-.admin-btn-icon { padding: 0.5rem; width: 34px; height: 34px; }
+.admin-btn-sm { padding: 0.35rem 0.75rem; font-size: 11.5px; border-radius: 6px; }
+.admin-btn-lg { padding: 0.7rem 1.4rem; font-size: 13.5px; }
+.admin-btn-icon { padding: 0.55rem; width: 36px; height: 36px; }
 .admin-btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; box-shadow: none; }
-.admin-btn:disabled:hover { background-color: var(--admin-surface-raised); border-color: var(--admin-border); }
-.admin-btn-primary:disabled:hover { background-color: var(--admin-accent); border-color: var(--admin-accent); box-shadow: none; }
+.admin-btn:disabled:hover { background-color: var(--admin-surface-raised); border-color: var(--admin-border); box-shadow: none; }
+.admin-btn-primary:disabled:hover {
+  background-image: linear-gradient(180deg, #e3b886 0%, #d4a574 55%, #c2955f 100%);
+  border-color: #b88a52;
+  box-shadow: 0 2px 4px rgba(212, 165, 116, 0.25), inset 0 1px 0 rgba(255, 240, 220, 0.4);
+}
 
 /* ─── Badges & pills ─── */
 .admin-badge {
