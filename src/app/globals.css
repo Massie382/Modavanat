@@ -2478,6 +2478,38 @@ button, a { transition: color 0.12s ease, background-color 0.12s ease, border-co
   color: var(--admin-ink);
   overflow-x: hidden;
 }
+
+/* Dark scrollbars for admin surfaces — replaces the OS-default white ribbon */
+.admin-shell ::-webkit-scrollbar,
+.admin-shell *::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+.admin-shell ::-webkit-scrollbar-track,
+.admin-shell *::-webkit-scrollbar-track {
+  background: transparent;
+}
+.admin-shell ::-webkit-scrollbar-thumb,
+.admin-shell *::-webkit-scrollbar-thumb {
+  background-color: #2f3540;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+.admin-shell ::-webkit-scrollbar-thumb:hover,
+.admin-shell *::-webkit-scrollbar-thumb:hover {
+  background-color: #3d4452;
+  background-clip: content-box;
+}
+.admin-shell ::-webkit-scrollbar-corner,
+.admin-shell *::-webkit-scrollbar-corner {
+  background: transparent;
+}
+/* Firefox */
+.admin-shell, .admin-shell * {
+  scrollbar-width: thin;
+  scrollbar-color: #2f3540 transparent;
+}
 .admin-sidebar { grid-area: sidebar; min-width: 0; }
 .admin-topbar { grid-area: topbar; min-width: 0; }
 .admin-main {
@@ -2523,7 +2555,8 @@ button, a { transition: color 0.12s ease, background-color 0.12s ease, border-co
     backdrop-filter: blur(2px);
     animation: admin-fade-in 0.18s ease-out;
   }
-  .admin-main { padding: 1rem; }
+  .admin-main { padding: 1.25rem 1rem 3rem; }
+  .admin-topbar { padding: 0 0.75rem; }
 }
 
 @keyframes admin-slide-in {
@@ -2703,6 +2736,7 @@ button, a { transition: color 0.12s ease, background-color 0.12s ease, border-co
   gap: 0.4rem;
   font-size: 12.5px;
   color: var(--admin-ink-muted);
+  min-width: 0;
 }
 .admin-breadcrumb a, .admin-breadcrumb button {
   color: var(--admin-ink-soft);
@@ -2716,6 +2750,11 @@ button, a { transition: color 0.12s ease, background-color 0.12s ease, border-co
 }
 .admin-breadcrumb a:hover, .admin-breadcrumb button:hover { color: var(--admin-ink); }
 .admin-breadcrumb .is-current { color: var(--admin-ink); font-weight: 500; }
+@media (max-width: 540px) {
+  /* On phones the page title already tells the user where they are;
+     hide the breadcrumb so it can't force horizontal overflow. */
+  .admin-breadcrumb { display: none; }
+}
 
 .admin-topbar-spacer { flex: 1; }
 .admin-topbar-actions { display: flex; align-items: center; gap: 0.5rem; }
@@ -2786,7 +2825,7 @@ button, a { transition: color 0.12s ease, background-color 0.12s ease, border-co
 }
 .admin-card-title { font-size: 14px; font-weight: 600; color: var(--admin-ink); margin: 0; }
 .admin-card-desc { font-size: 12px; color: var(--admin-ink-muted); margin: 0.125rem 0 0; }
-.admin-card-body { padding: 1rem; }
+.admin-card-body { padding: 1rem; overflow-x: auto; }
 .admin-card-body-tight { padding: 0.5rem 0; }
 .admin-card-foot {
   padding: 0.75rem 1rem;
