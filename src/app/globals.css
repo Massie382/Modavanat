@@ -3130,8 +3130,8 @@ button, a { transition: color 0.12s ease, background-color 0.12s ease, border-co
   border-radius: 50%;
   transition: transform 0.15s;
 }
-.admin-switch.is-on::after { transform: translateX(-16px); }
-[dir="rtl"] .admin-switch.is-on::after { transform: translateX(16px); }
+.admin-switch.is-on::after { transform: translateX(16px); }
+[dir="rtl"] .admin-switch.is-on::after { transform: translateX(-16px); }
 
 /* ─── Checkbox ─── */
 .admin-check {
