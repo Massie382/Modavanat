@@ -2510,7 +2510,19 @@ button, a { transition: color 0.12s ease, background-color 0.12s ease, border-co
   scrollbar-width: thin;
   scrollbar-color: #2f3540 transparent;
 }
-.admin-sidebar { grid-area: sidebar; min-width: 0; display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+.admin-sidebar {
+  grid-area: sidebar;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  overscroll-behavior: contain;
+}
 .admin-topbar { grid-area: topbar; min-width: 0; }
 .admin-main {
   grid-area: main;
@@ -2518,6 +2530,9 @@ button, a { transition: color 0.12s ease, background-color 0.12s ease, border-co
   overflow-x: hidden;
   padding: 1.5rem 1.75rem 3rem;
   min-width: 0;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  overscroll-behavior: contain;
 }
 
 /* Mobile backdrop for sidebar overlay */
@@ -2545,6 +2560,9 @@ button, a { transition: color 0.12s ease, background-color 0.12s ease, border-co
     max-width: 86vw;
     box-shadow: 0 0 40px rgba(0,0,0,0.5);
     animation: admin-slide-in 0.18s ease-out;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+    overscroll-behavior: contain;
   }
   .admin-sidebar-backdrop {
     display: block;
@@ -2819,7 +2837,12 @@ button, a { transition: color 0.12s ease, background-color 0.12s ease, border-co
 }
 .admin-card-title { font-size: 14px; font-weight: 600; color: var(--admin-ink); margin: 0; }
 .admin-card-desc { font-size: 12px; color: var(--admin-ink-muted); margin: 0.125rem 0 0; }
-.admin-card-body { padding: 1rem; overflow-x: auto; }
+.admin-card-body {
+  padding: 1rem;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x;
+}
 .admin-card-body-tight { padding: 0.5rem 0; }
 .admin-card-foot {
   padding: 0.75rem 1rem;
@@ -3352,7 +3375,15 @@ button, a { transition: color 0.12s ease, background-color 0.12s ease, border-co
    Collapses to single column on tablets/phones. */
 .admin-split { display: grid; grid-template-columns: 280px 1fr; gap: 1rem; align-items: start; }
 .admin-split > * { min-width: 0; }
-.admin-split-side { position: sticky; top: 0.5rem; max-height: calc(100vh - 1rem); overflow: auto; }
+.admin-split-side {
+  position: sticky;
+  top: 0.5rem;
+  max-height: calc(100vh - 1rem);
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  overscroll-behavior: contain;
+}
 @media (max-width: 880px) {
   .admin-grid-2, .admin-grid-3 { grid-template-columns: 1fr; }
   .admin-split { grid-template-columns: 1fr; gap: 0.75rem; }
