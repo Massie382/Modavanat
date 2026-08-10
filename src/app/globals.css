@@ -2818,6 +2818,34 @@ button, a { transition: color 0.12s ease, background-color 0.12s ease, border-co
 }
 .admin-page-title { font-size: 20px; font-weight: 600; color: var(--admin-ink); margin: 0 0 0.25rem; }
 .admin-page-subtitle { font-size: 13px; color: var(--admin-ink-muted); margin: 0; }
+@media (max-width: 880px) {
+  /* Keep title + actions on a single line on phones.
+     Title truncates if too long; actions never wrap. */
+  .admin-page-head {
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 0.625rem;
+  }
+  .admin-page-head > div:first-child {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  .admin-page-title {
+    font-size: 16px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .admin-page-subtitle {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .admin-page-head .admin-wrap {
+    flex: 0 0 auto;
+    flex-wrap: nowrap;
+  }
+}
 
 /* ─── Cards ─── */
 .admin-card {
