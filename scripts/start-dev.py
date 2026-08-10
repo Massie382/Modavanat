@@ -85,7 +85,9 @@ def start_server():
                 os.kill(old_pid, signal.SIGTERM)
                 time.sleep(2)
 
-    print("Starting Next.js dev server as daemon...", flush=True)
+    mode = os.environ.get("SERVER_MODE", "dev")
+    label = "production server" if mode == "prod" else "dev server"
+    print(f"Starting Next.js {label} as daemon...", flush=True)
 
     # Open log file for the daemon's stdout/stderr
     log_fd = os.open(str(LOG_FILE), os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o644)
@@ -126,8 +128,12 @@ def start_server():
     if log_fd > 2:
         os.close(log_fd)
 
-    # Exec next dev (replaces this process)
-    os.execvp("npx", ["npx", "next", "dev", "-p", str(PORT)])
+    # Exec next dev or production server (replaces this process)
+    mode = os.environ.get("SERVER_MODE", "dev")
+    if mode == "prod":
+        os.execvp("node", ["node", ".next/standalone/server.js"])
+    else:
+        os.execvp("npx", ["npx", "next", "dev", "-p", str(PORT)])
     # Should never reach here
     os._exit(1)
 
