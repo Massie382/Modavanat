@@ -555,7 +555,8 @@ a.link-legal:hover {
 
 /* «» Edge indicators for the sub-tab bar (law detail page).
    Visible only when more tabs are hidden beyond that edge.
-   Desktop: hidden entirely (tabs fit). Mobile: fade in on overflow. */
+   Desktop: hidden entirely (tabs fit). Mobile: fade in on overflow.
+   Blurred backdrop + bold + periodic wiggle to demand attention. */
 .sub-tab-bar-inner { position: relative; }
 .sub-tab-edge {
   position: absolute;
@@ -564,28 +565,57 @@ a.link-legal:hover {
   display: flex;
   align-items: center;
   z-index: 5;
-  font-size: 13px;
+  font-size: 14px;
+  font-weight: 700;
   line-height: 1;
-  color: rgba(255, 255, 255, 0.75);
-  background: linear-gradient(to var(--edge-dir, left), var(--charcoal) 35%, transparent);
+  color: rgba(255, 255, 255, 0.92);
+  background: linear-gradient(to var(--edge-dir, left), rgba(43, 43, 43, 0.72) 30%, transparent);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   padding: 0 0.5rem;
   pointer-events: none;
   opacity: 0;
   transition: opacity 0.18s ease;
   user-select: none;
+  will-change: transform, opacity;
 }
-.sub-tab-edge.is-on { opacity: 1; }
+.sub-tab-edge.is-on {
+  opacity: 1;
+  animation: subtab-edge-wiggle 3s ease-in-out infinite;
+}
 .sub-tab-edge-start {
   inset-inline-start: 0;
   --edge-dir: left;  /* solid on outer (right), fades toward tabs (left) */
+  animation-name: subtab-edge-wiggle-start;
 }
 .sub-tab-edge-end {
   inset-inline-end: 0;
   --edge-dir: right; /* solid on outer (left), fades toward tabs (right) */
+  animation-name: subtab-edge-wiggle-end;
+}
+/* Nudge outward (toward hidden content) twice per cycle, then rest.
+   Start edge = right side in RTL → nudge translateX(+). */
+@keyframes subtab-edge-wiggle-start {
+  0%, 55%, 100% { transform: translateX(0); }
+  65%           { transform: translateX(4px); }
+  75%           { transform: translateX(0); }
+  85%           { transform: translateX(3px); }
+  93%           { transform: translateX(0); }
+}
+/* End edge = left side in RTL → nudge translateX(−). */
+@keyframes subtab-edge-wiggle-end {
+  0%, 55%, 100% { transform: translateX(0); }
+  65%           { transform: translateX(-4px); }
+  75%           { transform: translateX(0); }
+  85%           { transform: translateX(-3px); }
+  93%           { transform: translateX(0); }
 }
 @media (min-width: 768px) {
   /* On desktop the tabs fit on one line — hide the indicators entirely */
   .sub-tab-edge { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sub-tab-edge.is-on { animation: none; }
 }
 
 /* TOC tree */
@@ -3156,36 +3186,64 @@ button, a { transition: color 0.12s ease, background-color 0.12s ease, border-co
 }
 .admin-tabs::-webkit-scrollbar { display: none; }
 /* Tiny « » edge indicators — visible only when more tabs exist beyond that edge.
-   In RTL: start = right edge, end = left edge. */
+   In RTL: start = right edge, end = left edge.
+   Blurred backdrop + bold + periodic wiggle to demand attention. */
 .admin-tabs-edge {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
   z-index: 5;
-  font-size: 12px;
+  font-size: 13px;
+  font-weight: 700;
   line-height: 1;
   color: var(--admin-accent);
-  background: linear-gradient(to var(--edge-dir, left), var(--admin-surface) 30%, transparent);
+  background: linear-gradient(to var(--edge-dir, left), rgba(23, 26, 33, 0.72) 30%, transparent);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   padding: 0.6rem 0.35rem;
   pointer-events: none;
   opacity: 0;
   transition: opacity 0.18s ease;
   user-select: none;
+  will-change: transform, opacity;
 }
-.admin-tabs-edge.is-on { opacity: 0.85; }
+.admin-tabs-edge.is-on {
+  opacity: 0.9;
+  animation: admin-edge-wiggle 3s ease-in-out infinite;
+}
 /* RTL: start edge sits at the right (where the scroll begins) */
 .admin-tabs-edge-start {
   inset-inline-start: 0;
   --edge-dir: left;  /* gradient fades toward tabs (left), solid on outer (right) */
+  animation-name: admin-edge-wiggle-start;
 }
 .admin-tabs-edge-end {
   inset-inline-end: 0;
   --edge-dir: right; /* gradient fades toward tabs (right), solid on outer (left) */
+  animation-name: admin-edge-wiggle-end;
+}
+/* Nudge outward (toward hidden content) twice per cycle, then rest.
+   Start edge = right side in RTL → nudge translateX(+). */
+@keyframes admin-edge-wiggle-start {
+  0%, 55%, 100% { transform: translateY(-50%) translateX(0); }
+  65%           { transform: translateY(-50%) translateX(4px); }
+  75%           { transform: translateY(-50%) translateX(0); }
+  85%           { transform: translateY(-50%) translateX(3px); }
+  93%           { transform: translateY(-50%) translateX(0); }
+}
+/* End edge = left side in RTL → nudge translateX(−). */
+@keyframes admin-edge-wiggle-end {
+  0%, 55%, 100% { transform: translateY(-50%) translateX(0); }
+  65%           { transform: translateY(-50%) translateX(-4px); }
+  75%           { transform: translateY(-50%) translateX(0); }
+  85%           { transform: translateY(-50%) translateX(-3px); }
+  93%           { transform: translateY(-50%) translateX(0); }
 }
 @media (min-width: 881px) {
-  /* On desktop the tabs usually fit, but keep indicators just in case.
-     They only appear when content actually overflows. */
-  .admin-tabs-edge { font-size: 11px; padding: 0.55rem 0.3rem; }
+  .admin-tabs-edge { font-size: 12px; padding: 0.55rem 0.3rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .admin-tabs-edge.is-on { animation: none; }
 }
 .admin-tab {
   background: transparent;
