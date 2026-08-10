@@ -3103,12 +3103,52 @@ button, a { transition: color 0.12s ease, background-color 0.12s ease, border-co
 }
 
 /* ─── Tabs (in-page) ─── */
+.admin-tabs-wrap {
+  position: relative;
+  margin-bottom: 1.25rem;
+}
 .admin-tabs {
   display: flex;
   gap: 2px;
   border-bottom: 1px solid var(--admin-border);
-  margin-bottom: 1.25rem;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+.admin-tabs::-webkit-scrollbar { display: none; }
+/* Tiny « » edge indicators — visible only when more tabs exist beyond that edge.
+   In RTL: start = right edge, end = left edge. */
+.admin-tabs-edge {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 5;
+  font-size: 12px;
+  line-height: 1;
+  color: var(--admin-accent);
+  background: linear-gradient(to var(--edge-dir, left), var(--admin-surface) 30%, transparent);
+  padding: 0.6rem 0.35rem;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.18s ease;
+  user-select: none;
+}
+.admin-tabs-edge.is-on { opacity: 0.85; }
+/* RTL: start edge sits at the right (where the scroll begins) */
+.admin-tabs-edge-start {
+  inset-inline-start: 0;
+  --edge-dir: left;  /* gradient fades toward tabs (left), solid on outer (right) */
+}
+.admin-tabs-edge-end {
+  inset-inline-end: 0;
+  --edge-dir: right; /* gradient fades toward tabs (right), solid on outer (left) */
+}
+@media (min-width: 881px) {
+  /* On desktop the tabs usually fit, but keep indicators just in case.
+     They only appear when content actually overflows. */
+  .admin-tabs-edge { font-size: 11px; padding: 0.55rem 0.3rem; }
 }
 .admin-tab {
   background: transparent;

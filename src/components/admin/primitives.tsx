@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode } from "react";
+import { type ReactNode, useRef, useState, useEffect } from "react";
 
 /* Shared small building blocks used across all admin pages. */
 
@@ -50,14 +50,52 @@ export function Tabs({ tabs, active, onChange }: {
   active: string;
   onChange: (id: string) => void;
 }) {
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const [canStart, setCanStart] = useState(false); // more content toward start (right in RTL)
+  const [canEnd, setCanEnd] = useState(false);     // more content toward end (left in RTL)
+
+  useEffect(() => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    const update = () => {
+      // In RTL, scrollLeft is 0 at the start (right edge) and goes negative
+      // toward the end (left edge). Some browsers report positive values, so
+      // normalize using scrollWidth vs clientWidth + scrollLeft.
+      const maxScroll = el.scrollWidth - el.clientWidth;
+      if (maxScroll <= 1) {
+        setCanStart(false);
+        setCanEnd(false);
+        return;
+      }
+      const sl = el.scrollLeft;
+      // distance from start (right edge in RTL). Use abs so it works in both dirs.
+      const fromStart = Math.abs(sl);
+      const fromEnd = Math.abs(maxScroll) - fromStart;
+      setCanStart(fromStart > 4);
+      setCanEnd(fromEnd > 4);
+    };
+    update();
+    el.addEventListener("scroll", update, { passive: true });
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => {
+      el.removeEventListener("scroll", update);
+      ro.disconnect();
+    };
+  }, [tabs]);
+
   return (
-    <div className="admin-tabs">
-      {tabs.map((t) => (
-        <button key={t.id} className={`admin-tab ${active === t.id ? "is-active" : ""}`} onClick={() => onChange(t.id)}>
-          {t.label}
-          {t.count !== undefined && <span className="admin-tab-count">{t.count}</span>}
-        </button>
-      ))}
+    <div className="admin-tabs-wrap">
+      <span className={`admin-tabs-edge admin-tabs-edge-start ${canStart ? "is-on" : ""}`} aria-hidden="true">«</span>
+      <div className="admin-tabs" ref={scrollerRef}>
+        {tabs.map((t) => (
+          <button key={t.id} className={`admin-tab ${active === t.id ? "is-active" : ""}`} onClick={() => onChange(t.id)}>
+            {t.label}
+            {t.count !== undefined && <span className="admin-tab-count">{t.count}</span>}
+          </button>
+        ))}
+      </div>
+      <span className={`admin-tabs-edge admin-tabs-edge-end ${canEnd ? "is-on" : ""}`} aria-hidden="true">»</span>
     </div>
   );
 }
