@@ -84,6 +84,9 @@ export function LawDetailView({ law, onBack, onOpenLawById }: LawDetailViewProps
   // the article header.
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const subTabBarRef = useRef<HTMLDivElement | null>(null);
+  const subTabListRef = useRef<HTMLUListElement | null>(null);
+  const [tabEdgeStart, setTabEdgeStart] = useState(false); // « visible (toward start/right in RTL)
+  const [tabEdgeEnd, setTabEdgeEnd] = useState(false);     // » visible (toward end/left in RTL)
 
   useEffect(() => {
     const sentinel = sentinelRef.current;
@@ -108,6 +111,36 @@ export function LawDetailView({ law, onBack, onOpenLawById }: LawDetailViewProps
     );
     io.observe(sentinel);
     return () => io.disconnect();
+  }, []);
+
+  // Track horizontal scroll on the sub-tab <ul> to show «» edge indicators
+  // when there are hidden tabs beyond either edge. Only relevant on mobile
+  // where the bar scrolls horizontally.
+  useEffect(() => {
+    const el = subTabListRef.current;
+    if (!el) return;
+    const update = () => {
+      const maxScroll = el.scrollWidth - el.clientWidth;
+      if (maxScroll <= 1) {
+        setTabEdgeStart(false);
+        setTabEdgeEnd(false);
+        return;
+      }
+      // In RTL, scrollLeft is 0 at the start (right edge) and goes negative
+      // toward the end (left edge). Normalize with abs so it works either way.
+      const fromStart = Math.abs(el.scrollLeft);
+      const fromEnd = Math.abs(maxScroll) - fromStart;
+      setTabEdgeStart(fromStart > 4);
+      setTabEdgeEnd(fromEnd > 4);
+    };
+    update();
+    el.addEventListener("scroll", update, { passive: true });
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => {
+      el.removeEventListener("scroll", update);
+      ro.disconnect();
+    };
   }, []);
 
   return (
@@ -237,8 +270,12 @@ export function LawDetailView({ law, onBack, onOpenLawById }: LawDetailViewProps
 
       {/* Sub-tab bar */}
       <div ref={subTabBarRef} className="sub-tab-bar">
-        <div className="container-legal">
-          <ul>
+        <div className="container-legal sub-tab-bar-inner">
+          <span
+            className={`sub-tab-edge sub-tab-edge-start ${tabEdgeStart ? "is-on" : ""}`}
+            aria-hidden="true"
+          >«</span>
+          <ul ref={subTabListRef}>
             {TABS.map((tab) => (
               <li key={tab.id}>
                 <button
@@ -257,6 +294,10 @@ export function LawDetailView({ law, onBack, onOpenLawById }: LawDetailViewProps
               </li>
             ))}
           </ul>
+          <span
+            className={`sub-tab-edge sub-tab-edge-end ${tabEdgeEnd ? "is-on" : ""}`}
+            aria-hidden="true"
+          >»</span>
         </div>
       </div>
 

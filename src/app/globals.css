@@ -547,8 +547,45 @@ a.link-legal:hover {
     scrollbar-width: none;
     flex-wrap: nowrap;
     -webkit-overflow-scrolling: touch;
+    touch-action: pan-x;
+    overscroll-behavior: contain;
   }
   .sub-tab-bar ul::-webkit-scrollbar { display: none; }
+}
+
+/* «» Edge indicators for the sub-tab bar (law detail page).
+   Visible only when more tabs are hidden beyond that edge.
+   Desktop: hidden entirely (tabs fit). Mobile: fade in on overflow. */
+.sub-tab-bar-inner { position: relative; }
+.sub-tab-edge {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  z-index: 5;
+  font-size: 13px;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.75);
+  background: linear-gradient(to var(--edge-dir, left), var(--charcoal) 35%, transparent);
+  padding: 0 0.5rem;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.18s ease;
+  user-select: none;
+}
+.sub-tab-edge.is-on { opacity: 1; }
+.sub-tab-edge-start {
+  inset-inline-start: 0;
+  --edge-dir: left;  /* solid on outer (right), fades toward tabs (left) */
+}
+.sub-tab-edge-end {
+  inset-inline-end: 0;
+  --edge-dir: right; /* solid on outer (left), fades toward tabs (right) */
+}
+@media (min-width: 768px) {
+  /* On desktop the tabs fit on one line — hide the indicators entirely */
+  .sub-tab-edge { display: none; }
 }
 
 /* TOC tree */
