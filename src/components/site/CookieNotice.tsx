@@ -11,7 +11,13 @@ import { useEffect, useState } from "react";
  * after the transition ends.
  *
  * Design notes:
- * - Dark, frosted-glass card to match the site's dark chrome (header/footer).
+ * - Card matches the site's editorial / legislation.gov.uk vocabulary —
+ *   white surface, hairline --rule border, charcoal accent strip, flat
+ *   --charcoal button (mirrors .btn-legal).
+ * - Entry: 0.75s gentle ease-out slide + fade.
+ * - Exit: same 0.75s transition — feels deliberate, not abrupt. The
+ *   component waits EXIT_MS before unmounting so the slide-down can
+ *   complete fully.
  * - Self-contained CSS lives in globals.css under "Cookie notice".
  * - Respects prefers-reduced-motion (handled in CSS).
  * - The banner is rendered globally (including /admin) — the localStorage
@@ -19,7 +25,7 @@ import { useEffect, useState } from "react";
  */
 
 const STORAGE_KEY = "modavanat.cookie-consent.v1";
-const EXIT_MS = 450; // keep in sync with the CSS transition duration
+const EXIT_MS = 780; // keep in sync with the CSS exit transition (0.75s) + small buffer
 
 type Phase = "idle" | "shown" | "leaving";
 

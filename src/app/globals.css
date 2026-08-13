@@ -3581,26 +3581,33 @@ button, a { transition: color 0.12s ease, background-color 0.12s ease, border-co
 
 /* ===== Cookie notice =====
    Slides up from the bottom of the viewport on a visitor's first
-   page-view, slides back down smoothly when the user clicks
+   page-view, slides back down gracefully when the user clicks
    «متوجه شدم». Choice is persisted by the CookieNotice client
    component (localStorage key: modavanat.cookie-consent.v1).
-   - Card has a frosted-glass backdrop to match the site's dark chrome.
+
+   Style: matches the site's editorial / legislation.gov.uk vocabulary —
+   pure-white surface, hairline --rule border, --charcoal flat button
+   with 2px radius (matches .btn-legal), no hover transforms / shadows.
    - Inset-inline / logical properties used so RTL layout is correct.
+   - Entry: gentle slide + fade over 0.55s with a soft overshoot.
+   - Exit: slow, refined ease-out over 0.75s — feels deliberate, not abrupt.
    - Reduced-motion users get an instant fade instead of a slide. */
 .cookie-notice {
   position: fixed;
   inset-inline: 0;
   bottom: 0;
   z-index: 80;
-  padding: 0.75rem 1rem 1.1rem;
+  padding: 0 1.25rem 1.5rem;
   /* Initial state: pushed below the viewport, fully transparent,
      and non-interactive. `is-shown` flips both. */
-  transform: translateY(120%);
+  transform: translateY(110%);
   opacity: 0;
   pointer-events: none;
+  /* Single shared transition for both directions. Exit feels slower
+     because of the gentler easing function — see below. */
   transition:
-    transform 0.42s cubic-bezier(0.22, 1, 0.36, 1),
-    opacity 0.3s ease;
+    transform 0.75s cubic-bezier(0.16, 0.84, 0.28, 1),
+    opacity 0.55s ease;
   will-change: transform, opacity;
 }
 .cookie-notice.is-shown {
@@ -3610,98 +3617,80 @@ button, a { transition: color 0.12s ease, background-color 0.12s ease, border-co
 }
 
 .cookie-notice-inner {
-  max-width: 960px;
+  max-width: 1240px;
   margin: 0 auto;
   display: flex;
   align-items: center;
-  gap: 1rem;
-  padding: 0.95rem 1.15rem;
-  border-radius: 14px;
-  color: #e8e8e8;
-  background: linear-gradient(
-    to bottom,
-    rgba(38, 38, 38, 0.94),
-    rgba(24, 24, 24, 0.94)
-  );
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow:
-    0 14px 36px rgba(0, 0, 0, 0.38),
-    0 2px 10px rgba(0, 0, 0, 0.22);
-  backdrop-filter: saturate(150%) blur(14px);
-  -webkit-backdrop-filter: saturate(150%) blur(14px);
+  gap: 1.25rem;
+  padding: 1rem 1.25rem;
+  border-radius: 2px;
+  color: var(--ink);
+  background-color: var(--surface);
+  border: 1px solid var(--rule);
+  border-bottom: 3px solid var(--charcoal);
+  /* Soft, single-layer shadow — enough to lift the card off the page
+     without betraying the flat-and-official aesthetic. */
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
 }
 
 .cookie-notice-text {
   flex: 1 1 auto;
   min-width: 0;
   font-size: 13px;
-  line-height: 1.75;
-  color: #cfcfcf;
+  line-height: 1.85;
+  color: var(--ink-soft);
 }
 .cookie-notice-text p { margin: 0; }
 
 .cookie-notice-link {
-  color: #ffffff;
+  color: var(--ink);
   text-decoration: underline;
   text-underline-offset: 3px;
-  text-decoration-color: rgba(255, 255, 255, 0.45);
-  transition: text-decoration-color 0.15s ease;
+  text-decoration-color: var(--rule);
+  transition: text-decoration-color 0.15s ease, color 0.15s ease;
 }
 .cookie-notice-link:hover {
-  text-decoration-color: #ffffff;
+  color: var(--link-hover);
+  text-decoration-color: var(--ink);
 }
 
 .cookie-notice-btn {
   flex: 0 0 auto;
   appearance: none;
-  border: none;
   cursor: pointer;
   font-family: inherit;
-  font-weight: 700;
-  font-size: 13.5px;
+  font-weight: 500;
+  font-size: 14px;
   line-height: 1;
-  padding: 0.62rem 1.35rem;
-  border-radius: 10px;
-  color: oklch(0.985 0 0);
-  background: linear-gradient(to bottom, oklch(0.46 0 0), oklch(0.32 0 0));
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.14),
-    0 2px 6px rgba(0, 0, 0, 0.28);
-  transition:
-    transform 0.15s ease,
-    background 0.2s ease,
-    box-shadow 0.2s ease;
+  padding: 0.6rem 1.4rem;
+  border-radius: 2px;
+  color: #ffffff;
+  background-color: var(--charcoal);
+  border: 1px solid var(--charcoal);
+  /* Match .btn-legal: only color transitions, no transforms / shadows. */
+  transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 .cookie-notice-btn:hover {
-  background: linear-gradient(to bottom, oklch(0.52 0 0), oklch(0.37 0 0));
-  transform: translateY(-1px);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.18),
-    0 4px 10px rgba(0, 0, 0, 0.32);
-}
-.cookie-notice-btn:active {
-  transform: translateY(0);
-  box-shadow:
-    inset 0 1px 2px rgba(0, 0, 0, 0.3),
-    0 1px 3px rgba(0, 0, 0, 0.25);
+  background-color: var(--charcoal-deep);
+  border-color: var(--charcoal-deep);
 }
 .cookie-notice-btn:focus-visible {
-  outline: 2px solid #ffffff;
+  outline: 2px solid var(--ring);
   outline-offset: 3px;
 }
 
 /* Mobile: stack the message above the button, full-width button */
 @media (max-width: 640px) {
   .cookie-notice {
-    padding: 0.5rem 0.6rem 0.9rem;
+    padding: 0 0.75rem 1rem;
   }
   .cookie-notice-inner {
     flex-direction: column;
     align-items: stretch;
-    gap: 0.7rem;
-    padding: 0.85rem 0.95rem;
+    gap: 0.85rem;
+    padding: 0.9rem 1rem;
   }
-  .cookie-notice-text { font-size: 12.5px; line-height: 1.7; }
+  .cookie-notice-text { font-size: 12.5px; line-height: 1.75; }
   .cookie-notice-btn { width: 100%; padding: 0.7rem 1rem; }
 }
 
@@ -3712,6 +3701,5 @@ button, a { transition: color 0.12s ease, background-color 0.12s ease, border-co
     transition: opacity 0.2s ease;
   }
   .cookie-notice.is-shown { transform: none; }
-  .cookie-notice-btn { transition: background 0.15s ease; }
-  .cookie-notice-btn:hover { transform: none; }
+  .cookie-notice-btn { transition: background-color 0.15s ease; }
 }
