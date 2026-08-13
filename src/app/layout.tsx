@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
+import { CookieNotice } from "@/components/site/CookieNotice";
 
 // Vazirmatn is loaded from LOCAL files — no build-time fetch to Google,
 // no runtime request to fonts.gstatic.com. The @font-face declarations
@@ -43,6 +44,7 @@ export default function RootLayout({
       <body className="font-sans antialiased bg-background text-foreground">
         {children}
         <Toaster />
+        <CookieNotice />
       </body>
     </html>
   );
