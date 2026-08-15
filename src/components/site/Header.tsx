@@ -1,27 +1,43 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import Link from "next/link";
+import Image from "next/image";
+import { usePathname, useRouter } from "next/navigation";
 import { toFa } from "@/lib/utils";
 import type { Law } from "@/lib/types";
+import { laws } from "@/data/laws";
 import { SearchSuggestions } from "@/components/ui/SearchSuggestions";
+import { ThemeToggle } from "@/components/site/ThemeToggle";
 
-interface HeaderProps {
-  onNavigate: (view: "home" | "browse" | "search" | "about") => void;
-  onSearch: (query: string) => void;
-  /** Fired when the user picks a law from the desktop search suggestions
-   *  dropdown. Optional so static pages (which route via full page loads)
-   *  can omit it — in that case picking a suggestion still triggers
-   *  onSearch via the "search for" row. */
-  onOpenLaw?: (law: Law) => void;
-  currentView: string;
-}
-
-export function Header({ onNavigate, onSearch, onOpenLaw, currentView }: HeaderProps) {
+/**
+ * Site header — charcoal context strip + logo + inline search + auth links
+ * + primary nav bar.
+ *
+ * Navigation uses Next.js <Link> + useRouter so it works from any route
+ * (public pages, static pages, deep links). The active nav item is
+ * derived from usePathname() so it stays correct regardless of how the
+ * user arrived at the current page.
+ *
+ * The inline desktop search drops down a SearchSuggestions box; picking
+ * a law navigates to /law/[id] via router.push().
+ */
+export function Header() {
   const [searchInput, setSearchInput] = useState("");
   const headerRef = useRef<HTMLElement | null>(null);
-  // Ref for the desktop inline search input — used by SearchSuggestions
-  // to anchor its dropdown and to attach keyboard/focus listeners.
   const navSearchInputRef = useRef<HTMLInputElement | null>(null);
+  const pathname = usePathname();
+  const router = useRouter();
+
+  // Latest revision date across all laws — drives the "آخرین به‌روزرسانی"
+  // timestamp in the primary nav bar. Cheap (6 laws) so we run it on every
+  // render. Dates are Persian-digit "YYYY/MM/DD" strings; lexicographic
+  // comparison orders them correctly because Persian digits share the same
+  // relative ordering as ASCII digits in Unicode.
+  const latestUpdate = laws.reduce(
+    (latest, l) => (l.lastRevisionDate > latest ? l.lastRevisionDate : latest),
+    ""
+  );
 
   // Self-healing sticky offset: measure the actual header height and
   // publish it as a CSS custom property on <html> so any sticky element
@@ -42,17 +58,12 @@ export function Header({ onNavigate, onSearch, onOpenLaw, currentView }: HeaderP
 
     publish();
 
-    // ResizeObserver fires when the header's own height changes (e.g. a
-    // row collapses, the logo loads, padding kicks in via a breakpoint
-    // change).
     let ro: ResizeObserver | null = null;
     if (typeof ResizeObserver !== "undefined") {
       ro = new ResizeObserver(publish);
       ro.observe(el);
     }
 
-    // Fallbacks: window resize + a delayed re-measure after fonts/images
-    // settle. Cheap and belt-and-braces.
     window.addEventListener("resize", publish);
     const t = window.setTimeout(publish, 300);
 
@@ -65,47 +76,43 @@ export function Header({ onNavigate, onSearch, onOpenLaw, currentView }: HeaderP
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    if (searchInput.trim()) onSearch(searchInput.trim());
+    if (searchInput.trim()) {
+      router.push(`/search?q=${encodeURIComponent(searchInput.trim())}`);
+      setSearchInput("");
+    }
   };
 
-  const navItems: { id: "home" | "browse" | "search" | "about"; label: string }[] = [
-    { id: "home", label: "صفحه نخست" },
-    { id: "browse", label: "مرور قوانین" },
-    { id: "search", label: "جستجوی پیشرفته" },
-    { id: "about", label: "درباره ما" },
+  const navItems: { href: string; id: "home" | "browse" | "search" | "about"; label: string }[] = [
+    { href: "/", id: "home", label: "صفحه نخست" },
+    { href: "/browse", id: "browse", label: "مرور قوانین" },
+    { href: "/search", id: "search", label: "جستجوی پیشرفته" },
+    { href: "/about", id: "about", label: "درباره ما" },
   ];
 
-  const handleNavClick = (id: "home" | "browse" | "search" | "about") => {
-    onNavigate(id);
+  // Active state derived from the current pathname. /law/* counts as
+  // "browse" so the browse nav item stays highlighted on law detail pages.
+  const isActive = (id: string) => {
+    if (id === "home") return pathname === "/";
+    if (id === "browse") return pathname === "/browse" || pathname?.startsWith("/law/");
+    if (id === "search") return pathname === "/search";
+    if (id === "about") return pathname === "/about";
+    return false;
   };
-
-  const isActive = (id: string) =>
-    (id === "home" && currentView === "home") ||
-    (id === "browse" && currentView === "browse") ||
-    (id === "search" && currentView === "search") ||
-    (id === "about" && currentView === "about");
 
   return (
     <header ref={headerRef} className="bg-white site-header-sticky">
-      {/* Top thin strip — context bar. Visible on ALL breakpoints.
-          Layout is ALWAYS a single row. In RTL the visual order is
-          right→left, so to put the tagline on the visual RIGHT and
-          the links on the visual LEFT we rely on the default DOM
-          order (tagline first → appears right in RTL) and let the
-          links come second → appear left. The tagline flexes+truncates
-          so the links (shrink-0) never wrap. The `|` dividers are
-          hidden on mobile to save horizontal space. */}
+      {/* Top thin strip — context bar. */}
       <div className="bg-[#1f1f1f] text-[#bdbdbd] text-[10px] sm:text-[11.5px]">
         <div className="container-legal flex flex-row items-center justify-between gap-2 sm:gap-4 py-0.5">
           <span className="tracking-wide truncate flex-1 min-w-0">
             مرجع قوانین و مقررات جمهوری اسلامی ایران
           </span>
           <span className="flex items-center gap-2 sm:gap-4 shrink-0">
-            <a href="/accessibility" className="hover:text-white transition-colors">دسترسی‌پذیری</a>
+            <Link href="/accessibility" className="hover:text-white transition-colors">دسترسی‌پذیری</Link>
             <span className="opacity-40 hidden sm:inline">|</span>
-            <a href="/guide" className="hover:text-white transition-colors">راهنما</a>
+            <Link href="/guide" className="hover:text-white transition-colors">راهنما</Link>
             <span className="opacity-40 hidden sm:inline">|</span>
-            <a href="/contact" className="hover:text-white transition-colors">تماس با ما</a>
+            <Link href="/contact" className="hover:text-white transition-colors">تماس با ما</Link>
           </span>
         </div>
       </div>
@@ -113,27 +120,23 @@ export function Header({ onNavigate, onSearch, onOpenLaw, currentView }: HeaderP
       {/* Main header */}
       <div className="hairline-b">
         <div className="container-legal py-0.5 sm:py-1 flex items-center justify-between gap-3 sm:gap-6">
-          <button
-            onClick={() => handleNavClick("home")}
+          <Link
+            href="/"
             className="flex items-center gap-2.5 sm:gap-3 text-right group shrink-0"
             aria-label="مدونات — صفحه نخست"
           >
-            {/* Real brand logo — 3:2 landscape, scales with breakpoint.
-                No wordmark text beside it (per design decision). */}
-            <img
+            <Image
               src="/brand/logo.webp"
               alt="مدونات"
               width={1536}
               height={1024}
               className="h-[96px] sm:h-[112px] w-auto object-contain"
               draggable={false}
+              priority
             />
-          </button>
+          </Link>
 
-          {/* Inline search — desktop only. On mobile, users tap
-              "جستجوی پیشرفته" in the charcoal nav bar below to reach
-              the full search page. Includes Google-style suggestions
-              dropdown that drops down below the input as the user types. */}
+          {/* Inline search — desktop only. */}
           <form onSubmit={handleSearch} className="hidden md:flex flex-1 max-w-xl items-center gap-2">
             <div className="relative flex-1">
               <input
@@ -159,25 +162,16 @@ export function Header({ onNavigate, onSearch, onOpenLaw, currentView }: HeaderP
                   <line x1="21" y1="21" x2="16.5" y2="16.5"></line>
                 </svg>
               </span>
-              {/* Google-style suggestions dropdown — same component as the
-                  homepage hero search. Anchored to this input via
-                  navSearchInputRef. onPick is optional so static pages
-                  (which navigate via full page loads) can omit it; when
-                  omitted, picking a law is a no-op and the user is
-                  expected to use the "search for" row at the top of the
-                  dropdown to reach the full search page. */}
               <div id="nav-search-suggestions">
                 <SearchSuggestions
                   query={searchInput}
                   inputRef={navSearchInputRef}
                   onPick={(law: Law) => {
-                    if (onOpenLaw) onOpenLaw(law);
-                    // Clear the input after picking so the dropdown
-                    // closes and the header returns to its idle state.
+                    router.push(`/law/${law.id}`);
                     setSearchInput("");
                   }}
                   onSearch={(q: string) => {
-                    onSearch(q);
+                    router.push(`/search?q=${encodeURIComponent(q)}`);
                     setSearchInput("");
                   }}
                 />
@@ -188,40 +182,36 @@ export function Header({ onNavigate, onSearch, onOpenLaw, currentView }: HeaderP
             </button>
           </form>
 
-          {/* Auth links — visible on ALL breakpoints so mobile users can
-              still reach ورود / ثبت‌نام without a hamburger menu. Sits in
-              the same position the hamburger used to occupy. */}
+          {/* Auth links + theme toggle */}
           <div className="flex items-center gap-2 sm:gap-3 text-[12px] sm:text-[13px] shrink-0">
-            <a href="/signin" className="link-legal">ورود</a>
+            <ThemeToggle />
+            <Link href="/signin" className="link-legal">ورود</Link>
             <span className="text-[#cfcfcf]">/</span>
-            <a href="/signup" className="link-legal">ثبت‌نام</a>
+            <Link href="/signup" className="link-legal">ثبت‌نام</Link>
           </div>
         </div>
       </div>
 
-      {/* Primary navigation — charcoal bar. Same on ALL breakpoints: no
-          hamburger menu, the nav items are always visible. Padding is
-          tighter on mobile (px-3 py-3) so all 4 items fit on a 375px
-          screen; flex-wrap lets them wrap gracefully on very narrow widths. */}
+      {/* Primary navigation — charcoal bar. */}
       <nav className="nav-charcoal" aria-label="ناوبری اصلی">
         <div className="container-legal">
           <ul className="flex flex-wrap items-stretch">
             {navItems.map((item) => (
               <li key={item.id}>
-                <button
-                  onClick={() => handleNavClick(item.id)}
+                <Link
+                  href={item.href}
                   className={`px-3 sm:px-5 py-3 sm:py-3.5 inline-block text-[13px] sm:text-[14px] ${
                     isActive(item.id) ? "nav-item-active" : "hover:bg-white/5"
                   }`}
                 >
                   {item.label}
-                </button>
+                </Link>
               </li>
             ))}
             <li className="mr-auto hidden lg:flex items-center">
               <span className="text-[12.5px] text-[#9c9c9c] px-4">
                 آخرین به‌روزرسانی:{" "}
-                <span className="text-white">{toFa("۱۴۰۴/۰۵/۰۶")}</span>
+                <span className="text-white">{toFa(latestUpdate)}</span>
               </span>
             </li>
           </ul>

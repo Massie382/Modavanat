@@ -3,9 +3,11 @@
 import { useState } from "react";
 import Link from "next/link";
 import { PageHead, Card, Badge, Field, Switch, EmptyState, faNum } from "@/components/admin/primitives";
+import { useToast } from "@/hooks/use-toast";
 import { defaultStaticPages } from "@/lib/admin-data";
 
 export default function PagesManager() {
+  const { toast } = useToast();
   const [selected, setSelected] = useState(defaultStaticPages[0].id);
   const page = defaultStaticPages.find((p) => p.id === selected) || defaultStaticPages[0];
 
@@ -14,7 +16,7 @@ export default function PagesManager() {
       <PageHead
         title="مدیریت صفحات ایستا"
         subtitle="ویرایش محتوای صفحات اطلاعاتی سایت"
-        actions={<button className="admin-btn admin-btn-primary">+ صفحه جدید</button>}
+        actions={<button className="admin-btn admin-btn-primary" onClick={() => toast({ title: "ایجاد", description: "باز کردن فرم ایجاد..." })}>+ صفحه جدید</button>}
       />
 
       <div className="admin-split">

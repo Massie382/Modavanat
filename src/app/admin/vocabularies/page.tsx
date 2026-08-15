@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { PageHead, Card, Tabs, Badge, Field, Switch } from "@/components/admin/primitives";
+import { useToast } from "@/hooks/use-toast";
 import { lawStatusVocab, lawTypeVocab, effectTypeVocab, referenceDirectionVocab, tocTypeVocab, type VocabEntry } from "@/lib/admin-data";
 import { faNum } from "@/components/admin/primitives";
 
@@ -14,6 +15,7 @@ const VOCABS: Record<string, { label: string; entries: VocabEntry[]; englishLabe
 };
 
 export default function VocabulariesPage() {
+  const { toast } = useToast();
   const [tab, setTab] = useState("status");
   const vocab = VOCABS[tab];
 
@@ -33,7 +35,7 @@ export default function VocabulariesPage() {
       <Card
         title={vocab.label}
         desc={`${faNum(vocab.entries.length)} مورد — برای افزودن، دکمه زیر را بزنید`}
-        actions={<button className="admin-btn admin-btn-sm admin-btn-primary">+ مورد جدید</button>}
+        actions={<button className="admin-btn admin-btn-sm admin-btn-primary" onClick={() => toast({ title: "ایجاد", description: "باز کردن فرم ایجاد..." })}>+ مورد جدید</button>}
       >
         <table className="admin-table">
           <thead>
@@ -57,8 +59,8 @@ export default function VocabulariesPage() {
                   <Switch on={e.active} onChange={() => {}} />
                 </td>
                 <td className="col-narrow">
-                  <button className="admin-btn admin-btn-sm admin-btn-ghost">ویرایش</button>
-                  <button className="admin-btn admin-btn-sm admin-btn-ghost">حذف</button>
+                  <button className="admin-btn admin-btn-sm admin-btn-ghost" onClick={() => toast({ title: "ویرایش", description: "باز کردن فرم ویرایش..." })}>ویرایش</button>
+                  <button className="admin-btn admin-btn-sm admin-btn-ghost" onClick={() => toast({ title: "حذف", description: "آیتم حذف شد.", variant: "destructive" })}>حذف</button>
                 </td>
               </tr>
             ))}

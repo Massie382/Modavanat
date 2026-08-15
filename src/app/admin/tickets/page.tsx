@@ -2,12 +2,14 @@
 
 import { useState, useMemo } from "react";
 import { PageHead, Card, Badge, Toolbar, SearchInput, Pagination, EmptyState, Field, faNum } from "@/components/admin/primitives";
+import { useToast } from "@/hooks/use-toast";
 import { defaultAdminTickets } from "@/lib/admin-data";
 
 const statusLabel: Record<string, string> = { open: "باز", pending: "در حال بررسی", closed: "بسته" };
 const prioLabel: Record<string, string> = { low: "کم", medium: "متوسط", high: "زیاد" };
 
 export default function TicketsPage() {
+  const { toast } = useToast();
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [page, setPage] = useState(1);
@@ -47,7 +49,7 @@ export default function TicketsPage() {
                   <td><Badge variant={t.priority === "high" ? "danger" : t.priority === "medium" ? "warning" : "neutral"}>{prioLabel[t.priority]}</Badge></td>
                   <td><Badge variant={t.status === "open" ? "success" : t.status === "pending" ? "warning" : "neutral"}>{statusLabel[t.status]}</Badge></td>
                   <td><span className="admin-muted">{t.updatedAt}</span></td>
-                  <td className="col-narrow"><button className="admin-btn admin-btn-sm admin-btn-ghost">مشاهده</button></td>
+                  <td className="col-narrow"><button className="admin-btn admin-btn-sm admin-btn-ghost" onClick={() => toast({ title: "مشاهده", description: "باز کردن صفحه جزئیات..." })}>مشاهده</button></td>
                 </tr>
               ))}
             </tbody>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, FormEvent } from "react";
+import { useState, FormEvent, useEffect, useRef } from "react";
 import Link from "next/link";
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import { Field, PasswordInput, AgreementCheckbox } from "@/components/auth/AuthFields";
@@ -19,6 +19,15 @@ export default function SignInPage() {
   }>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+
+  // Move focus to the success message heading when the simulated success
+  // state is entered, so screen-reader users hear the context change.
+  const successHeadingRef = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    if (submitted) {
+      successHeadingRef.current?.focus();
+    }
+  }, [submitted]);
 
   const placeholder =
     identifierKind === "email"
@@ -75,10 +84,14 @@ export default function SignInPage() {
               <polyline points="20 6 9 17 4 12" />
             </svg>
           </div>
-          <p className="text-[14px] text-[#3d3d3d] leading-7">
+          <h2
+            ref={successHeadingRef}
+            tabIndex={-1}
+            className="text-[14px] font-normal text-[#3d3d3d] leading-7 outline-none"
+          >
             ورود موفقیت‌آمیز بود. اگر به‌صورت خودکار منتقل نشدید،
             <Link href="/" className="link-legal mr-1">اینجا را کلیک کنید</Link>.
-          </p>
+          </h2>
         </div>
       </AuthLayout>
     );
@@ -126,6 +139,7 @@ export default function SignInPage() {
           label="ایمیل یا شماره تلفن"
           htmlFor="identifier"
           error={errors.identifier}
+          hasError={!!errors.identifier}
         >
           <input
             id="identifier"
@@ -135,6 +149,7 @@ export default function SignInPage() {
             placeholder={placeholder}
             autoComplete={identifierKind === "email" ? "email" : "tel"}
             inputMode={identifierKind === "phone" ? "tel" : "email"}
+            spellCheck={false}
             dir="ltr"
             className={`auth-input ${errors.identifier ? "is-error" : ""}`}
             style={{ textAlign: "right" }}

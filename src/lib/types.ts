@@ -13,7 +13,7 @@ export type EffectType =
   | "افزوده"                 // inserted
   | "حذف"                    // omitted / repealed
   | "جایگزینی"               // substituted
-  | "الحاق"                  // addition
+  | "الحاق"                  // addition (alternate spelling used in some data)
   | "توضیح"                  // explanation
   | "اجرا"                   // coming into force
   | "تفویض اختیار";          // power conferred
@@ -23,7 +23,7 @@ export interface ProvisionRef {
   title: string;
   year: number;            // شماره سال خورشیدی
   number?: string;         // شماره ثبت
-  provisionLabel: string;  // مثلاً «ماده ۵» یا «تبصره ۲ ماده ۹»
+  provisionLabel?: string; // مثلاً «ماده ۵» یا «تبصره ۲ ماده ۹» — اختیاری چون برخی ارجاعات فقط به قانون کلی اشاره می‌کنند
   provisionId?: string;
 }
 

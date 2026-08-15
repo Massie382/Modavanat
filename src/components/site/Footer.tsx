@@ -1,10 +1,16 @@
 "use client";
 
-interface FooterProps {
-  onNavigate: (view: "home" | "browse" | "search" | "about") => void;
-}
+import Link from "next/link";
+import Image from "next/image";
 
-export function Footer({ onNavigate }: FooterProps) {
+/**
+ * Site footer — 4-column layout on dark charcoal ground.
+ *
+ * All navigation uses Next.js <Link> so it works from any route.
+ * The "گزارش خطا" link points to /contact (the contact page has a
+ * mailto for bug reports) instead of being a dead `href="#"`.
+ */
+export function Footer() {
   return (
     <footer className="mt-auto bg-[#1f1f1f] text-[#bdbdbd]">
       {/* Top: footer columns — centered on mobile, left-aligned on desktop */}
@@ -13,7 +19,7 @@ export function Footer({ onNavigate }: FooterProps) {
           {/* Brand */}
           <div className="flex flex-col items-center md:items-start">
             <div className="flex items-center gap-2.5 mb-3">
-              <img
+              <Image
                 src="/brand/darklogo.webp"
                 alt="مدونات"
                 width={1536}
@@ -35,11 +41,11 @@ export function Footer({ onNavigate }: FooterProps) {
               پیوندهای سریع
             </h3>
             <ul className="space-y-2 text-[13px]">
-              <li><button onClick={() => onNavigate("home")} className="hover:text-white text-center md:text-right">صفحه نخست</button></li>
-              <li><button onClick={() => onNavigate("browse")} className="hover:text-white text-center md:text-right">مرور قوانین</button></li>
-              <li><button onClick={() => onNavigate("search")} className="hover:text-white text-center md:text-right">جستجوی پیشرفته</button></li>
-              <li><button onClick={() => onNavigate("about")} className="hover:text-white text-center md:text-right">درباره ما</button></li>
-              <li><a href="#" className="hover:text-white">شبکه ارجاعات</a></li>
+              <li><Link href="/" className="hover:text-white text-center md:text-right">صفحه نخست</Link></li>
+              <li><Link href="/browse" className="hover:text-white text-center md:text-right">مرور قوانین</Link></li>
+              <li><Link href="/search" className="hover:text-white text-center md:text-right">جستجوی پیشرفته</Link></li>
+              <li><Link href="/about" className="hover:text-white text-center md:text-right">درباره ما</Link></li>
+              <li><Link href="/guide" className="hover:text-white">شبکه ارجاعات</Link></li>
             </ul>
           </nav>
 
@@ -49,11 +55,11 @@ export function Footer({ onNavigate }: FooterProps) {
               منابع و راهنما
             </h3>
             <ul className="space-y-2 text-[13px]">
-              <li><a href="/guide" className="hover:text-white">راهنمای استفاده</a></li>
-              <li><a href="#" className="hover:text-white">واژه‌نامه حقوقی</a></li>
-              <li><a href="#" className="hover:text-white">سؤالات رایج</a></li>
-              <li><a href="#" className="hover:text-white">قواعد نقل قول</a></li>
-              <li><a href="#" className="hover:text-white">دسترسی از طریق API</a></li>
+              <li><Link href="/guide" className="hover:text-white">راهنمای استفاده</Link></li>
+              <li><Link href="/guide#vocabulary" className="hover:text-white">واژه‌نامه حقوقی</Link></li>
+              <li><Link href="/guide#faq" className="hover:text-white">سؤالات رایج</Link></li>
+              <li><Link href="/guide#citation" className="hover:text-white">قواعد نقل قول</Link></li>
+              <li><Link href="/guide#api" className="hover:text-white">دسترسی از طریق API</Link></li>
             </ul>
           </nav>
 
@@ -63,11 +69,11 @@ export function Footer({ onNavigate }: FooterProps) {
               درباره مدونات
             </h3>
             <ul className="space-y-2 text-[13px]">
-              <li><button onClick={() => onNavigate("about")} className="hover:text-white text-center md:text-right">درباره ما</button></li>
-              <li><a href="/accessibility" className="hover:text-white">دسترسی‌پذیری</a></li>
-              <li><a href="/privacy" className="hover:text-white">حریم خصوصی</a></li>
-              <li><a href="/terms" className="hover:text-white">شرایط استفاده</a></li>
-              <li><a href="/contact" className="hover:text-white">تماس با ما</a></li>
+              <li><Link href="/about" className="hover:text-white text-center md:text-right">درباره ما</Link></li>
+              <li><Link href="/accessibility" className="hover:text-white">دسترسی‌پذیری</Link></li>
+              <li><Link href="/privacy" className="hover:text-white">حریم خصوصی</Link></li>
+              <li><Link href="/terms" className="hover:text-white">شرایط استفاده</Link></li>
+              <li><Link href="/contact" className="hover:text-white">تماس با ما</Link></li>
             </ul>
           </nav>
         </div>
@@ -83,9 +89,9 @@ export function Footer({ onNavigate }: FooterProps) {
           </p>
           <p className="shrink-0">
             نسخه ۲.۴.۱ —{" "}
-            <a href="#" className="hover:text-white underline underline-offset-2">
+            <Link href="/contact" className="hover:text-white underline underline-offset-2">
               گزارش خطا
-            </a>
+            </Link>
           </p>
         </div>
       </div>

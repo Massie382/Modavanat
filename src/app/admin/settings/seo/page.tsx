@@ -2,13 +2,15 @@
 
 import { useState } from "react";
 import { PageHead, Card, Field, Switch, Tabs } from "@/components/admin/primitives";
+import { useToast } from "@/hooks/use-toast";
 import { defaultSeo } from "@/lib/admin-data";
 
 export default function SeoSettingsPage() {
+  const { toast } = useToast();
   const [tab, setTab] = useState("general");
   return (
     <>
-      <PageHead title="سئو و متا" subtitle="تنظیمات فراداده، robots.txt و sitemap" actions={<button className="admin-btn admin-btn-primary">ذخیره</button>} />
+      <PageHead title="سئو و متا" subtitle="تنظیمات فراداده، robots.txt و sitemap" actions={<button className="admin-btn admin-btn-primary" onClick={() => toast({ title: "ذخیره شد", description: "تنظیمات با موفقیت ثبت شد." })}>ذخیره</button>} />
       <Tabs tabs={[{ id: "general", label: "عمومی" }, { id: "social", label: "شبکه‌های اجتماعی" }, { id: "robots", label: "Robots.txt" }, { id: "sitemap", label: "Sitemap" }]} active={tab} onChange={setTab} />
 
       {tab === "general" && (

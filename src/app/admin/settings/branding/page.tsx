@@ -2,13 +2,15 @@
 
 import { useState } from "react";
 import { PageHead, Card, Field, Switch, Tabs, Badge } from "@/components/admin/primitives";
+import { useToast } from "@/hooks/use-toast";
 import { defaultBranding } from "@/lib/admin-data";
 
 export default function BrandingSettingsPage() {
+  const { toast } = useToast();
   const [tab, setTab] = useState("identity");
   return (
     <>
-      <PageHead title="نام و نشان" subtitle="هویت بصری برند، لوگوها و اطلاعات پایه" actions={<button className="admin-btn admin-btn-primary">ذخیره</button>} />
+      <PageHead title="نام و نشان" subtitle="هویت بصری برند، لوگوها و اطلاعات پایه" actions={<button className="admin-btn admin-btn-primary" onClick={() => toast({ title: "ذخیره شد", description: "تنظیمات با موفقیت ثبت شد." })}>ذخیره</button>} />
       <Tabs tabs={[{ id: "identity", label: "هویت" }, { id: "logos", label: "لوگوها" }, { id: "header", label: "سرصفحه" }, { id: "footer", label: "پاصفحه" }, { id: "contact", label: "اطلاعات تماس" }]} active={tab} onChange={setTab} />
 
       {tab === "identity" && (

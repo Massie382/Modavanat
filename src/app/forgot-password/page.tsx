@@ -40,6 +40,29 @@ export default function ForgotPasswordPage() {
   const [resendIn, setResendIn] = useState(0);
   const resendTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Track initial mount so we don't yank focus to the heading on first paint
+  // (the request step's identifier input has `autoFocus` for that).
+  const isFirstRender = useRef(true);
+
+  // Move focus to the new step's heading whenever the step changes, so
+  // screen-reader users hear the context change. The AuthLayout renders a
+  // single <h1> per render; we make it focusable and move focus to it.
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    const heading = document.querySelector("h1");
+    if (heading instanceof HTMLElement) {
+      heading.tabIndex = -1;
+      heading.focus();
+      // Reset scroll in case the browser jumped to the heading.
+      if (typeof window !== "undefined" && window.scrollY > 0) {
+        window.scrollTo({ top: 0, behavior: "auto" });
+      }
+    }
+  }, [step]);
+
   // Resend cooldown timer — counts down from 60s after a code is "sent".
   useEffect(() => {
     if (resendIn <= 0) {
@@ -247,6 +270,10 @@ export default function ForgotPasswordPage() {
             />
           </Field>
 
+          <p className="text-[12px] text-[#9c9c9c] -mt-1">
+            حالت نمایشی: هر کد ۶ رقمی پذیرفته می‌شود.
+          </p>
+
           <button
             type="submit"
             className="auth-submit"
@@ -400,6 +427,7 @@ export default function ForgotPasswordPage() {
           label={identifierLabel}
           htmlFor="identifier"
           error={errors.identifier}
+          hasError={!!errors.identifier}
         >
           <input
             id="identifier"
@@ -409,6 +437,7 @@ export default function ForgotPasswordPage() {
             placeholder={placeholder}
             autoComplete={identifierKind === "email" ? "email" : "tel"}
             inputMode={identifierKind === "phone" ? "tel" : "email"}
+            spellCheck={false}
             dir="ltr"
             className={`auth-input ${errors.identifier ? "is-error" : ""}`}
             style={{ textAlign: "right" }}

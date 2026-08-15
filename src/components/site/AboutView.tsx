@@ -116,7 +116,7 @@ export function AboutView({ onHome }: AboutViewProps) {
           <p>
             برای گزارش خطا، پیشنهاد بهبود یا درخواست افزودن قانون خاص، می‌توانید
             از طریق فرم تماس با ما یا نشانی ایمیل{" "}
-            <a href="#" className="link-legal cite">info@modavanat.ir</a> با تیم
+            <a href="mailto:info@modavanat.ir" className="link-legal cite">info@modavanat.ir</a> با تیم
             مدونات در ارتباط باشید.
           </p>
         </div>

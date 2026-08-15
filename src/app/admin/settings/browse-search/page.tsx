@@ -2,13 +2,15 @@
 
 import { useState } from "react";
 import { PageHead, Card, Field, Switch, Tabs } from "@/components/admin/primitives";
+import { useToast } from "@/hooks/use-toast";
 import { defaultBrowseSettings, defaultSearchSettings } from "@/lib/admin-data";
 
 export default function BrowseSearchSettingsPage() {
+  const { toast } = useToast();
   const [tab, setTab] = useState("browse");
   return (
     <>
-      <PageHead title="مرور و جستجو" subtitle="تنظیمات صفحات مرور قوانین و جستجوی پیشرفته" actions={<button className="admin-btn admin-btn-primary">ذخیره</button>} />
+      <PageHead title="مرور و جستجو" subtitle="تنظیمات صفحات مرور قوانین و جستجوی پیشرفته" actions={<button className="admin-btn admin-btn-primary" onClick={() => toast({ title: "ذخیره شد", description: "تنظیمات با موفقیت ثبت شد." })}>ذخیره</button>} />
       <Tabs tabs={[{ id: "browse", label: "مرور قوانین" }, { id: "search", label: "جستجوی پیشرفته" }, { id: "suggestions", label: "پیشنهادات" }]} active={tab} onChange={setTab} />
 
       {tab === "browse" && (

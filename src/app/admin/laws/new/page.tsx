@@ -3,10 +3,12 @@
 import { useState } from "react";
 import Link from "next/link";
 import { PageHead, Card, Field, Notice } from "@/components/admin/primitives";
+import { useToast } from "@/hooks/use-toast";
 import { lawTypeVocab, lawStatusVocab } from "@/lib/admin-data";
 import { faNum } from "@/components/admin/primitives";
 
 export default function NewLawPage() {
+  const { toast } = useToast();
   const [slug, setSlug] = useState("");
   const [title, setTitle] = useState("");
 
@@ -75,7 +77,7 @@ export default function NewLawPage() {
 
       <div className="admin-row" style={{ justifyContent: "flex-end", marginTop: "1rem" }}>
         <Link href="/admin/laws" className="admin-btn admin-btn-ghost">انصراف</Link>
-        <button className="admin-btn admin-btn-primary">ذخیره و ادامه ویرایش</button>
+        <button className="admin-btn admin-btn-primary" onClick={() => toast({ title: "ذخیره شد", description: "تنظیمات با موفقیت ثبت شد." })}>ذخیره و ادامه ویرایش</button>
       </div>
     </>
   );

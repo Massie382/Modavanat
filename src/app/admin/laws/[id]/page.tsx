@@ -4,6 +4,7 @@ import { useState, use } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageHead, Card, Badge, Tabs, Field, Switch, Segmented, Notice, EmptyState, faNum, statusBadgeVariant } from "@/components/admin/primitives";
+import { useToast } from "@/hooks/use-toast";
 import {
   getLawByIdForAdmin,
   getAdminLawList,
@@ -18,6 +19,7 @@ import {
 } from "@/lib/admin-data";
 
 export default function LawEditorPage({ params }: { params: Promise<{ id: string }> }) {
+  const { toast } = useToast();
   const { id } = use(params);
   const law = getLawByIdForAdmin(id);
   if (!law) notFound();
@@ -43,7 +45,7 @@ export default function LawEditorPage({ params }: { params: Promise<{ id: string
         actions={
           <>
             <Link href={`/admin/laws`} className="admin-btn admin-btn-ghost">← بازگشت</Link>
-            <button className="admin-btn admin-btn-primary">ذخیره تغییرات</button>
+            <button className="admin-btn admin-btn-primary" onClick={() => toast({ title: "ذخیره شد", description: "تنظیمات با موفقیت ثبت شد." })}>ذخیره تغییرات</button>
           </>
         }
       />

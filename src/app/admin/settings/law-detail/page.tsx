@@ -1,12 +1,14 @@
 "use client";
 
 import { PageHead, Card, Field, Switch } from "@/components/admin/primitives";
+import { useToast } from "@/hooks/use-toast";
 import { defaultLawDetailSettings } from "@/lib/admin-data";
 
 export default function LawDetailSettingsPage() {
+  const { toast } = useToast();
   return (
     <div className="admin-stack">
-      <PageHead title="تنظیمات صفحه قانون" subtitle="تب‌ها، دکمه‌ها، شبکه متادیتا و قالب ارجاع" actions={<button className="admin-btn admin-btn-primary">ذخیره</button>} />
+      <PageHead title="تنظیمات صفحه قانون" subtitle="تب‌ها، دکمه‌ها، شبکه متادیتا و قالب ارجاع" actions={<button className="admin-btn admin-btn-primary" onClick={() => toast({ title: "ذخیره شد", description: "تنظیمات با موفقیت ثبت شد." })}>ذخیره</button>} />
 
       <Card title="تب‌های صفحه قانون">
         <table className="admin-table">

@@ -2,9 +2,11 @@
 
 import { useState, useMemo } from "react";
 import { PageHead, Card, Badge, Toolbar, SearchInput, Pagination, EmptyState, statusBadgeVariant, faNum } from "@/components/admin/primitives";
+import { useToast } from "@/hooks/use-toast";
 import { defaultAdminBookmarks, lawStatusVocab } from "@/lib/admin-data";
 
 export default function BookmarksPage() {
+  const { toast } = useToast();
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
   const pageSize = 12;
@@ -27,7 +29,7 @@ export default function BookmarksPage() {
                   <td><strong>{b.lawTitle}</strong><div className="admin-muted admin-mono">{b.lawId}</div></td>
                   <td><span className="admin-muted">{b.addedAt}</span></td>
                   <td><span className="admin-muted">{b.note || "—"}</span></td>
-                  <td className="col-narrow"><button className="admin-btn admin-btn-sm admin-btn-ghost">حذف</button></td>
+                  <td className="col-narrow"><button className="admin-btn admin-btn-sm admin-btn-ghost" onClick={() => toast({ title: "حذف", description: "آیتم حذف شد.", variant: "destructive" })}>حذف</button></td>
                 </tr>
               ))}
             </tbody>

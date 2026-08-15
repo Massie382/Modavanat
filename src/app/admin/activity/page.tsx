@@ -1,13 +1,15 @@
 "use client";
 
+import { useState } from "react";
 import { PageHead, Card, Badge, Toolbar, SearchInput, EmptyState, faNum } from "@/components/admin/primitives";
 import { defaultActivity } from "@/lib/admin-data";
 
 export default function ActivityPage() {
+  const [search, setSearch] = useState("");
   return (
     <>
       <PageHead title="لاگ فعالیت" subtitle={`${faNum(defaultActivity.length)} رویداد اخیر`} />
-      <Toolbar><SearchInput value="" onChange={() => {}} placeholder="جستجو در لاگ…" /></Toolbar>
+      <Toolbar><SearchInput value={search} onChange={setSearch} placeholder="جستجو در لاگ…" /></Toolbar>
       <Card tight>
         <table className="admin-table">
           <thead><tr><th>زمان</th><th>مدیر</th><th>عمل</th><th>هدف</th><th>نوع</th></tr></thead>

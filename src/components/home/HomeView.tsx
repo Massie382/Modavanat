@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect, useRef } from "react";
+import Link from "next/link";
 import { laws, decadeStats } from "@/data/laws";
 import type { Law } from "@/lib/types";
 import { toFa, statusLabel, statusPillClass, formatJalaliDate } from "@/lib/utils";
@@ -165,9 +166,9 @@ export function HomeView({ onOpenLaw, onBrowse, onSearch }: HomeViewProps) {
               </div>
             </div>
             <div className="mt-3 flex items-center gap-4 text-[12.5px] text-[#6b6b6b]">
-              <a href="#" className="link-legal">جستجوی پیشرفته</a>
+              <Link href="/search" className="link-legal">جستجوی پیشرفته</Link>
               <span className="opacity-50">|</span>
-              <a href="#" className="link-legal">راهنمای جستجو</a>
+              <Link href="/guide" className="link-legal">راهنمای جستجو</Link>
               <span className="opacity-50">|</span>
               <span>میانبر: <code className="cite">/</code> برای تمرکز روی جستجو</span>
             </div>
@@ -358,45 +359,25 @@ export function HomeView({ onOpenLaw, onBrowse, onSearch }: HomeViewProps) {
               <dl className="space-y-2.5 text-[13px]">
                 <div className="flex justify-between items-baseline">
                   <dt className="text-[#6b6b6b]">کل قوانین</dt>
-                  <dd className="cite font-semibold">{toFa("۴۸۲۱")}</dd>
+                  <dd className="cite font-semibold">{toFa(laws.length)}</dd>
                 </div>
                 <div className="flex justify-between items-baseline">
                   <dt className="text-[#6b6b6b]">قوانین لازم‌الاجرا</dt>
-                  <dd className="cite font-semibold">{toFa("۳۹۱۷")}</dd>
+                  <dd className="cite font-semibold">{toFa(laws.filter((l) => l.status === "in-force").length)}</dd>
                 </div>
                 <div className="flex justify-between items-baseline">
                   <dt className="text-[#6b6b6b]">قوانین منسوخ</dt>
-                  <dd className="cite font-semibold">{toFa("۹۰۴")}</dd>
+                  <dd className="cite font-semibold">{toFa(laws.filter((l) => l.status === "revoked").length)}</dd>
                 </div>
                 <div className="flex justify-between items-baseline">
                   <dt className="text-[#6b6b6b]">اصلاحات ثبت‌شده</dt>
-                  <dd className="cite font-semibold">{toFa("۱۸۲۳۹")}</dd>
+                  <dd className="cite font-semibold">{toFa(laws.reduce((sum, l) => sum + l.amendments.length, 0))}</dd>
                 </div>
                 <div className="flex justify-between items-baseline">
                   <dt className="text-[#6b6b6b]">ارجاعات متقابل</dt>
-                  <dd className="cite font-semibold">{toFa("۴۷۱۲۰")}</dd>
+                  <dd className="cite font-semibold">{toFa(laws.reduce((sum, l) => sum + l.references.length, 0))}</dd>
                 </div>
               </dl>
-
-              <h3 className="font-legal text-[15px] font-semibold text-[#1a1a1a] mt-8 mb-3">
-                ابزارها
-              </h3>
-              <ul className="space-y-2 text-[13px]">
-                <li><a href="#" className="link-legal">اشتراک تغییرات یک قانون (RSS)</a></li>
-                <li><a href="#" className="link-legal">دانلود PDF قوانین</a></li>
-                <li><a href="#" className="link-legal">استخراج ارجاعات در قالب JSON</a></li>
-                <li><a href="#" className="link-legal">اشتراک‌گذاری پیوند یک ماده</a></li>
-              </ul>
-
-              <h3 className="font-legal text-[15px] font-semibold text-[#1a1a1a] mt-8 mb-3">
-                برای حقوقدانان
-              </h3>
-              <p className="text-[12.5px] leading-6 text-[#3d3d3d]">
-                هر ماده دارای شناسه یکتا (DOI) است و می‌توانید با استفاده از
-                ساختار URL پایگاه، پیوند پایدار به نسخه خاصی از متن قانون ایجاد
-                کنید. برای مشاهده راهنمای فنی به{" "}
-                <a href="#" className="link-legal">بخش توسعه‌دهندگان</a> مراجعه کنید.
-              </p>
             </aside>
           </div>
         </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, FormEvent } from "react";
+import { useState, FormEvent, useEffect, useRef } from "react";
 import Link from "next/link";
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import { Field, PasswordInput, AgreementCheckbox } from "@/components/auth/AuthFields";
@@ -23,6 +23,15 @@ export default function SignUpPage() {
   }>({});
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
+
+  // Move focus to the success message heading when the simulated
+  // "verification email sent" state is entered.
+  const successHeadingRef = useRef<HTMLHeadingElement>(null);
+  useEffect(() => {
+    if (done) {
+      successHeadingRef.current?.focus();
+    }
+  }, [done]);
 
   const identifierLabel =
     identifierKind === "email" ? "ایمیل" : "شماره تلفن";
@@ -107,12 +116,19 @@ export default function SignUpPage() {
               <polyline points="20 6 9 17 4 12" />
             </svg>
           </div>
-          <p className="text-[14px] text-[#3d3d3d] leading-7">
+          <h2
+            ref={successHeadingRef}
+            tabIndex={-1}
+            className="text-[14px] font-normal text-[#3d3d3d] leading-7 outline-none"
+          >
             یک پیام تأیید به{" "}
             <strong className="font-legal font-semibold text-[#1a1a1a]" dir="ltr">
               {identifier.trim()}
             </strong>{" "}
             ارسال شد. روی پیوند داخل پیام کلیک کنید تا حساب شما فعال شود.
+          </h2>
+          <p className="text-[12px] text-[#9c9c9c] mt-4">
+            این یک نسخه نمایشی است — ایمیل واقعی ارسال نمی‌شود.
           </p>
           <Link href="/signin" className="auth-submit mt-5" style={{ textDecoration: "none" }}>
             ادامه به ورود
@@ -183,6 +199,7 @@ export default function SignUpPage() {
           label={identifierLabel}
           htmlFor="identifier"
           error={errors.identifier}
+          hasError={!!errors.identifier}
         >
           <input
             id="identifier"
@@ -192,6 +209,7 @@ export default function SignUpPage() {
             placeholder={placeholder}
             autoComplete={identifierKind === "email" ? "email" : "tel"}
             inputMode={identifierKind === "phone" ? "tel" : "email"}
+            spellCheck={false}
             dir="ltr"
             className={`auth-input ${errors.identifier ? "is-error" : ""}`}
             style={{ textAlign: "right" }}

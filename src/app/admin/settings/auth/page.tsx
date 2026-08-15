@@ -2,14 +2,16 @@
 
 import { useState } from "react";
 import { PageHead, Card, Field, Switch, Tabs } from "@/components/admin/primitives";
+import { useToast } from "@/hooks/use-toast";
 import { defaultAuthSettings } from "@/lib/admin-data";
 import { faNum } from "@/components/admin/primitives";
 
 export default function AuthSettingsPage() {
+  const { toast } = useToast();
   const [tab, setTab] = useState("general");
   return (
     <>
-      <PageHead title="تنظیمات احراز هویت" subtitle="ورود، ثبت‌نام و بازیابی رمز عبور" actions={<button className="admin-btn admin-btn-primary">ذخیره</button>} />
+      <PageHead title="تنظیمات احراز هویت" subtitle="ورود، ثبت‌نام و بازیابی رمز عبور" actions={<button className="admin-btn admin-btn-primary" onClick={() => toast({ title: "ذخیره شد", description: "تنظیمات با موفقیت ثبت شد." })}>ذخیره</button>} />
       <Tabs tabs={[{ id: "general", label: "عمومی" }, { id: "signin", label: "ورود" }, { id: "signup", label: "ثبت‌نام" }, { id: "forgot", label: "بازیابی رمز" }]} active={tab} onChange={setTab} />
 
       {tab === "general" && (

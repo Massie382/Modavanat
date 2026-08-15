@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import type { Law, AmendmentEvent } from "@/lib/types";
+import { laws } from "@/data/laws";
 import { Breadcrumb } from "@/components/site/Breadcrumb";
 import { TableOfContentsTab } from "./tabs/TableOfContentsTab";
 import { ContentTab } from "./tabs/ContentTab";
@@ -9,6 +10,7 @@ import { TimelineTab } from "./tabs/TimelineTab";
 import { ReferencesTab } from "./tabs/ReferencesTab";
 import { ResourcesTab } from "./tabs/ResourcesTab";
 import { AmendmentComparisonView } from "./AmendmentComparisonView";
+import { BackToTop } from "./BackToTop";
 import { MobileLawDrawer } from "@/components/site/MobileLawDrawer";
 import { toFa, statusLabel, statusPillClass, formatJalaliDate } from "@/lib/utils";
 
@@ -63,7 +65,80 @@ const TABS: { id: TabId; label: string; help?: string }[] = [
 export function LawDetailView({ law, onBack, onOpenLawById }: LawDetailViewProps) {
   const [activeTab, setActiveTab] = useState<TabId>("contents");
   const [comparisonAmendment, setComparisonAmendment] = useState<AmendmentEvent | null>(null);
+  const [copied, setCopied] = useState(false);
   const { selectedArticleId, setSelectedArticleId } = useArticleSelection(law.id);
+
+  // Reading-progress bar: a ref to the inner <div> whose `transform: scaleX()`
+  // is updated on scroll. We keep a single passive scroll listener (combined
+  // with a resize listener so the percentage stays correct if the viewport
+  // height changes after fonts/images load).
+  const progressBarRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const update = () => {
+      const el = progressBarRef.current;
+      if (!el) return;
+      const doc = document.documentElement;
+      const scrollTop = window.scrollY || doc.scrollTop || 0;
+      const max = (doc.scrollHeight - doc.clientHeight) || 0;
+      const percent = max > 0 ? Math.min(1, Math.max(0, scrollTop / max)) : 0;
+      el.style.transform = `scaleX(${percent})`;
+    };
+    update();
+    window.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
+    };
+  }, []);
+
+  // "کپی پیوند" feedback — show "کپی شد!" for 2s, then revert to "کپی پیوند".
+  // We keep the timeout in a ref so a rapid second click resets the timer
+  // instead of letting the first timeout hide the confirmation early.
+  const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleCopyLink = async () => {
+    const href = window.location.href;
+    try {
+      await navigator.clipboard.writeText(href);
+    } catch {
+      // Fallback for older browsers / insecure contexts: select a hidden
+      // input and run execCommand. This is deprecated but still works in
+      // most browsers and costs us nothing if it fails.
+      try {
+        const ta = document.createElement("textarea");
+        ta.value = href;
+        ta.setAttribute("readonly", "");
+        ta.style.position = "absolute";
+        ta.style.left = "-9999px";
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+      } catch {
+        /* no-op — the button will still flash "کپی شد!" even if the copy silently failed */
+      }
+    }
+    setCopied(true);
+    if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+    copyTimeoutRef.current = setTimeout(() => setCopied(false), 2000);
+  };
+  useEffect(() => {
+    return () => {
+      if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+    };
+  }, []);
+
+  // Prev/next law navigation: look up the current law's index in the master
+  // `laws` array. `useMemo` because the array is stable and we only need to
+  // recompute when the law actually changes.
+  const { prevLaw, nextLaw } = useMemo(() => {
+    const idx = laws.findIndex((l) => l.id === law.id);
+    if (idx === -1) return { prevLaw: null, nextLaw: null };
+    return {
+      prevLaw: idx > 0 ? laws[idx - 1] : null,
+      nextLaw: idx < laws.length - 1 ? laws[idx + 1] : null,
+    };
+  }, [law.id]);
 
   // Wrap setSelectedArticleId so that picking an article from the mobile
   // drawer ALSO switches to the "content" tab — otherwise the drawer would
@@ -145,6 +220,14 @@ export function LawDetailView({ law, onBack, onOpenLawById }: LawDetailViewProps
 
   return (
     <div>
+      {/* Reading progress bar — thin charcoal bar fixed to the very top of
+          the viewport. The inner <div>'s transform: scaleX() is updated on
+          scroll (see the useEffect above). transform-origin sits at the
+          start edge (right in RTL) so the bar grows toward the end edge. */}
+      <div className="reading-progress" aria-hidden="true">
+        <div ref={progressBarRef} className="reading-progress-bar" />
+      </div>
+
       {/* Comparison modal */}
       {comparisonAmendment && (
         <AmendmentComparisonView
@@ -193,31 +276,48 @@ export function LawDetailView({ law, onBack, onOpenLawById }: LawDetailViewProps
               </div>
             </div>
 
-            {/* Utility buttons */}
+            {/* Utility buttons — چاپ & دانلود PDF both open the browser
+                print dialog (the user can pick "Save as PDF" as the
+                destination); کپی پیوند copies the current URL. */}
             <div className="flex flex-wrap items-center gap-2">
-              <button className="utility-pill">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <button
+                type="button"
+                className="utility-pill"
+                onClick={() => window.print()}
+                title="این صفحه را چاپ کنید"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   <polyline points="6 9 6 2 18 2 18 9"></polyline>
                   <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
                   <rect x="6" y="14" width="12" height="8"></rect>
                 </svg>
                 چاپ
               </button>
-              <button className="utility-pill">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <button
+                type="button"
+                className="utility-pill"
+                onClick={() => window.print()}
+                title="در پنجرهٔ چاپ، مقصد را «ذخیره به‌صورت PDF» انتخاب کنید"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                   <polyline points="7 10 12 15 17 10"></polyline>
                   <line x1="12" y1="15" x2="12" y2="3"></line>
                 </svg>
                 دانلود PDF
               </button>
-              <button className="utility-pill">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M4 11a9 9 0 0 1 9 9"></path>
-                  <path d="M4 4a16 16 0 0 1 16 16"></path>
-                  <circle cx="5" cy="19" r="1"></circle>
+              <button
+                type="button"
+                className="utility-pill"
+                onClick={handleCopyLink}
+                title="پیوند این صفحه را در کلیپ‌بورد کپی کنید"
+                aria-live="polite"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                  <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
                 </svg>
-                اشتراک RSS
+                {copied ? "کپی شد!" : "کپی پیوند"}
               </button>
             </div>
           </div>
@@ -326,6 +426,47 @@ export function LawDetailView({ law, onBack, onOpenLawById }: LawDetailViewProps
         {activeTab === "resources" && <ResourcesTab law={law} onOpenLawById={onOpenLawById} />}
       </div>
 
+      {/* Prev/next law navigation — hairline-bordered bar at the bottom of
+          the law detail page. Shows the previous law (on the start / right
+          side in RTL) and the next law (on the end / left side). Either side
+          is hidden entirely if there is no adjacent law. */}
+      {(prevLaw || nextLaw) && (
+        <nav className="law-prev-next" aria-label="ناوبری قانون قبلی و بعدی">
+          {prevLaw ? (
+            <button
+              type="button"
+              className="pn-prev"
+              onClick={() => onOpenLawById?.(prevLaw.id)}
+              title={`قانون قبلی: ${prevLaw.title}`}
+            >
+              <span className="pn-arrow" aria-hidden="true">«</span>
+              <span className="pn-body">
+                <span className="pn-label">قانون قبلی</span>
+                <span className="pn-title">{prevLaw.title}</span>
+              </span>
+            </button>
+          ) : (
+            <span className="pn-prev is-empty" aria-hidden="true" />
+          )}
+          {nextLaw ? (
+            <button
+              type="button"
+              className="pn-next"
+              onClick={() => onOpenLawById?.(nextLaw.id)}
+              title={`قانون بعدی: ${nextLaw.title}`}
+            >
+              <span className="pn-body">
+                <span className="pn-label">قانون بعدی</span>
+                <span className="pn-title">{nextLaw.title}</span>
+              </span>
+              <span className="pn-arrow" aria-hidden="true">»</span>
+            </button>
+          ) : (
+            <span className="pn-next is-empty" aria-hidden="true" />
+          )}
+        </nav>
+      )}
+
       {/* Mobile article picker drawer — slides in from the LEFT, mirrors the
           desktop right-side ArticlePicker UI (iOS-style scroll-snap list +
           search). Tapping an article updates the article view underneath but
@@ -335,6 +476,11 @@ export function LawDetailView({ law, onBack, onOpenLawById }: LawDetailViewProps
         selectedArticleId={selectedArticleId}
         onSelectArticle={handleSelectArticle}
       />
+
+      {/* Back-to-top button — fixed to the bottom-end corner, fades in after
+          the user has scrolled 400px. See ./BackToTop.tsx for the scroll
+          listener and `globals.css` for the fade transition. */}
+      <BackToTop />
     </div>
   );
 }

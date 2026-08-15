@@ -1,9 +1,11 @@
 "use client";
 
 import { PageHead, Card, Field, Switch, Segmented } from "@/components/admin/primitives";
+import { useToast } from "@/hooks/use-toast";
 import { defaultTheme, type ThemeToken } from "@/lib/admin-data";
 
 export default function AppearanceSettingsPage() {
+  const { toast } = useToast();
   const lightInk = defaultTheme.lightTokens.filter((t) => t.group === "ink");
   const lightSurface = defaultTheme.lightTokens.filter((t) => t.group === "surface");
   const lightAccent = defaultTheme.lightTokens.filter((t) => t.group === "accent" || t.group === "layout");
@@ -11,7 +13,7 @@ export default function AppearanceSettingsPage() {
 
   return (
     <div className="admin-stack">
-      <PageHead title="ظاهر و رنگ" subtitle="ویرایش توکن‌های رنگ، فونت و قالب بصری سایت" actions={<button className="admin-btn admin-btn-primary">ذخیره</button>} />
+      <PageHead title="ظاهر و رنگ" subtitle="ویرایش توکن‌های رنگ، فونت و قالب بصری سایت" actions={<button className="admin-btn admin-btn-primary" onClick={() => toast({ title: "ذخیره شد", description: "تنظیمات با موفقیت ثبت شد." })}>ذخیره</button>} />
 
       <Card title="حالت نمایش پیش‌فرض">
         <Segmented options={[{ value: "light", label: "روشن" }, { value: "dark", label: "تیره" }, { value: "system", label: "سیستم" }]} value={defaultTheme.defaultMode} onChange={() => {}} />

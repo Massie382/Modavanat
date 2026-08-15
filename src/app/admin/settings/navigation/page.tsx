@@ -1,12 +1,14 @@
 "use client";
 
 import { PageHead, Card, Field, Badge, Switch } from "@/components/admin/primitives";
+import { useToast } from "@/hooks/use-toast";
 import { defaultNavigation } from "@/lib/admin-data";
 
 export default function NavigationSettingsPage() {
+  const { toast } = useToast();
   return (
     <div className="admin-stack">
-      <PageHead title="فهرست‌ها و ناوبری" subtitle="مدیریت پیوندهای ناوبری در سرصفحه، پاصفحه و صفحات احراز هویت" actions={<button className="admin-btn admin-btn-primary">ذخیره</button>} />
+      <PageHead title="فهرست‌ها و ناوبری" subtitle="مدیریت پیوندهای ناوبری در سرصفحه، پاصفحه و صفحات احراز هویت" actions={<button className="admin-btn admin-btn-primary" onClick={() => toast({ title: "ذخیره شد", description: "تنظیمات با موفقیت ثبت شد." })}>ذخیره</button>} />
 
       <Card title="نوار بالایی سرصفحه" desc="پیوندهای کمکی در نوار باریک بالای سرصفحه">
         <NavList items={defaultNavigation.topStripLinks} />

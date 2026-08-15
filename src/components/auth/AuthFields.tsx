@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { cloneElement, isValidElement, useState, type ReactElement } from "react";
 
 /* ───────────────────────────────────────────────────────────────────────
    Reusable form field primitives for the auth pages (/signin, /signup).
@@ -12,17 +12,34 @@ interface FieldProps {
   htmlFor?: string;
   error?: string | null;
   hint?: string;
+  /** When true, the wrapped input gets `aria-invalid="true"` and the
+   *  `input-error` class so callers don't have to wire both manually. */
+  hasError?: boolean;
   children: React.ReactNode;
 }
 
-/** Labeled field wrapper — renders label + input + error/hint text. */
-export function Field({ label, htmlFor, error, hint, children }: FieldProps) {
+/** Labeled field wrapper — renders label + input + error/hint text.
+ *  When `hasError` is set, the single child input is cloned with
+ *  `aria-invalid="true"` and the `input-error` CSS class injected
+ *  (merged with any className the caller already passed). */
+export function Field({ label, htmlFor, error, hint, hasError, children }: FieldProps) {
+  const decorated =
+    hasError && isValidElement(children)
+      ? cloneElement(children as ReactElement<Record<string, unknown>>, {
+          "aria-invalid": true,
+          className: [
+            ((children.props as { className?: string }).className ?? "").trim(),
+            "input-error",
+          ].filter(Boolean).join(" "),
+        })
+      : children;
+
   return (
     <div>
       <label htmlFor={htmlFor} className="auth-label">
         {label}
       </label>
-      {children}
+      {decorated}
       {error ? (
         <p className="auth-error" role="alert">{error}</p>
       ) : hint ? (
@@ -100,7 +117,8 @@ export function PasswordInput({
           placeholder={placeholder}
           autoComplete={autoComplete}
           aria-label={ariaLabel}
-          className={`auth-input ${hasError ? "is-error" : ""}`}
+          aria-invalid={hasError ? true : undefined}
+          className={`auth-input ${hasError ? "is-error input-error" : ""}`}
           dir="ltr"
           style={{ textAlign: "right" }}
         />

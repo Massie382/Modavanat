@@ -2,11 +2,13 @@
 
 import { useState, useMemo } from "react";
 import { PageHead, Card, Badge, Toolbar, SearchInput, Pagination, EmptyState, StatTile, statusBadgeVariant, faNum } from "@/components/admin/primitives";
+import { useToast } from "@/hooks/use-toast";
 import { defaultAdminPurchases } from "@/lib/admin-data";
 
 const statusLabel: Record<string, string> = { paid: "پرداخت‌شده", pending: "در انتظار", refunded: "بازگشت‌خورده", failed: "ناموفق" };
 
 export default function PurchasesPage() {
+  const { toast } = useToast();
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [page, setPage] = useState(1);
@@ -56,7 +58,7 @@ export default function PurchasesPage() {
                   <td className="col-num">{faNum(p.amount.toLocaleString("fa-IR"))} تومان</td>
                   <td><Badge variant={statusBadgeVariant(p.status)}>{statusLabel[p.status]}</Badge></td>
                   <td><code className="admin-mono">{p.invoiceNumber}</code></td>
-                  <td className="col-narrow"><button className="admin-btn admin-btn-sm admin-btn-ghost">فاکتور</button></td>
+                  <td className="col-narrow"><button className="admin-btn admin-btn-sm admin-btn-ghost" onClick={() => toast({ title: "مشاهده", description: "باز کردن صفحه جزئیات..." })}>فاکتور</button></td>
                 </tr>
               ))}
             </tbody>

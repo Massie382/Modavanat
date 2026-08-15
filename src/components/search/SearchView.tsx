@@ -1,28 +1,132 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
+import type { ReactNode } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { laws, decadeStats } from "@/data/laws";
 import type { Law } from "@/lib/types";
 import { toFa, statusLabel, statusPillClass } from "@/lib/utils";
 import { Pager } from "@/components/ui/Pager";
+import { SearchSuggestions } from "@/components/ui/SearchSuggestions";
 
 const SEARCH_PAGE_SIZE = 10;
 
 interface SearchViewProps {
   onOpenLaw: (law: Law) => void;
-  initialQuery?: string;
 }
 
-export function SearchView({ onOpenLaw, initialQuery = "" }: SearchViewProps) {
-  const [query, setQuery] = useState(initialQuery);
-  const [yearFilter, setYearFilter] = useState<number | null>(null);
-  const [page, setPage] = useState(1);
+/**
+ * Highlight every occurrence of `query` inside `text`.
+ *
+ * Returns the original string when there is no match (so React can render
+ * it as a plain text node), otherwise returns a fragment of <span> (the
+ * gaps between matches) and <mark className="search-highlight"> (the
+ * matched substrings).
+ *
+ * Persian has no letter case, so we use plain `String.prototype.includes`
+ * rather than a case-insensitive comparison.
+ */
+function highlight(text: string, query: string): ReactNode {
+  const q = query.trim();
+  if (!q || !text.includes(q)) return text;
+  const parts = text.split(q);
+  return (
+    <>
+      {parts.map((part, i) => (
+        <span key={i}>
+          {part}
+          {i < parts.length - 1 && (
+            <mark className="search-highlight">{q}</mark>
+          )}
+        </span>
+      ))}
+    </>
+  );
+}
 
+export function SearchView({ onOpenLaw }: SearchViewProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // ── URL is the single source of truth for filter state ────────────────
+  const query = searchParams.get("q") ?? "";
+  const yearStr = searchParams.get("year");
+  const yearFilter = yearStr && Number.isFinite(Number(yearStr)) ? Number(yearStr) : null;
+  const subjectFilter = searchParams.get("subject") ?? "";
+  const page = Math.max(1, Number(searchParams.get("page") ?? "1") || 1);
+
+  // Local mirror of the query for the <input> element. We keep this so
+  // typing feels instant — the URL is updated on every keystroke via
+  // router.replace(), but the input reads from this local state so there
+  // is no perceptible lag. We sync it back from the URL whenever the URL
+  // changes externally (initial mount, reset filters, back/forward
+  // navigation, suggestion pick).
+  const [inputValue, setInputValue] = useState(query);
+  useEffect(() => {
+    setInputValue(query);
+  }, [query]);
+
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
+  // Build a /search URL with the given overrides applied on top of the
+  // CURRENT render's filter values (read from the URL above). Falsy /
+  // default values (empty q, null year, empty subject, page <= 1) are
+  // omitted from the URL so we keep clean URLs like /search rather than
+  // /search?page=1.
+  const buildUrl = (overrides: {
+    q?: string;
+    year?: number | null;
+    subject?: string | null;
+    page?: number;
+  }): string => {
+    const q = overrides.q !== undefined ? overrides.q : query;
+    const year = overrides.year !== undefined ? overrides.year : yearFilter;
+    const subject = overrides.subject !== undefined ? overrides.subject : subjectFilter;
+    const p = overrides.page !== undefined ? overrides.page : page;
+
+    const params = new URLSearchParams();
+    if (q) params.set("q", q);
+    if (year != null) params.set("year", String(year));
+    if (subject) params.set("subject", subject);
+    if (p && p > 1) params.set("page", String(p));
+
+    const qs = params.toString();
+    return qs ? `/search?${qs}` : "/search";
+  };
+
+  // Query typing → replace() so we don't clutter history on every keystroke.
+  // Page is reset to 1 because the result set (and therefore page count)
+  // has changed.
+  const handleQueryChange = (value: string) => {
+    setInputValue(value);
+    router.replace(buildUrl({ q: value, page: 1 }));
+  };
+
+  // Filter changes → push() so the back button works as expected.
+  // Page is reset to 1 for the same reason as above.
+  const handleYearChange = (year: number | null) => {
+    router.push(buildUrl({ year, page: 1 }));
+  };
+  const handleSubjectChange = (subject: string | null) => {
+    router.push(buildUrl({ subject, page: 1 }));
+  };
+  // Pagination → push() so back/forward steps through pages.
+  const handlePageChange = (p: number) => {
+    router.push(buildUrl({ page: p }));
+  };
+
+  const resetFilters = () => {
+    setInputValue("");
+    router.push("/search");
+  };
+
+  // ── Filtering ─────────────────────────────────────────────────────────
   const results = useMemo(() => {
     const q = query.trim();
-    if (!q && !yearFilter) return laws;
+    if (!q && !yearFilter && !subjectFilter) return laws;
     return laws.filter((l) => {
-      const matchesQuery = !q ||
+      const matchesQuery =
+        !q ||
         l.title.includes(q) ||
         l.description.includes(q) ||
         l.subject.includes(q) ||
@@ -30,21 +134,24 @@ export function SearchView({ onOpenLaw, initialQuery = "" }: SearchViewProps) {
         String(l.number).includes(q) ||
         l.articles.some((a) => a.text.includes(q) || a.number.includes(q));
       const matchesYear = !yearFilter || l.year === yearFilter;
-      return matchesQuery && matchesYear;
+      const matchesSubject = !subjectFilter || l.subject === subjectFilter;
+      return matchesQuery && matchesYear && matchesSubject;
     });
-  }, [query, yearFilter]);
-
-  // Reset to page 1 whenever the result set changes (new query, new filter).
-  // This prevents being stuck on e.g. page 5 of an old result set that now
-  // only has 2 pages.
-  useEffect(() => {
-    setPage(1);
-  }, [query, yearFilter]);
+  }, [query, yearFilter, subjectFilter]);
 
   const totalPages = Math.max(1, Math.ceil(results.length / SEARCH_PAGE_SIZE));
-  // Defensive clamp — if a state restoration lands us past the last page.
+
+  // Defensive clamp — if a direct URL like /search?page=99 lands us past
+  // the last page, snap back to page 1. This mirrors the original
+  // component's clamp behavior, now expressed as a URL update. We
+  // intentionally depend only on [page, totalPages] so the clamp fires
+  // when either changes, not on every keystroke that touches query/year.
+  // (react-hooks/exhaustive-deps is disabled in this project's eslint
+  // config, so no suppression comment is needed for the narrow dep list.)
   useEffect(() => {
-    if (page > totalPages) setPage(1);
+    if (page > totalPages) {
+      router.replace(buildUrl({ page: 1 }));
+    }
   }, [page, totalPages]);
 
   const pagedResults = useMemo(
@@ -56,12 +163,24 @@ export function SearchView({ onOpenLaw, initialQuery = "" }: SearchViewProps) {
     [results, page]
   );
 
-  // Year facets — count by year
+  // Year facets — count by year, over all laws (independent of active
+  // filters), so the user always sees the full distribution. Sorted
+  // newest year first, matching the original component.
   const yearFacets = useMemo(() => {
     const map = new Map<number, number>();
     laws.forEach((l) => map.set(l.year, (map.get(l.year) || 0) + 1));
     return Array.from(map.entries()).sort((a, b) => b[0] - a[0]);
   }, []);
+
+  // Subject facets — distinct subjects with counts, in insertion order
+  // (Map preserves first-seen order, same as the original Set-based code).
+  const subjectFacets = useMemo(() => {
+    const map = new Map<string, number>();
+    laws.forEach((l) => map.set(l.subject, (map.get(l.subject) || 0) + 1));
+    return Array.from(map.entries());
+  }, []);
+
+  const hasActiveFilter = !!(query || yearFilter || subjectFilter || page > 1);
 
   return (
     <div className="container-legal py-8">
@@ -84,7 +203,7 @@ export function SearchView({ onOpenLaw, initialQuery = "" }: SearchViewProps) {
             <ul className="space-y-0.5 text-[13px]">
               <li>
                 <button
-                  onClick={() => setYearFilter(null)}
+                  onClick={() => handleYearChange(null)}
                   className={`block w-full text-right py-1 px-2 hover:bg-[#f0efeb] ${
                     !yearFilter ? "bg-[#f0efeb] font-medium" : ""
                   }`}
@@ -95,7 +214,7 @@ export function SearchView({ onOpenLaw, initialQuery = "" }: SearchViewProps) {
               {yearFacets.map(([year, count]) => (
                 <li key={year}>
                   <button
-                    onClick={() => setYearFilter(year)}
+                    onClick={() => handleYearChange(year)}
                     className={`block w-full text-right py-1 px-2 hover:bg-[#f0efeb] flex justify-between ${
                       yearFilter === year ? "bg-[#f0efeb] font-medium" : ""
                     }`}
@@ -111,17 +230,30 @@ export function SearchView({ onOpenLaw, initialQuery = "" }: SearchViewProps) {
               فیلتر بر اساس موضوع
             </h2>
             <ul className="space-y-0.5 text-[13px]">
-              {Array.from(new Set(laws.map((l) => l.subject))).map((s) => {
-                const count = laws.filter((l) => l.subject === s).length;
-                return (
-                  <li key={s}>
-                    <button className="block w-full text-right py-1 px-2 hover:bg-[#f0efeb] flex justify-between">
-                      <span>{s}</span>
-                      <span className="text-[#6b6b6b] cite">({toFa(count)})</span>
-                    </button>
-                  </li>
-                );
-              })}
+              <li>
+                <button
+                  onClick={() => handleSubjectChange(null)}
+                  className={`block w-full text-right py-1 px-2 hover:bg-[#f0efeb] flex justify-between ${
+                    !subjectFilter ? "bg-[#f0efeb] font-medium" : ""
+                  }`}
+                >
+                  <span>همه موضوعات</span>
+                  <span className="text-[#6b6b6b] cite">({toFa(laws.length)})</span>
+                </button>
+              </li>
+              {subjectFacets.map(([subject, count]) => (
+                <li key={subject}>
+                  <button
+                    onClick={() => handleSubjectChange(subject)}
+                    className={`block w-full text-right py-1 px-2 hover:bg-[#f0efeb] flex justify-between ${
+                      subjectFilter === subject ? "bg-[#f0efeb] font-medium" : ""
+                    }`}
+                  >
+                    <span>{subject}</span>
+                    <span className="text-[#6b6b6b] cite">({toFa(count)})</span>
+                  </button>
+                </li>
+              ))}
             </ul>
           </div>
         </aside>
@@ -132,13 +264,18 @@ export function SearchView({ onOpenLaw, initialQuery = "" }: SearchViewProps) {
           <div className="mb-4">
             <div className="relative">
               <input
+                ref={inputRef}
                 type="text"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
+                value={inputValue}
+                onChange={(e) => handleQueryChange(e.target.value)}
                 placeholder="عنوان، شماره، یا متن ماده…"
                 className="input-legal pl-10"
                 style={{ paddingLeft: "2.5rem" }}
                 autoFocus
+                autoComplete="off"
+                aria-autocomplete="list"
+                aria-expanded={!!inputValue.trim()}
+                aria-controls="search-page-suggestions"
               />
               <span
                 aria-hidden
@@ -149,15 +286,39 @@ export function SearchView({ onOpenLaw, initialQuery = "" }: SearchViewProps) {
                   <line x1="21" y1="21" x2="16.5" y2="16.5"></line>
                 </svg>
               </span>
+              <div id="search-page-suggestions">
+                <SearchSuggestions
+                  query={inputValue}
+                  inputRef={inputRef}
+                  onPick={(law: Law) => {
+                    router.push(`/law/${law.id}`);
+                  }}
+                  onSearch={(q: string) => {
+                    router.push(`/search?q=${encodeURIComponent(q)}`);
+                  }}
+                />
+              </div>
             </div>
-            <p className="text-[12.5px] text-[#6b6b6b] mt-2">
-              {toFa(results.length)} نتیجه یافت شد
-              {query && (
-                <>
-                  {" "}برای عبارت «<span className="text-[#1a1a1a]">{query}</span>»
-                </>
+
+            <div className="flex items-baseline justify-between gap-3 mt-2">
+              <p className="text-[12.5px] text-[#6b6b6b]">
+                {toFa(results.length)} نتیجه یافت شد
+                {query && (
+                  <>
+                    {" "}برای عبارت «<span className="text-[#1a1a1a]">{query}</span>»
+                  </>
+                )}
+              </p>
+              {hasActiveFilter && (
+                <button
+                  type="button"
+                  onClick={resetFilters}
+                  className="text-[12px] text-[#6b6b6b] hover:text-[#1a1a1a] underline underline-offset-2 shrink-0"
+                >
+                  بازنشانی فیلترها
+                </button>
               )}
-            </p>
+            </div>
           </div>
 
           {/* Results list */}
@@ -180,7 +341,7 @@ export function SearchView({ onOpenLaw, initialQuery = "" }: SearchViewProps) {
                 >
                   <div className="flex items-start justify-between gap-3 mb-1.5">
                     <h3 className="font-legal text-[15.5px] font-medium text-[#1a1a1a] group-hover:underline">
-                      {law.title}
+                      {highlight(law.title, query)}
                     </h3>
                     <span className={statusPillClass(law.status)}>
                       {statusLabel(law.status)}
@@ -192,7 +353,7 @@ export function SearchView({ onOpenLaw, initialQuery = "" }: SearchViewProps) {
                     {" — "}{law.subject}
                   </div>
                   <p className="text-[13px] leading-6 text-[#3d3d3d] line-clamp-2">
-                    {law.description}
+                    {highlight(law.description, query)}
                   </p>
                   {query && (
                     <p className="text-[12px] text-[#6b6b6b] mt-2">
@@ -209,7 +370,7 @@ export function SearchView({ onOpenLaw, initialQuery = "" }: SearchViewProps) {
           <Pager
             currentPage={page}
             totalPages={totalPages}
-            onPageChange={setPage}
+            onPageChange={handlePageChange}
             showSummary
             unitLabel="نتیجه"
             totalItems={results.length}

@@ -1,14 +1,16 @@
 "use client";
 
 import { PageHead, Card, Field, Switch } from "@/components/admin/primitives";
+import { useToast } from "@/hooks/use-toast";
 import { defaultHomeSettings, getAdminLawList } from "@/lib/admin-data";
 import { faNum } from "@/components/admin/primitives";
 
 export default function HomeSettingsPage() {
+  const { toast } = useToast();
   const laws = getAdminLawList();
   return (
     <div className="admin-stack">
-      <PageHead title="تنظیمات صفحه نخست" subtitle="بخش‌های hero، قوانین منتخب، آمار و ابزارها" actions={<button className="admin-btn admin-btn-primary">ذخیره</button>} />
+      <PageHead title="تنظیمات صفحه نخست" subtitle="بخش‌های hero، قوانین منتخب، آمار و ابزارها" actions={<button className="admin-btn admin-btn-primary" onClick={() => toast({ title: "ذخیره شد", description: "تنظیمات با موفقیت ثبت شد." })}>ذخیره</button>} />
 
       <Card title="نمایش بخش‌ها">
         <div className="admin-grid-2">

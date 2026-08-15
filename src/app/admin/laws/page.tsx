@@ -3,9 +3,11 @@
 import { useState, useMemo } from "react";
 import Link from "next/link";
 import { PageHead, Card, Badge, Toolbar, SearchInput, Pagination, EmptyState, statusBadgeVariant, faNum } from "@/components/admin/primitives";
+import { useToast } from "@/hooks/use-toast";
 import { getAdminLawList, lawTypeVocab, lawStatusVocab } from "@/lib/admin-data";
 
 export default function AdminLawsList() {
+  const { toast } = useToast();
   const all = useMemo(() => getAdminLawList(), []);
   const [q, setQ] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
@@ -85,7 +87,13 @@ export default function AdminLawsList() {
         {selected.size > 0 && (
           <>
             <span className="admin-muted">{faNum(selected.size)} انتخاب شده</span>
-            <button className="admin-btn admin-btn-sm admin-btn-danger">حذف انتخاب‌شده‌ها</button>
+            <button className="admin-btn admin-btn-sm admin-btn-danger" onClick={() => {
+              if (selected.size === 0) {
+                toast({ title: "هیچ موردی انتخاب نشده", description: "ابتدا آیتم‌هایی را برای حذف انتخاب کنید." });
+                return;
+              }
+              toast({ title: "حذف گروهی", description: `${selected.size} مورد برای حذف انتخاب شده است.`, variant: "destructive" });
+            }}>حذف انتخاب‌شده‌ها</button>
           </>
         )}
       </Toolbar>

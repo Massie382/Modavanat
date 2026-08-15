@@ -2,9 +2,11 @@
 
 import { useState, useMemo } from "react";
 import { PageHead, Card, Badge, Toolbar, SearchInput, Pagination, EmptyState, Field, statusBadgeVariant, faNum } from "@/components/admin/primitives";
+import { useToast } from "@/hooks/use-toast";
 import { defaultEndUsers } from "@/lib/admin-data";
 
 export default function UsersPage() {
+  const { toast } = useToast();
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [page, setPage] = useState(1);
@@ -23,7 +25,7 @@ export default function UsersPage() {
       <PageHead
         title="کاربران پایگاه"
         subtitle={`${faNum(defaultEndUsers.length)} کاربر ثبت‌نام‌شده`}
-        actions={<button className="admin-btn admin-btn-primary">+ دعوت کاربر</button>}
+        actions={<button className="admin-btn admin-btn-primary" onClick={() => toast({ title: "ایجاد", description: "باز کردن فرم ایجاد..." })}>+ دعوت کاربر</button>}
       />
 
       <Toolbar>
@@ -64,8 +66,8 @@ export default function UsersPage() {
                   <td className="col-num">{faNum(u.purchasesCount)}</td>
                   <td><span className="admin-muted">{u.joinedAt}</span></td>
                   <td className="col-narrow">
-                    <button className="admin-btn admin-btn-sm admin-btn-ghost">مشاهده</button>
-                    <button className="admin-btn admin-btn-sm admin-btn-ghost">تعلیق</button>
+                    <button className="admin-btn admin-btn-sm admin-btn-ghost" onClick={() => toast({ title: "مشاهده", description: "باز کردن صفحه جزئیات..." })}>مشاهده</button>
+                    <button className="admin-btn admin-btn-sm admin-btn-ghost" onClick={() => toast({ title: "تعلیق", description: "وضعیت کاربر به حالت تعلیق تغییر یافت." })}>تعلیق</button>
                   </td>
                 </tr>
               ))}

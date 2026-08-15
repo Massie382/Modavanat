@@ -89,7 +89,7 @@ function CommentaryItemView({
         {commentary.effectType === "جایگزینی" && "جایگزین شد"}
         {commentary.effectType === "توضیح" && "توضیح داده شد"}
         {commentary.effectType === "اجرا" && "اجرا شد"}
-        {commentary.effectType === "الحقاق" && "الحاق شد"}
+        {commentary.effectType === "الحاق" && "الحاق شد"}
         {commentary.effectType === "تفویض اختیار" && "اختیار تفویض شد"}
       </span>{" "}
       <span className="cite">({formatJalaliDate(commentary.date)})</span>

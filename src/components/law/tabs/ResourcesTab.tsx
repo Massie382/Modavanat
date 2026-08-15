@@ -57,9 +57,6 @@ export function ResourcesTab({ law, onOpenLawById }: ResourcesTabProps) {
                   فهرست کامل اصلاحاتی که از زمان تصویب تاکنون بر این قانون اعمال
                   شده است. شامل تاریخ، نوع اثر، ماده تأثیرپذیرفته و قانون اصلاح‌کننده.
                 </p>
-                <a href="#" className="link-legal text-[12.5px] mt-2 inline-block">
-                  مشاهده فهرست اعمال‌شده ←
-                </a>
               </div>
               <div className="p-5 hover:bg-[#fafaf8]">
                 <div className="flex items-start justify-between gap-3 mb-1">
@@ -74,9 +71,6 @@ export function ResourcesTab({ law, onOpenLawById }: ResourcesTabProps) {
                   فهرست کامل اصلاحاتی که این قانون بر سایر قوانین اعمال کرده است.
                   این فهرست جهت معکوس رابطه اصلاح را نشان می‌دهد.
                 </p>
-                <a href="#" className="link-legal text-[12.5px] mt-2 inline-block">
-                  مشاهده فهرست اعمال‌کننده ←
-                </a>
               </div>
             </div>
           </section>
@@ -113,19 +107,7 @@ export function ResourcesTab({ law, onOpenLawById }: ResourcesTabProps) {
             <ul className="border border-[#ececea] bg-white divide-y divide-[#ececea]">
               <li className="p-4 hover:bg-[#fafaf8] flex items-center justify-between">
                 <span className="text-[13.5px] text-[#1a1a1a]">متن کامل قانون در پرتال مجلس شورای اسلامی</span>
-                <a href="#" className="link-legal text-[12.5px]">مشاهده در سایت مجلس ←</a>
-              </li>
-              <li className="p-4 hover:bg-[#fafaf8] flex items-center justify-between">
-                <span className="text-[13.5px] text-[#1a1a1a]">متن قانون در روزنامه رسمی</span>
-                <a href="#" className="link-legal text-[12.5px]">مشاهده ←</a>
-              </li>
-              <li className="p-4 hover:bg-[#fafaf8] flex items-center justify-between">
-                <span className="text-[13.5px] text-[#1a1a1a]">آرا و مذاکرات مجلس در خصوص تصویب</span>
-                <a href="#" className="link-legal text-[12.5px]">مشاهده ←</a>
-              </li>
-              <li className="p-4 hover:bg-[#fafaf8] flex items-center justify-between">
-                <span className="text-[13.5px] text-[#1a1a1a]">نظرات شورای نگهبان درباره قانون</span>
-                <a href="#" className="link-legal text-[12.5px]">مشاهده ←</a>
+                <a href="https://rc.majlis.ir" target="_blank" rel="noopener noreferrer" className="link-legal text-[12.5px]">مشاهده در سایت مجلس ←</a>
               </li>
             </ul>
           </section>
@@ -157,18 +139,6 @@ export function ResourcesTab({ law, onOpenLawById }: ResourcesTabProps) {
                     <span className="cite text-[#6b6b6b] shrink-0">{toFa(a.affectingLaw.year)}</span>
                   </li>
                 ))}
-            </ul>
-          </div>
-
-          <div>
-            <h3 className="font-legal text-[14px] font-semibold text-[#1a1a1a] mb-3">
-              مراحل بعدی
-            </h3>
-            <ul className="space-y-2 text-[13px]">
-              <li><a href="#" className="link-legal">قوانین موضوع مشابه</a></li>
-              <li><a href="#" className="link-legal">قوانین مصوب {toFa(law.year)}</a></li>
-              <li><a href="#" className="link-legal">جستجوی پیشرفته</a></li>
-              <li><a href="#" className="link-legal">اشتراک تغییرات (RSS)</a></li>
             </ul>
           </div>
 

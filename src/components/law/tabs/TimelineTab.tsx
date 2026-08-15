@@ -616,8 +616,6 @@ export function TimelineTab({ law, onOpenLawById, onOpenComparison }: TimelineTa
         <div className="mt-4 flex items-center justify-between text-[12px] text-[#6b6b6b]">
           <p>
             مجموع {toFa(sorted.length)} تغییر ثبت‌شده.
-            {" "}برای اشتراک تغییرات این قانون از طریق RSS{" "}
-            <a href="#" className="link-legal">این پیوند</a> را استفاده کنید.
           </p>
           <div className="flex items-center gap-3">
             <button className="utility-pill">خروجی CSV</button>

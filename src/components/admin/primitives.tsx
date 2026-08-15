@@ -16,16 +16,17 @@ export function PageHead({ title, subtitle, actions }: { title: string; subtitle
   );
 }
 
-export function Card({ title, desc, actions, children, foot, tight }: {
+export function Card({ title, desc, actions, children, foot, tight, style }: {
   title?: string;
   desc?: string;
   actions?: ReactNode;
   children: ReactNode;
   foot?: ReactNode;
   tight?: boolean;
+  style?: React.CSSProperties;
 }) {
   return (
-    <div className="admin-card">
+    <div className="admin-card" style={style}>
       {(title || actions) && (
         <div className="admin-card-head">
           <div>

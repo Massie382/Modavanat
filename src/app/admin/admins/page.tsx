@@ -1,15 +1,17 @@
 "use client";
 
 import { PageHead, Card, Badge, Field, Switch, faNum, statusBadgeVariant } from "@/components/admin/primitives";
+import { useToast } from "@/hooks/use-toast";
 import { defaultAdminUsers, roleLabels, rolePermissions, type AdminRole } from "@/lib/admin-data";
 
 export default function AdminsPage() {
+  const { toast } = useToast();
   return (
     <>
       <PageHead
         title="مدیران سیستم"
         subtitle={`${faNum(defaultAdminUsers.length)} مدیر با دسترسی به پنل`}
-        actions={<button className="admin-btn admin-btn-primary">+ دعوت مدیر</button>}
+        actions={<button className="admin-btn admin-btn-primary" onClick={() => toast({ title: "ایجاد", description: "باز کردن فرم ایجاد..." })}>+ دعوت مدیر</button>}
       />
 
       <div className="admin-grid-2">
@@ -34,7 +36,7 @@ export default function AdminsPage() {
                   <td><Badge variant={statusBadgeVariant(u.status)}>{u.status === "active" ? "فعال" : u.status === "invited" ? "دعوت‌شده" : "معلق"}</Badge></td>
                   <td><span className="admin-muted">{u.lastLogin}</span></td>
                   <td className="col-narrow">
-                    <button className="admin-btn admin-btn-sm admin-btn-ghost">ویرایش</button>
+                    <button className="admin-btn admin-btn-sm admin-btn-ghost" onClick={() => toast({ title: "ویرایش", description: "باز کردن فرم ویرایش..." })}>ویرایش</button>
                   </td>
                 </tr>
               ))}
@@ -67,7 +69,7 @@ export default function AdminsPage() {
                 {(Object.keys(roleLabels) as AdminRole[]).map((r) => <option key={r} value={r}>{roleLabels[r]}</option>)}
               </select>
             </Field>
-            <button className="admin-btn admin-btn-primary">ارسال دعوت</button>
+            <button className="admin-btn admin-btn-primary" onClick={() => toast({ title: "ایجاد", description: "باز کردن فرم ایجاد..." })}>ارسال دعوت</button>
           </Card>
         </div>
       </div>
