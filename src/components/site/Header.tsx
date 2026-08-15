@@ -8,7 +8,6 @@ import { toFa } from "@/lib/utils";
 import type { Law } from "@/lib/types";
 import { laws } from "@/data/laws";
 import { SearchSuggestions } from "@/components/ui/SearchSuggestions";
-import { ThemeToggle } from "@/components/site/ThemeToggle";
 
 /**
  * Site header — charcoal context strip + logo + inline search + auth links
@@ -182,9 +181,8 @@ export function Header() {
             </button>
           </form>
 
-          {/* Auth links + theme toggle */}
+          {/* Auth links */}
           <div className="flex items-center gap-2 sm:gap-3 text-[12px] sm:text-[13px] shrink-0">
-            <ThemeToggle />
             <Link href="/signin" className="link-legal">ورود</Link>
             <span className="text-[#cfcfcf]">/</span>
             <Link href="/signup" className="link-legal">ثبت‌نام</Link>
