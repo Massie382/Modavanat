@@ -627,3 +627,44 @@ Stage Summary:
 - Clicking anywhere else on the card still opens the law at its default view (no article pre-selected), preserving the previous behavior
 - The URL is shareable and bookmarkable — pasting `/law/q-madani-1307?article=qm-a1` directly into the browser will land on that article
 - Same-law navigation (already viewing /law/A, click a snippet to /law/A?article=X) also works via the new `initialArticleId`-watching effect
+
+---
+Task ID: 14
+Agent: Main Agent
+Task: Smoothly auto-scroll to the specific article on the law detail page — both when arriving via deep-link (?article=X) AND when selecting an article from the sidebar picker
+
+Work Log:
+- Read prior worklog (Tasks 12, 13) for context — previous task added deep-linking from search results to /law/{id}?article={articleId}, which selects the article but doesn't scroll to it
+- Inspected ContentTab.tsx — confirmed `<article id={article.id} className="mb-8 scroll-mt-32">` elements are rendered, and the existing in-article search already uses scrollIntoView for match navigation
+- Inspected ArticlePicker.tsx — confirmed sidebar selection calls `onSelect` → `handleSelectArticle` in LawDetailView
+- Inspected Header.tsx — confirmed `--site-header-h` CSS variable is published synchronously in a useEffect (with 300ms timeout fallback), so it's available before our scroll fires
+
+Changes made (2 files):
+
+1. src/components/law/tabs/ContentTab.tsx
+   - Replaced `scroll-mt-32` (128px) on the `<article>` element with inline `scrollMarginTop: "calc(var(--site-header-h, 180px) + 4rem)"` (~244px desktop / ~194px mobile)
+   - This ensures the sticky site header AND the sticky sub-tab bar don't cover the article title when we scrollIntoView to it
+   - Uses the same CSS variable pattern as the ArticlePicker sidebar's sticky `top` offset for consistency
+
+2. src/components/law/LawDetailView.tsx
+   - Added `useCallback` import
+   - Added `scrollToArticle(id)` helper that uses double `requestAnimationFrame` to defer the scroll until after the article element is painted (important when switching tabs — the article isn't in the DOM until the content tab renders)
+   - Modified `handleSelectArticle` to call `scrollToArticle(id)` on every selection — this fires whether the user picked a DIFFERENT article (state change → re-render → scroll) or RE-SELECTED the same article (React's useState bails out, but the imperative scroll still fires)
+   - Modified the `initialArticleId` effect to also call `scrollToArticle` — handles the deep-link arrival case (/law/X?article=Y) and same-law-different-article navigation
+
+Scroll behavior:
+- Deep-link arrival: URL ?article=X → initialArticleId effect → scrollToArticle(X) → double rAF → scrollIntoView({behavior:"smooth", block:"start"})
+- Sidebar pick (different article): handleSelectArticle → setSelectedArticleId + scrollToArticle → re-render + scroll
+- Sidebar pick (same article): handleSelectArticle → setSelectedArticleId bails out, but scrollToArticle still fires → scroll
+- Prev/next nav bar / mobile drawer: both call handleSelectArticle, so same behavior
+- The scroll-margin-top on the article ensures the sticky header + sub-tab bar don't cover the article title
+
+Verification:
+- `npx next build` passes successfully — all routes still SSG correctly
+- Lint shows 2 pre-existing `react-hooks/set-state-in-effect` errors (line 44 has the identical pattern from before my changes); no new errors introduced
+
+Stage Summary:
+- Clicking an article snippet in search results now deep-links to /law/{id}?article={articleId}, opens the content tab, selects the article, AND smoothly scrolls it into view
+- Clicking any article in the sidebar ArticlePicker (including re-selecting the current one) now smoothly scrolls to it
+- Prev/next article navigation buttons and mobile drawer selection also trigger the smooth scroll
+- The scroll offset accounts for the variable-height sticky site header via the --site-header-h CSS variable

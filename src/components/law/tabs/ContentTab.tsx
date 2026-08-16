@@ -216,7 +216,17 @@ function ArticleView({
   highlightQuery?: string;
 }) {
   return (
-    <article id={article.id} className="mb-8 scroll-mt-32">
+    <article
+      id={article.id}
+      className="mb-8"
+      style={{
+        // scroll-margin-top so that when we scrollIntoView() to this
+        // article (on deep-link arrival or sidebar selection), the
+        // sticky site header AND the sticky sub-tab bar don't cover its
+        // title. Matches the offset used by the ArticlePicker sidebar.
+        scrollMarginTop: "calc(var(--site-header-h, 180px) + 4rem)",
+      }}
+    >
       <header className="mb-2.5">
         <h3 className="font-legal text-[16.5px] font-semibold text-[#1a1a1a] flex items-baseline gap-3">
           <span className="cite text-[#6b6b6b] text-[14px]">{article.number}</span>

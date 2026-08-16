@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import type { Law, AmendmentEvent } from "@/lib/types";
 import { laws } from "@/data/laws";
 import { Breadcrumb } from "@/components/site/Breadcrumb";
@@ -169,10 +169,32 @@ export function LawDetailView({ law, onBack, onOpenLawById, initialArticleId }: 
   // they're still on (e.g.) the timeline tab. On desktop this is a no-op
   // because the picker only lives inside ContentTab (already on the content
   // tab when it's visible).
+  //
+  // We also smooth-scroll the article into view on every selection. This
+  // fires whether the user picked a DIFFERENT article (state change →
+  // re-render → scroll) or RE-SELECTED the same article (state bails out,
+  // but we still scroll imperatively). The scroll is deferred via double
+  // rAF so the article element has been painted before we try to scroll —
+  // important when we just switched tabs and the article wasn't in the
+  // DOM a moment ago.
+  const scrollToArticle = useCallback((id: string) => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const el = document.getElementById(id);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      });
+    });
+  }, []);
+
   const handleSelectArticle = (id: string | null) => {
     setSelectedArticleId(id);
     if (id !== null && activeTab !== "content") {
       setActiveTab("content");
+    }
+    if (id) {
+      scrollToArticle(id);
     }
   };
 
@@ -182,7 +204,8 @@ export function LawDetailView({ law, onBack, onOpenLawById, initialArticleId }: 
   // this component instance stays mounted — the useState initializer in
   // useArticleSelection does NOT re-run, and neither does the [lawId]
   // reset effect. This effect explicitly re-seeds the selection (and
-  // switches to the content tab) whenever initialArticleId changes.
+  // switches to the content tab + scrolls to the article) whenever
+  // initialArticleId changes.
   // (The setState-in-effect pattern matches the existing [lawId] reset
   // effect above; the project's lint config flags it but the build does
   // not fail on it.)
@@ -193,8 +216,9 @@ export function LawDetailView({ law, onBack, onOpenLawById, initialArticleId }: 
       // Use the functional setter so we don't need to depend on `activeTab`
       // (avoids re-firing this effect on every tab change).
       setActiveTab((prev) => (prev === "content" ? prev : "content"));
+      scrollToArticle(initialArticleId);
     }
-  }, [initialArticleId]);
+  }, [initialArticleId, scrollToArticle]);
 
   // Sentinel + IntersectionObserver: toggle the .sub-tab-bar-sticky class
   // on the sub-tab bar when it's actively sticking. This lets us add a
