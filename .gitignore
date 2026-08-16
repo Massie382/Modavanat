@@ -8,3 +8,4 @@ dev.log
 .next/
 tool-results/
 tsconfig.tsbuildinfo
+download-check-*.log
