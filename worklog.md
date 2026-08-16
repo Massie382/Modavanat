@@ -782,3 +782,32 @@ Verification:
 Stage Summary:
 - The home-page hero search dropdown now collapses instantly when the user submits the search (via button click or Enter), and only reopens when they click the search bar again.
 - The same fix benefits the Header inline search and the /search page search bar — suggestion clicks now register without the 150ms grace delay, so all three instances feel snappier.
+
+---
+Task ID: 17
+Agent: Main Agent
+Task: On the /search page, the search bar's typed query should not stay "selected" (highlighted) after pressing Enter — the dropdown should collapse and the text should be deselected
+
+Work Log:
+- Re-read SearchView.tsx to understand the /search page input flow:
+   - The search input has NO <form> wrapper and NO onKeyDown handler.
+   - Typing calls `handleQueryChange` → `router.replace(buildUrl({ q: value, page: 1 }))`, so the URL live-updates on every keystroke. The query is already in `?q=...` by the time the user presses Enter.
+   - Because there is no form submit, pressing Enter does nothing by default — the input keeps focus and the browser leaves the typed text in a "selected" (blue-highlighted) state, which is the visual artifact the user reported.
+- Inspected SearchSuggestions.tsx's Enter handler — it only acted when a row was highlighted (rows 0..N). When `highlighted === -1` (nothing highlighted, the default after typing), Enter fell through with no side effects: dropdown stayed open, text stayed selected.
+- Reviewed the other two instances to confirm the fix is safe to apply centrally:
+   - HomeView.tsx: <form onSubmit={handleHeroSearch}> already blurs the input on submit, so Enter triggers a blur + navigation. Adding the new branch doesn't change this — the form submit still fires after our keydown handler runs.
+   - Header.tsx: <form onSubmit={handleSearch}> already clears `searchInput` and navigates. Same reasoning — no regression.
+- Fix applied in `src/components/ui/SearchSuggestions.tsx`, inside the existing Enter handler:
+   - Added an `else` branch for the `highlighted === -1` case.
+   - Calls `setIsOpen(false)` to close the dropdown.
+   - Captures `input.value.length` synchronously, then defers `input.setSelectionRange(len, len)` to the next animation frame. The deferral is important: some browsers fire their own auto-select-on-Enter AFTER our keydown handler returns, so calling `setSelectionRange` synchronously would be overridden. Running it in `requestAnimationFrame` guarantees we run last and win.
+   - The selection is collapsed to the end (caret at end, zero-width selection) so the typed text remains in the input — the user can keep typing to refine the query — but it's no longer visually highlighted.
+- Did NOT add an onKeyDown handler to SearchView.tsx itself. The fix lives entirely in SearchSuggestions so all three instances (Home, Header, /search page) get consistent Enter behavior from a single place.
+
+Verification:
+- `npx next build` passes successfully.
+- `npx eslint src/components/ui/SearchSuggestions.tsx` → only 1 pre-existing error (line 154: `set-state-in-effect`, unchanged by this task). Zero new lint problems.
+
+Stage Summary:
+- On the /search page, pressing Enter with no suggestion highlighted now collapses the SearchSuggestions dropdown AND collapses the input's text selection (caret moves to end, no blue highlight on the typed text).
+- The same fix benefits the Home and Header search instances uniformly — no regressions because their <form onSubmit> handlers still fire after the keydown handler and continue to blur/clear the input as before.

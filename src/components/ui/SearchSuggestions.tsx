@@ -200,7 +200,12 @@ export function SearchSuggestions({
       } else if (e.key === "Enter") {
         // If a row is highlighted, activate it instead of submitting the
         // form. The form's own onSubmit handler still fires for the
-        // non-highlighted case (highlighted === -1).
+        // non-highlighted case (highlighted === -1) — but for instances
+        // without a <form> (e.g. the /search page input, which live-
+        // updates the URL on every keystroke), nothing else would close
+        // the dropdown or deselect the text. Handle that case here too
+        // so Enter consistently collapses the dropdown and clears the
+        // browser's auto-text-selection across all instances.
         if (highlighted === 0) {
           e.preventDefault();
           onSearch(query.trim());
@@ -209,6 +214,20 @@ export function SearchSuggestions({
           e.preventDefault();
           onPick(matches[highlighted - 1]);
           setIsOpen(false);
+        } else {
+          // No row highlighted — still close the dropdown and collapse
+          // the input's text selection so the typed query isn't left
+          // visually highlighted after Enter.
+          setIsOpen(false);
+          const input = inputRef.current;
+          if (input) {
+            const len = input.value.length;
+            // Defer to the next frame so any browser auto-select that
+            // fires on Enter runs first and is then overridden.
+            window.requestAnimationFrame(() => {
+              input.setSelectionRange(len, len);
+            });
+          }
         }
       } else if (e.key === "Escape") {
         e.preventDefault();
