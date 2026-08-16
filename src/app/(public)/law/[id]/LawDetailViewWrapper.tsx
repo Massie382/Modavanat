@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { LawDetailView } from "@/components/law/LawDetailView";
 import type { Law } from "@/lib/types";
 
@@ -13,15 +13,23 @@ import type { Law } from "@/lib/types";
  * wrapper bridges the two: it's a client component that receives the
  * already-resolved `law` object from the server page and wires the
  * callbacks to router.push().
+ *
+ * It also reads the optional `?article=` query param so a search-result
+ * snippet can deep-link straight to a specific article inside the law
+ * detail view (the article is selected and the "content" tab is shown
+ * on initial mount).
  */
 export function LawDetailViewWrapper({ law }: { law: Law }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const initialArticleId = searchParams.get("article") ?? undefined;
 
   return (
     <LawDetailView
       law={law}
       onBack={() => router.push("/browse")}
       onOpenLawById={(id: string) => router.push(`/law/${id}`)}
+      initialArticleId={initialArticleId}
     />
   );
 }

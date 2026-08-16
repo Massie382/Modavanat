@@ -21,12 +21,25 @@ import { toFa, statusLabel, statusPillClass, formatJalaliDate } from "@/lib/util
  * Whichever side the user picks an article from, the same state updates and
  * both sides stay in sync. Selecting an article also auto-switches to the
  * "content" tab so the user immediately sees the chosen article.
+ *
+ * `initialArticleId` (optional) seeds the selection on first mount — used
+ * when deep-linking from a search result article snippet
+ * (`/law/{id}?article={articleId}`). It is only honored on the initial
+ * mount for the given law; if the user later navigates to a different
+ * law (same component instance, different `lawId`), the effect below
+ * resets the selection back to null.
  */
-function useArticleSelection(lawId: string) {
-  const [selectedArticleId, setSelectedArticleId] = useState<string | null>(null);
+function useArticleSelection(lawId: string, initialArticleId?: string) {
+  const [selectedArticleId, setSelectedArticleId] = useState<string | null>(
+    initialArticleId ?? null
+  );
 
   // Reset selection when the law itself changes — otherwise stale article
-  // IDs from the previous law would persist into the new law's view.
+  // IDs from the previous law would persist into the new law's view. We
+  // intentionally do NOT re-seed from `initialArticleId` here because that
+  // prop is meant for the initial mount only; if the user navigates to a
+  // different law via the prev/next buttons, they expect to land on the
+  // law's default view, not have an unrelated article pre-selected.
   useEffect(() => {
     setSelectedArticleId(null);
   }, [lawId]);
@@ -40,6 +53,14 @@ interface LawDetailViewProps {
   law: Law;
   onBack: () => void;
   onOpenLawById?: (id: string) => void;
+  /**
+   * Optional article id to deep-link to on initial mount. When provided,
+   * the view starts on the "content" tab with this article selected
+   * (instead of the default "contents" tab with no selection). Used by the
+   * search page to jump straight from a search-result article snippet to
+   * that article inside the law detail view.
+   */
+  initialArticleId?: string;
 }
 
 const TABS: { id: TabId; label: string; help?: string }[] = [
@@ -62,11 +83,13 @@ const TABS: { id: TabId; label: string; help?: string }[] = [
   },
 ];
 
-export function LawDetailView({ law, onBack, onOpenLawById }: LawDetailViewProps) {
-  const [activeTab, setActiveTab] = useState<TabId>("contents");
+export function LawDetailView({ law, onBack, onOpenLawById, initialArticleId }: LawDetailViewProps) {
+  const [activeTab, setActiveTab] = useState<TabId>(
+    initialArticleId ? "content" : "contents"
+  );
   const [comparisonAmendment, setComparisonAmendment] = useState<AmendmentEvent | null>(null);
   const [copied, setCopied] = useState(false);
-  const { selectedArticleId, setSelectedArticleId } = useArticleSelection(law.id);
+  const { selectedArticleId, setSelectedArticleId } = useArticleSelection(law.id, initialArticleId);
 
   // Reading-progress bar: a ref to the inner <div> whose `transform: scaleX()`
   // is updated on scroll. We keep a single passive scroll listener (combined
@@ -152,6 +175,26 @@ export function LawDetailView({ law, onBack, onOpenLawById }: LawDetailViewProps
       setActiveTab("content");
     }
   };
+
+  // React to URL-driven article changes while staying on the same law. When
+  // the user is already viewing /law/A and a search-result snippet links
+  // them to /law/A?article=X, the [id] route segment doesn't change, so
+  // this component instance stays mounted — the useState initializer in
+  // useArticleSelection does NOT re-run, and neither does the [lawId]
+  // reset effect. This effect explicitly re-seeds the selection (and
+  // switches to the content tab) whenever initialArticleId changes.
+  // (The setState-in-effect pattern matches the existing [lawId] reset
+  // effect above; the project's lint config flags it but the build does
+  // not fail on it.)
+  useEffect(() => {
+    if (initialArticleId === undefined) return;
+    setSelectedArticleId(initialArticleId);
+    if (initialArticleId) {
+      // Use the functional setter so we don't need to depend on `activeTab`
+      // (avoids re-firing this effect on every tab change).
+      setActiveTab((prev) => (prev === "content" ? prev : "content"));
+    }
+  }, [initialArticleId]);
 
   // Sentinel + IntersectionObserver: toggle the .sub-tab-bar-sticky class
   // on the sub-tab bar when it's actively sticking. This lets us add a

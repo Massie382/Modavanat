@@ -584,3 +584,46 @@ Stage Summary:
 - Search results now show the specific matching article(s) inline inside each law card, with the queried term highlighted in both the article number and the article body excerpt
 - Up to 3 article snippets per law; a "+N more" hint appears when additional articles also match
 - Build passes; lint introduces no new errors (pre-existing warnings in MobileLawDrawer.tsx and SearchSuggestions.tsx were untouched)
+
+---
+Task ID: 13
+Agent: Main Agent
+Task: Make clicking a specific article snippet in search results deep-link directly to that article inside the law detail page
+
+Work Log:
+- Read prior worklog (Tasks 1, 11, 12) for context — Persian RTL legal reference site on Next.js 16 App Router; previous task added article snippets to search result cards but clicking them only opened the parent law
+- Inspected SearchView.tsx, LawDetailView.tsx, LawDetailViewWrapper.tsx, and the /law/[id] page route to understand the data flow
+- Confirmed LawDetailView already had a `selectedArticleId` state driving which article is shown in ContentTab — I just needed to seed it from the URL
+
+Changes made (4 files):
+
+1. src/components/search/SearchView.tsx
+   - Added `onOpenArticle?: (law: Law, articleId: string) => void` optional prop
+   - Imported `Link` from next/link
+   - Converted the outer result card from `<button>` to `<div role="button" tabIndex={0}>` with onClick + onKeyDown (Enter/Space) — necessary because nesting `<a>`/`<button>` inside a `<button>` is invalid HTML
+   - Wrapped each article snippet in a `<Link href={/law/${lawId}?article=${articleId}}>` with `stopPropagation` on click so the outer card's onClick (open-the-law) doesn't also fire
+   - Added hover styling (`hover:bg-[#f5edd3] hover:border-[#a88f4a]`) so the snippet reads as clickable
+
+2. src/app/(public)/search/page.tsx
+   - Wired `onOpenArticle` to `router.push(`/law/${law.id}?article=${encodeURIComponent(articleId)}`)`
+
+3. src/components/law/LawDetailView.tsx
+   - Added optional `initialArticleId?: string` prop
+   - `useArticleSelection(lawId, initialArticleId)` now seeds `selectedArticleId` from this prop on initial mount
+   - `useState<TabId>(initialArticleId ? "content" : "contents")` starts on the content tab when an article is pre-selected
+   - Added an effect watching `initialArticleId` to handle the same-law-different-article case (when the user is already on /law/A and a snippet links them to /law/A?article=X, the component doesn't remount — the effect re-seeds the selection and switches to the content tab)
+
+4. src/app/(public)/law/[id]/LawDetailViewWrapper.tsx
+   - Added `useSearchParams` import
+   - Reads `?article=` from the URL and passes it as `initialArticleId` to LawDetailView
+
+Verification:
+- `npx next build` passes successfully — all routes still SSG correctly
+- Lint shows 2 errors and 2 warnings on the modified files, but both errors are the pre-existing `react-hooks/set-state-in-effect` rule that already fires on the existing `useEffect([lawId]) → setSelectedArticleId(null)` pattern in the same file; the new effect follows the same established pattern
+- Sample article ID verified: data uses ids like `qm-a1`, so a search-result Link to `/law/q-madani-1307?article=qm-a1` correctly resolves to that article in ContentTab
+
+Stage Summary:
+- Clicking any article snippet in a search result now navigates to `/law/{lawId}?article={articleId}` and the law detail page opens on the "content" tab with that specific article selected
+- Clicking anywhere else on the card still opens the law at its default view (no article pre-selected), preserving the previous behavior
+- The URL is shareable and bookmarkable — pasting `/law/q-madani-1307?article=qm-a1` directly into the browser will land on that article
+- Same-law navigation (already viewing /law/A, click a snippet to /law/A?article=X) also works via the new `initialArticleId`-watching effect

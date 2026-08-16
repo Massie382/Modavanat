@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import type { ReactNode } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { laws, decadeStats } from "@/data/laws";
 import type { Law } from "@/lib/types";
 import { toFa, statusLabel, statusPillClass } from "@/lib/utils";
@@ -13,6 +14,7 @@ const SEARCH_PAGE_SIZE = 10;
 
 interface SearchViewProps {
   onOpenLaw: (law: Law) => void;
+  onOpenArticle?: (law: Law, articleId: string) => void;
 }
 
 // ── Article-snippet extraction ──────────────────────────────────────────
@@ -98,7 +100,7 @@ function highlight(text: string, query: string): ReactNode {
   );
 }
 
-export function SearchView({ onOpenLaw }: SearchViewProps) {
+export function SearchView({ onOpenLaw, onOpenArticle }: SearchViewProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -406,11 +408,37 @@ export function SearchView({ onOpenLaw }: SearchViewProps) {
             ) : (
               pagedResults.map((law) => {
                 const articleMatches = matchesByLawId.get(law.id);
+                // Build a /law/{id}?article={articleId} URL for deep-linking
+                // from a search-result article snippet straight to that
+                // article inside the law detail view. When onOpenArticle is
+                // provided, clicking the snippet calls it (letting the host
+                // page wire up router.push); otherwise we fall back to a
+                // plain anchor href.
+                const buildArticleUrl = (articleId: string) =>
+                  `/law/${law.id}?article=${encodeURIComponent(articleId)}`;
+                const handleArticleClick = (e: React.MouseEvent, articleId: string) => {
+                  // Prevent the outer card's onClick from also firing.
+                  e.stopPropagation();
+                  if (onOpenArticle) {
+                    e.preventDefault();
+                    onOpenArticle(law, articleId);
+                  }
+                  // If onOpenArticle is not provided, the default <Link>
+                  // navigation proceeds — no preventDefault.
+                };
                 return (
-                <button
+                <div
                   key={law.id}
+                  role="button"
+                  tabIndex={0}
                   onClick={() => onOpenLaw(law)}
-                  className="block w-full text-right p-5 hover:bg-[#f8f7f4] transition-colors group"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      onOpenLaw(law);
+                    }
+                  }}
+                  className="block w-full text-right p-5 hover:bg-[#f8f7f4] transition-colors group cursor-pointer"
                 >
                   <div className="flex items-start justify-between gap-3 mb-1.5">
                     <h3 className="font-legal text-[15.5px] font-medium text-[#1a1a1a] group-hover:underline">
@@ -430,16 +458,18 @@ export function SearchView({ onOpenLaw }: SearchViewProps) {
                   </p>
 
                   {/* Matching article snippets — shown when the query matched
-                      one or more articles inside this law. Each snippet shows
-                      the article number (highlighted if it matched) and a
-                      windowed excerpt of the article text with the matched
-                      term highlighted in context. */}
+                      one or more articles inside this law. Each snippet is a
+                      clickable deep-link to that specific article inside the
+                      law detail page. stopPropagation on click prevents the
+                      outer card's onClick (open-the-law) from also firing. */}
                   {articleMatches && articleMatches.snippets.length > 0 && (
                     <div className="mt-3 space-y-2">
                       {articleMatches.snippets.map((s) => (
-                        <div
+                        <Link
                           key={s.articleId}
-                          className="border-r-2 border-[#c9b885] pr-3 py-1.5 bg-[#faf6ec]"
+                          href={buildArticleUrl(s.articleId)}
+                          onClick={(e) => handleArticleClick(e, s.articleId)}
+                          className="block border-r-2 border-[#c9b885] pr-3 py-1.5 bg-[#faf6ec] hover:bg-[#f5edd3] hover:border-[#a88f4a] transition-colors no-underline"
                         >
                           <div className="text-[12px] font-medium text-[#7a5b1e] mb-0.5 cite">
                             {highlight(s.number, query)}
@@ -447,7 +477,7 @@ export function SearchView({ onOpenLaw }: SearchViewProps) {
                           <p className="text-[12.5px] leading-6 text-[#3d3d3d]">
                             {highlight(s.snippet, query)}
                           </p>
-                        </div>
+                        </Link>
                       ))}
                       {articleMatches.totalMatches > articleMatches.snippets.length && (
                         <p className="text-[11.5px] text-[#6b6b6b] pr-3">
@@ -464,7 +494,7 @@ export function SearchView({ onOpenLaw }: SearchViewProps) {
                       {toFa(law.references.length)} ارجاع
                     </p>
                   )}
-                </button>
+                </div>
                 );
               })
             )}
