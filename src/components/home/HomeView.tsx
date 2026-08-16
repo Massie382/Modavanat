@@ -24,6 +24,15 @@ export function HomeView({ onOpenLaw, onBrowse, onSearch }: HomeViewProps) {
 
   const handleHeroSearch = (e: React.FormEvent) => {
     e.preventDefault();
+    // Blur the input so the SearchSuggestions dropdown collapses
+    // immediately. Without this, pressing Enter to submit keeps the
+    // input focused and the dropdown stays visible during the brief
+    // navigation transition to /search. Clicking the submit button
+    // already blurs the input naturally, but blurring here covers
+    // both cases uniformly. Clicking the search bar again later
+    // re-focuses the input and reopens the dropdown (per the focus
+    // handler in SearchSuggestions).
+    heroInputRef.current?.blur();
     onSearch(heroQuery || "");
   };
 

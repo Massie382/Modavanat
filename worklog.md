@@ -754,3 +754,31 @@ Stage Summary:
 - The site now explicitly describes itself as "پایگاه خصوصی و غیررسمی" (private and unofficial database) in three key locations: home page hero, footer, and about page
 - External references to official sources (روزنامه رسمی, منابع رسمی) were kept as-is because they refer to genuinely official external entities, not the site itself
 - Legal concepts (ثبت رسمی, فرم رسمی) were kept as-is because they describe legal facts, not the site's status
+
+---
+Task ID: 16
+Agent: Main Agent
+Task: Collapse the home-page hero search dropdown when the user submits the search (clicks "جستجو" or presses Enter); only reopen when they click the search bar again
+
+Work Log:
+- Inspected SearchSuggestions.tsx, HomeView.tsx, Header.tsx, and SearchView.tsx to understand how the dropdown opens/closes and how each instance wires its submit handler
+- Root cause identified: the dropdown's blur handler used a 150ms `setTimeout` before calling `setIsOpen(false)` so that suggestion-row `onClick` events could register before the dropdown unmounted. This 150ms delay was the reason the dropdown visibly lingered after the user clicked "جستجو" on the home page hero search. Additionally, `handleHeroSearch` did not blur the input — so pressing Enter to submit kept the input focused and the dropdown open during the brief navigation transition to /search.
+- Fix applied in `src/components/ui/SearchSuggestions.tsx` (shared by Header, HomeView, and SearchView — same fix benefits all three instances):
+   - Added `onMouseDown={(e) => e.preventDefault()}` to the "search for" row button and to each law-suggestion row button. This prevents the input from losing focus when a suggestion is clicked, so the suggestion's `onClick` fires reliably (mousedown → no blur → mouseup → click).
+   - Removed the 150ms `setTimeout` in the `onBlur` handler — the dropdown now closes immediately on blur. This is now safe because suggestion clicks no longer cause a blur event (they're intercepted by `preventDefault` on mousedown); any blur that does fire is genuinely the user clicking elsewhere (the submit button, outside the dropdown, etc.).
+- Fix applied in `src/components/home/HomeView.tsx`:
+   - Added `heroInputRef.current?.blur()` in `handleHeroSearch` before calling `onSearch`. This covers the Enter-key submit case (button-click submit already blurs the input naturally via focus moving to the button). The blur immediately collapses the dropdown.
+- Behavior after fix:
+   - User types → dropdown opens (existing behavior).
+   - User clicks "جستجو" → input blurs → dropdown closes immediately. Clicking the search bar again later re-focuses the input → focus handler reopens the dropdown (existing behavior, unchanged).
+   - User presses Enter with no suggestion highlighted → form submits → `handleHeroSearch` blurs input → dropdown closes immediately.
+   - User presses Enter with a suggestion highlighted → SearchSuggestions intercepts → onPick/onSearch fires → setIsOpen(false) → dropdown closes (existing behavior, unchanged).
+   - User clicks a suggestion row → input does NOT blur (mousedown preventDefault) → suggestion's onClick fires → dropdown closes (existing behavior, now more reliable — no 150ms delay needed).
+
+Verification:
+- `npx next build` passes successfully.
+- `npx eslint src/components/ui/SearchSuggestions.tsx src/components/home/HomeView.tsx` → only 3 pre-existing findings (set-state-in-effect on HomeView:60, set-state-in-effect on SearchSuggestions:154, aria-expanded warning on HomeView:116). Zero new lint problems introduced by this task.
+
+Stage Summary:
+- The home-page hero search dropdown now collapses instantly when the user submits the search (via button click or Enter), and only reopens when they click the search bar again.
+- The same fix benefits the Header inline search and the /search page search bar — suggestion clicks now register without the 150ms grace delay, so all three instances feel snappier.

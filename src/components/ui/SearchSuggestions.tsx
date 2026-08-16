@@ -130,8 +130,12 @@ export function SearchSuggestions({
       if (query.trim()) setIsOpen(true);
     };
     const onBlur = () => {
-      // Delay so click on suggestion fires first.
-      window.setTimeout(() => setIsOpen(false), 150);
+      // Close immediately. Suggestion rows use `onMouseDown` with
+      // `preventDefault()` so they don't blur the input — meaning a
+      // blur here is genuinely the user clicking elsewhere (the
+      // submit button, outside the dropdown, etc.), so we can close
+      // without the old 150ms grace delay.
+      setIsOpen(false);
     };
 
     input.addEventListener("focus", onFocus);
@@ -231,6 +235,10 @@ export function SearchSuggestions({
           type="button"
           className={`ss-row ss-row-search ${highlighted === 0 ? "ss-highlighted" : ""}`}
           onMouseEnter={() => setHighlighted(0)}
+          // Prevent the input from blurring when this row is clicked so
+          // its `onClick` fires reliably (and so a blur elsewhere is
+          // genuinely a blur — close-immediately is then safe).
+          onMouseDown={(e) => e.preventDefault()}
           onClick={() => {
             onSearch(query.trim());
             setIsOpen(false);
@@ -265,6 +273,9 @@ export function SearchSuggestions({
               type="button"
               className={`ss-row ss-row-law ${highlighted === rowIdx ? "ss-highlighted" : ""}`}
               onMouseEnter={() => setHighlighted(rowIdx)}
+              // Prevent the input from blurring when this row is clicked
+              // so its `onClick` fires reliably.
+              onMouseDown={(e) => e.preventDefault()}
               onClick={() => {
                 onPick(law);
                 setIsOpen(false);
