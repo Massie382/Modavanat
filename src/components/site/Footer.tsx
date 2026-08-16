@@ -83,9 +83,9 @@ export function Footer() {
       <div className="border-t border-white/10">
         <div className="container-legal py-4 flex flex-col items-center sm:flex-row sm:items-start sm:justify-between gap-3 text-[12px] text-[#8d8d8d] text-center sm:text-right">
           <p>
-            © ۱۴۰۴ مدونات (modavanat.ir). تمامی حقوق محفوظ است. محتوای این
-            پایگاه بر اساس قوانین رسمی جمهوری اسلامی ایران تهیه شده و قابل نقل
-            قول با ذکر منبع است.
+            © ۱۴۰۴ مدونات (modavanat.ir). تمامی حقوق محفوظ است. مدونات یک
+            پایگاه خصوصی و غیررسمی است؛ محتوای آن بر اساس قوانین جمهوری
+            اسلامی ایران تهیه شده و قابل نقل قول با ذکر منبع است.
           </p>
           <p className="shrink-0">
             نسخه ۲.۴.۱ —{" "}

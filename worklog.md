@@ -706,3 +706,51 @@ Stage Summary:
 - The header's inline search dropdown now renders above the sticky sub-tab bar on law detail pages (z-index 60 > 50)
 - The home page hero search dropdown now appears/disappears instantly without the smooth max-height/opacity/transform animation
 - The header's inline search retains the smooth Google-style drop-down animation
+
+---
+Task ID: 16
+Agent: Main Agent
+Task: Change all mentions of "رسمی" (official) to "غیررسمی" (unofficial) / "پایگاه خصوصی" (private foundation) — the site is a private foundation, not an official one
+
+Work Log:
+- Searched the entire codebase for all occurrences of "رسمی" — found 10 files
+- Categorized each instance into three groups:
+  1. SITE self-description (should change): HomeView hero "پایگاه رسمی"
+  2. EXTERNAL official sources / proper nouns (should keep): "روزنامه رسمی" (Official Gazette — a proper noun), "منابع رسمی" (official sources — referring to external entities), "متن رسمی قوانین" (official text of laws), "قوانین رسمی جمهوری اسلامی ایران" (official laws — the laws ARE official)
+  3. Legal concepts (should keep): "فرم رسمی ازدواج" (official marriage form), "ثبت رسمی" (official registration), "ساختار رسمی قانون" (official structure of the law), "تاریخ‌های رسمی قانون" (official dates of the law), "رسمیت" (different word — official status)
+- Also noted that the About page already correctly states "مدونات جایگزین منابع رسمی نیست" (modavanat is not a replacement for official sources)
+
+Changes made (3 files):
+
+1. src/components/home/HomeView.tsx (hero text)
+   - "در یک پایگاه رسمی و قابل استناد" → "در یک پایگاه خصوصی و غیررسمی"
+   - Changed the site's self-description from "official and citable database" to "private and unofficial database"
+
+2. src/components/site/Footer.tsx (bottom strip)
+   - Old: "محتوای این پایگاه بر اساس قوانین رسمی جمهوری اسلامی ایران تهیه شده..."
+   - New: "مدونات یک پایگاه خصوصی و غیررسمی است؛ محتوای آن بر اساس قوانین جمهوری اسلامی ایران تهیه شده..."
+   - Added explicit "پایگاه خصوصی و غیررسمی" declaration
+   - Removed "رسمی" from "قوانین رسمی" (now just "قوانین") since the site shouldn't characterize its own content as official
+
+3. src/components/site/AboutView.tsx (about page)
+   - Title: "مرجع جامع قوانین جمهوری اسلامی ایران" → "پایگاه خصوصی قوانین جمهوری اسلامی ایران"
+   - Opening paragraph: "مدونات (modavanat.ir) پایگاهی است..." → "مدونات (modavanat.ir) یک پایگاه خصوصی و غیررسمی است..."
+   - Made the private/unofficial nature explicit right from the first sentence
+
+Instances KEPT as-is (external proper nouns / legal concepts — factually correct):
+- "روزنامه رسمی" (Official Gazette — proper noun, appears in AboutView, terms, contact, privacy, admin-data)
+- "منابع رسمی" (official sources — AboutView, terms — already says site is NOT a replacement for these)
+- "متن رسمی قوانین" (official text of laws — AboutView — the source texts ARE official)
+- "فرم رسمی ازدواج", "ثبت رسمی ازدواج و طلاق" (laws.ts — legal concepts about official registration)
+- "ساختار رسمی قانون" (TableOfContentsTab — the law's official structure)
+- "تاریخ‌های رسمی قانون" (admin — the law's official dates)
+- "تأیید رسمیت", "رسمیت می‌دهد" (different word: رسمیت = official status)
+- "برنامه موبایل رسمی" (privacy page — says site has NOT published any official app)
+
+Verification:
+- `npx next build` passes successfully
+
+Stage Summary:
+- The site now explicitly describes itself as "پایگاه خصوصی و غیررسمی" (private and unofficial database) in three key locations: home page hero, footer, and about page
+- External references to official sources (روزنامه رسمی, منابع رسمی) were kept as-is because they refer to genuinely official external entities, not the site itself
+- Legal concepts (ثبت رسمی, فرم رسمی) were kept as-is because they describe legal facts, not the site's status
