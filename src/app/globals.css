@@ -749,43 +749,6 @@ a.link-legal:hover {
   padding: 0.35rem 0.85rem;
 }
 
-/* ----------  Theme toggle (dark mode)  ----------
-   Small charcoal-outlined icon button used in the header.
-   In light mode the hover inverts to solid charcoal; in dark mode
-   the hover inverts to the (light) primary token so it stays legible
-   against the dark surface. */
-.theme-toggle {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border: 1px solid var(--rule);
-  background-color: transparent;
-  color: var(--ink);
-  cursor: pointer;
-  border-radius: 2px;
-  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
-}
-.theme-toggle:hover {
-  background-color: var(--charcoal);
-  color: #ffffff;
-  border-color: var(--charcoal);
-}
-.theme-toggle:focus-visible {
-  outline: 2px solid var(--ring);
-  outline-offset: 2px;
-}
-.dark .theme-toggle {
-  border-color: var(--border);
-  color: var(--foreground);
-}
-.dark .theme-toggle:hover {
-  background-color: var(--primary);
-  color: var(--primary-foreground);
-  border-color: var(--primary);
-}
-
 /* Section / article heading rules */
 .section-rule {
   border-top: 1px solid var(--rule);
