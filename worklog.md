@@ -847,3 +847,26 @@ Verification:
 
 Stage Summary:
 - The in-article content search bar is fully removed from the law detail page, along with all its supporting state, effects, helpers, refs, imports, and CSS — no dead code left behind.
+
+---
+Task ID: 19
+Agent: Main Agent
+Task: Remove "غیررسمی" from the home page hero main title (keep it in the footer + about page body)
+
+Work Log:
+- Grepped for "غیررسمی" across the codebase to find all 4 instances:
+   - HomeView.tsx:92 (hero <h1>) — "در یک پایگاه خصوصی و غیررسمی"
+   - AboutView.tsx:22 (about page body) — "مدونات یک پایگاه خصوصی و غیررسمی است..."
+   - Footer.tsx:87 (footer disclaimer) — "پایگاه خصوصی و غیررسمی است؛ محتوای..."
+   - privacy/page.tsx:42 (privacy body) — "برنامه موبایل رسمی... غیررسمی و تأییدنشده است" (different context, unrelated)
+- User specified "for the main title no need for غیررسمی" — so scoped the change to the hero <h1> only.
+- `src/components/home/HomeView.tsx` line 92: changed `<span className="font-normal">در یک پایگاه خصوصی و غیررسمی</span>` → `<span className="font-normal">در یک پایگاه خصوصی</span>`.
+- Left the about page + footer instances intact — those are body/footer disclaimer text where the "unofficial" qualifier is still appropriate.
+- Left the privacy page instance intact (different context — about unofficial mobile apps).
+
+Verification:
+- `npx next build` passes successfully.
+
+Stage Summary:
+- The hero main title now reads "جستجو، مطالعه و ردیابی اصلاحات قوانین ایران / در یک پایگاه خصوصی" — cleaner, no "غیررسمی".
+- Footer and about page body still explicitly describe the site as "پایگاه خصوصی و غیررسمی" for legal/disclaimer clarity.

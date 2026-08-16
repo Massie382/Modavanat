@@ -89,7 +89,7 @@ export function HomeView({ onOpenLaw, onBrowse, onSearch }: HomeViewProps) {
             <h1 className="font-legal text-[28px] md:text-[34px] leading-[1.4] font-light text-[#1a1a1a] mb-3">
               جستجو، مطالعه و ردیابی اصلاحات قوانین ایران
               <br />
-              <span className="font-normal">در یک پایگاه خصوصی و غیررسمی</span>
+              <span className="font-normal">در یک پایگاه خصوصی</span>
             </h1>
             <p className="text-[14.5px] leading-7 text-[#3d3d3d] mb-7 max-w-2xl">
               مدونات به شما امکان می‌دهد متن کامل قوانین مصوب مجلس شورای اسلامی
