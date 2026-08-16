@@ -668,3 +668,41 @@ Stage Summary:
 - Clicking any article in the sidebar ArticlePicker (including re-selecting the current one) now smoothly scrolls to it
 - Prev/next article navigation buttons and mobile drawer selection also trigger the smooth scroll
 - The scroll offset accounts for the variable-height sticky site header via the --site-header-h CSS variable
+
+---
+Task ID: 15
+Agent: Main Agent
+Task: (1) Fix sticky sub-tab bar covering the header's search suggestions dropdown; (2) Remove the smooth dropdown animation from the home page hero search bar
+
+Work Log:
+- Read prior worklog for context — Persian RTL legal site on Next.js 16
+- Inspected Header.tsx, SearchSuggestions.tsx, HomeView.tsx, and globals.css to understand the z-index stacking and animation setup
+- Diagnosed issue 1: The header has `z-index: 50` and creates a stacking context. The SearchSuggestions dropdown inside it has `z-index: 60`, but that's *within* the header's stacking context — so globally the whole header (dropdown included) is at z-index 50. The sticky sub-tab bar bumps to `z-index: 50` when sticking, and since it comes later in the DOM, it paints on top of the header's dropdown.
+- Diagnosed issue 2: SearchSuggestions.tsx has a CSS transition on `max-height`, `opacity`, and `transform` in its styled-jsx that creates the smooth drop-down animation. This is applied to all instances (header inline search + home hero search).
+
+Changes made (3 files):
+
+1. src/app/globals.css
+   - Raised `.site-header-sticky` z-index from 50 → 60 so the header (and its search dropdown) always sits above the sub-tab bar
+   - Kept `.sub-tab-bar` at z-index 49 (non-sticky) and `.sub-tab-bar.sub-tab-bar-sticky` at z-index 50 (sticky) — both now below the header (60)
+   - Updated the CSS comments to explain the stacking rationale
+
+2. src/components/ui/SearchSuggestions.tsx
+   - Added optional `animate?: boolean` prop (default: `true`) to SearchSuggestionsProps
+   - Destructured `animate = true` in the function signature
+   - Modified the styled-jsx CSS: when `animate` is true, keeps the smooth transition (`max-height 0.22s cubic-bezier(...), opacity 0.18s ease, transform 0.22s ease`); when false, sets `transition: none` so the dropdown appears/disappears instantly
+   - The closed/open states (max-height, opacity, pointer-events, transform) are unchanged — only the transition between them differs
+
+3. src/components/home/HomeView.tsx
+   - Passed `animate={false}` to the hero search's `<SearchSuggestions>` instance
+   - Updated the comment to explain why: the hero search is a large multi-field card and the smooth animation feels sluggish there; instant show/hide reads better
+   - The header's inline search (in Header.tsx) keeps the default `animate={true}` — no change needed there
+
+Verification:
+- `npx next build` passes successfully
+- Lint shows only pre-existing `react-hooks/set-state-in-effect` errors (line 150 in SearchSuggestions.tsx, line 51 in HomeView.tsx) — no new errors introduced
+
+Stage Summary:
+- The header's inline search dropdown now renders above the sticky sub-tab bar on law detail pages (z-index 60 > 50)
+- The home page hero search dropdown now appears/disappears instantly without the smooth max-height/opacity/transform animation
+- The header's inline search retains the smooth Google-style drop-down animation

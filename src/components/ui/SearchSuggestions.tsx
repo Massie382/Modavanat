@@ -20,6 +20,15 @@ interface SearchSuggestionsProps {
   /** Max number of law suggestions to show (excluding the "search for X"
    *  row at the top). Default: 6. */
   maxSuggestions?: number;
+  /**
+   * Whether to animate the dropdown open/close with a smooth max-height +
+   * opacity + transform transition (Google-style). Default: true.
+   *
+   * Set to `false` for instances where the dropdown should appear instantly
+   * (e.g. the home page hero search, where the smooth animation feels
+   * sluggish on a large multi-field search card).
+   */
+  animate?: boolean;
 }
 
 /**
@@ -53,6 +62,7 @@ export function SearchSuggestions({
   onSearch,
   inputRef,
   maxSuggestions = 6,
+  animate = true,
 }: SearchSuggestionsProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [highlighted, setHighlighted] = useState(-1); // -1 = none, 0 = "search for" row, 1..N = law rows
@@ -315,16 +325,20 @@ export function SearchSuggestions({
           box-shadow: 0 12px 28px -8px rgba(0, 0, 0, 0.18),
             0 4px 10px -4px rgba(0, 0, 0, 0.08);
 
-          /* Smooth open/close: animate max-height + opacity. The
-             max-height is generous (480px) so even with 6 suggestions
-             the dropdown never clips during the animation. */
+          /* Closed state: zero height, transparent, non-interactive. */
           max-height: 0;
           opacity: 0;
           overflow: hidden;
           pointer-events: none;
-          transition: max-height 0.22s cubic-bezier(0.22, 0.61, 0.36, 1),
-            opacity 0.18s ease, transform 0.22s ease;
           transform: translateY(-4px);
+          ${animate ? `
+          /* Smooth open/close: animate max-height + opacity. The
+             max-height is generous (480px) so even with 6 suggestions
+             the dropdown never clips during the animation. */
+          transition: max-height 0.22s cubic-bezier(0.22, 0.61, 0.36, 1),
+            opacity 0.18s ease, transform 0.22s ease;` : `
+          /* No animation — appear/disappear instantly. */
+          transition: none;`}
         }
         .ss-dropdown.ss-open {
           max-height: 480px;

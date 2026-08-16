@@ -471,12 +471,17 @@ a.link-legal:hover {
 }
 
 /* Site header — sticky on scroll. Keeps the nav visible while reading
-   a long law article. z-index 50 so it sits above sub-tab-bar (49/50)
-   but below modals/dialogs (which use shadcn defaults at z-50+). */
+   a long law article. z-index 60 so it sits above the sub-tab bar
+   (49 normally, 50 when sticky) — this ensures the header's inline
+   search suggestions dropdown, which extends below the header into
+   the area where the sub-tab bar sticks, is never covered by the
+   sub-tab bar. (The dropdown's own z-index: 60 lives inside the
+   header's stacking context, so the header's z-index is what
+   matters globally.) */
 .site-header-sticky {
   position: sticky;
   top: 0;
-  z-index: 50;
+  z-index: 60;
   background-color: #ffffff;
 }
 
@@ -494,7 +499,8 @@ a.link-legal:hover {
 }
 /* When the sub-tab bar is actively sticking (toggled via IntersectionObserver
    in LawDetailView), bump the shadow + z-index so it visually lifts above
-   the page content scrolling underneath. */
+   the page content scrolling underneath. Stays below the site header (60)
+   so the header's search dropdown is never covered. */
 .sub-tab-bar.sub-tab-bar-sticky {
   z-index: 50;
   box-shadow: 0 4px 12px -4px rgba(0, 0, 0, 0.25);

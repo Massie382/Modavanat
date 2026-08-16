@@ -117,14 +117,18 @@ export function HomeView({ onOpenLaw, onBrowse, onSearch }: HomeViewProps) {
                     aria-expanded={!!heroQuery.trim()}
                     aria-controls="hero-suggestions"
                   />
-                  {/* Google-style suggestions dropdown — smoothly drops
-                      down below the input as the user types. */}
+                  {/* Search suggestions dropdown. `animate={false}` because
+                      the hero search is a large multi-field card and the
+                      smooth drop-down animation feels sluggish there —
+                      instant show/hide reads better. The header's inline
+                      search keeps the animation. */}
                   <div id="hero-suggestions">
                     <SearchSuggestions
                       query={heroQuery}
                       onPick={onOpenLaw}
                       onSearch={onSearch}
                       inputRef={heroInputRef}
+                      animate={false}
                     />
                   </div>
                 </div>
