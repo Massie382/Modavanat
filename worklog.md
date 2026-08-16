@@ -811,3 +811,39 @@ Verification:
 Stage Summary:
 - On the /search page, pressing Enter with no suggestion highlighted now collapses the SearchSuggestions dropdown AND collapses the input's text selection (caret moves to end, no blue highlight on the typed text).
 - The same fix benefits the Home and Header search instances uniformly — no regressions because their <form onSubmit> handlers still fire after the keydown handler and continue to blur/clear the input as before.
+
+---
+Task ID: 18
+Agent: Main Agent
+Task: Remove the in-article content search bar ("جستجو در متن این قانون…") from the law detail page's ContentTab
+
+Work Log:
+- Read ContentTab.tsx end-to-end to map every piece of code that depended on the in-article search bar.
+- Identified the search bar UI (a sticky .article-search-bar div with input + count badge + prev/next/clear buttons) plus the entire highlight infrastructure that powered it: `highlightInText`, `countMatches`, the `highlightQuery` parameter on `renderAnnotatedText` and `ArticleView`, plus state (`articleSearch`, `deferredQuery`, `trimmedQuery`, `currentMatchIndex`), refs (`articlesContainerRef`, `searchInputRef`), the DOM effect that toggled `article-search-highlight-current` on the Nth <mark>, the `goToMatch` callback, and the `handleSearchKeyDown` Enter/Escape handler.
+- Confirmed via grep that none of these helpers / classes / state were used anywhere else in the codebase (only ContentTab.tsx + globals.css). Safe to remove cleanly.
+- `src/components/law/tabs/ContentTab.tsx`:
+   - Trimmed React imports from `{ useState, useMemo, useEffect, useRef, useCallback, useDeferredValue }` down to just `{ useState, useMemo }` — the other four were exclusively for the search bar.
+   - Removed the `ReactNode` type import (was only used by the deleted `highlightInText`).
+   - Deleted `highlightInText` and `countMatches` helpers (entire ~75-line block).
+   - Simplified `renderAnnotatedText` to drop the `highlightQuery?: string` parameter — now it just parses [تN] markers and emits plain text runs between them.
+   - Simplified `ArticleView` to drop the `highlightQuery?: string` prop — title and body now render as plain strings.
+   - Removed all in-article search state, refs, the DOM effect, `goToMatch`, and `handleSearchKeyDown`.
+   - Removed the entire `<div className="article-search-bar" role="search">…</div>` block (input, count badge, prev/next/clear buttons).
+   - Removed the `highlightQuery={trimmedQuery || undefined}` prop from the `<ArticleView>` usage.
+   - Removed the now-pointless `ref={articlesContainerRef}` from the articles container div.
+- `src/app/globals.css`:
+   - Removed the entire "In-article content search — green match marker" comment block + `.article-search-highlight` + `.article-search-highlight-current` rules.
+   - Removed the entire "Sticky in-article search bar" comment block + all `.article-search-bar` and `.article-search-bar *` rules (~95 lines of dead CSS).
+   - Kept `.search-highlight` (yellow) — that's still used by the global search results page (SearchView.tsx's `highlight()` helper).
+
+Behavior after fix:
+- The "جستجو در متن این قانون…" search bar is gone from the law detail ContentTab.
+- The version selector ("نمایش نسخه"), article status banner, ArticlePicker sidebar, ArticleNavBar (prev/next), and citation footer all remain unchanged.
+- In-page deep-linking to articles (?article=…) and sidebar-driven auto-scroll still work — neither depended on the search bar.
+
+Verification:
+- `npx next build` passes successfully.
+- `npx eslint src/components/law/tabs/ContentTab.tsx` → 0 errors, 0 warnings (previously had 1 `set-state-in-effect` warning from the now-removed DOM effect — that warning is gone too).
+
+Stage Summary:
+- The in-article content search bar is fully removed from the law detail page, along with all its supporting state, effects, helpers, refs, imports, and CSS — no dead code left behind.
