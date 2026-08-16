@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback, useDeferredValue } from "react";
+import type { ReactNode } from "react";
 import type { Law, ArticleNode, CommentaryItem, AmendmentEvent } from "@/lib/types";
 import { toFa, formatJalaliDate, provisionRefLabel } from "@/lib/utils";
 import { ArticlePicker } from "../ArticlePicker";
@@ -14,12 +15,88 @@ interface ContentTabProps {
 }
 
 /**
+ * Wraps every occurrence of `query` inside `text` with a
+ * <mark className="article-search-highlight"> element. Returns the
+ * original string as a plain text node when there is no match.
+ *
+ * Persian has no letter case, but the legal text occasionally contains
+ * Latin tokens (URLs, English numbers in old laws) so we still do a
+ * case-insensitive comparison for robustness. The matched substring
+ * rendered inside <mark> is always taken verbatim from `text` so the
+ * original casing is preserved on screen.
+ *
+ * The "current match" highlight (brighter green + auto-scroll) is
+ * applied separately by a DOM effect in ContentTab that walks the
+ * rendered <mark> elements and toggles the `article-search-highlight-current`
+ * class on the Nth one. This keeps the render path pure.
+ */
+function highlightInText(text: string, query: string): ReactNode {
+  const q = query.trim();
+  if (!q || !text) return text;
+
+  // Case-insensitive search using Intl-aware `localeCompare` is overkill
+  // here and slow on long legal texts. Plain `toLowerCase()` is enough
+  // for the Persian + Latin mix we actually have.
+  const haystack = text.toLowerCase();
+  const needle = q.toLowerCase();
+  if (!haystack.includes(needle)) return text;
+
+  const parts: ReactNode[] = [];
+  let i = 0;
+  let key = 0;
+  while (i < text.length) {
+    const found = haystack.indexOf(needle, i);
+    if (found === -1) {
+      parts.push(<span key={`t-${key++}`}>{text.slice(i)}</span>);
+      break;
+    }
+    if (found > i) {
+      parts.push(<span key={`t-${key++}`}>{text.slice(i, found)}</span>);
+    }
+    const matched = text.slice(found, found + needle.length);
+    parts.push(
+      <mark key={`m-${key++}`} className="article-search-highlight">
+        {matched}
+      </mark>
+    );
+    i = found + needle.length;
+  }
+  return <>{parts.map((p, idx) => <span key={idx}>{p}</span>)}</>;
+}
+
+/**
+ * Counts occurrences of `query` in `text` without producing React nodes.
+ * Used for the "N matches" badge so we don't have to render the article
+ * text twice (once for display, once for counting).
+ */
+function countMatches(text: string, query: string): number {
+  const q = query.trim();
+  if (!q || !text) return 0;
+  const haystack = text.toLowerCase();
+  const needle = q.toLowerCase();
+  let count = 0;
+  let i = 0;
+  while (i <= haystack.length) {
+    const found = haystack.indexOf(needle, i);
+    if (found === -1) break;
+    count++;
+    i = found + needle.length;
+  }
+  return count;
+}
+
+/**
  * Parses article text containing [تN]...[تN] markers and renders them as
  * clickable superscript markers, mirroring legislation.gov.uk's F-marker system.
+ *
+ * If `highlightQuery` is provided, every plain-text run between markers
+ * is also run through `highlightInText` so in-article search matches
+ * light up in green even inside marked-up text.
  */
 function renderAnnotatedText(
   text: string,
-  markers: { marker: string; id: string }[]
+  markers: { marker: string; id: string }[],
+  highlightQuery?: string
 ): React.ReactNode {
   const parts: React.ReactNode[] = [];
   const tokenRegex = /\[ت([۰-۹]+)\]/g;
@@ -30,8 +107,11 @@ function renderAnnotatedText(
   let match: RegExpExecArray | null;
   while ((match = tokenRegex.exec(text)) !== null) {
     if (match.index > lastIdx) {
+      const slice = text.slice(lastIdx, match.index);
       parts.push(
-        <span key={`t-${key++}`}>{text.slice(lastIdx, match.index)}</span>
+        <span key={`t-${key++}`}>
+          {highlightQuery ? highlightInText(slice, highlightQuery) : slice}
+        </span>
       );
     }
     const markerNum = match[1];
@@ -53,7 +133,12 @@ function renderAnnotatedText(
     lastIdx = match.index + match[0].length;
   }
   if (lastIdx < text.length) {
-    parts.push(<span key={`t-${key++}`}>{text.slice(lastIdx)}</span>);
+    const slice = text.slice(lastIdx);
+    parts.push(
+      <span key={`t-${key++}`}>
+        {highlightQuery ? highlightInText(slice, highlightQuery) : slice}
+      </span>
+    );
   }
   return parts;
 }
@@ -122,25 +207,34 @@ function ArticleView({
   onOpenLawById,
   onOpenComparison,
   parentLaw,
+  highlightQuery,
 }: {
   article: ArticleNode;
   onOpenLawById?: (id: string) => void;
   onOpenComparison?: (amendment: AmendmentEvent) => void;
   parentLaw: Law;
+  highlightQuery?: string;
 }) {
   return (
     <article id={article.id} className="mb-8 scroll-mt-32">
       <header className="mb-2.5">
         <h3 className="font-legal text-[16.5px] font-semibold text-[#1a1a1a] flex items-baseline gap-3">
           <span className="cite text-[#6b6b6b] text-[14px]">{article.number}</span>
-          {article.title && <span>{article.title}</span>}
+          {article.title && (
+            <span>
+              {highlightQuery
+                ? highlightInText(article.title, highlightQuery)
+                : article.title}
+            </span>
+          )}
         </h3>
       </header>
       <div className="legal-text pr-4 border-r-2 border-[#ececea]">
         <p>
           {renderAnnotatedText(
             article.text,
-            (article.commentary || []).map((c) => ({ marker: c.marker, id: c.marker }))
+            (article.commentary || []).map((c) => ({ marker: c.marker, id: c.marker })),
+            highlightQuery
           )}
         </p>
       </div>
@@ -226,6 +320,15 @@ export function ContentTab({
   onOpenComparison,
 }: ContentTabProps) {
   const [version, setVersion] = useState<"revised" | "original">("revised");
+  // In-article content search state. `articleSearch` is the raw input
+  // value; `deferredQuery` is a deferred copy so heavy highlight re-renders
+  // don't block typing on long articles.
+  const [articleSearch, setArticleSearch] = useState("");
+  const deferredQuery = useDeferredValue(articleSearch);
+  const trimmedQuery = deferredQuery.trim();
+  const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
+  const articlesContainerRef = useRef<HTMLDivElement | null>(null);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
 
   const articles = useMemo(() => {
     if (selectedArticleId) {
@@ -233,6 +336,72 @@ export function ContentTab({
     }
     return law.articles;
   }, [law, selectedArticleId]);
+
+  // Total match count across all currently-rendered articles. Uses the
+  // pure `countMatches` helper (no React node allocation) so this stays
+  // cheap even on 1000-article laws.
+  const totalMatches = useMemo(() => {
+    if (!trimmedQuery) return 0;
+    let total = 0;
+    for (const a of articles) {
+      total += countMatches(a.text, trimmedQuery);
+      if (a.title) total += countMatches(a.title, trimmedQuery);
+    }
+    return total;
+  }, [articles, trimmedQuery]);
+
+  // Effective current match index — derived during render so we don't
+  // need a setState-in-effect to clamp when the query changes and the
+  // match count shrinks below the stored index. If the stored index is
+  // still in range we use it as-is; otherwise we snap to 0 (first match).
+  const effectiveMatchIndex =
+    totalMatches === 0 ? 0 : Math.min(currentMatchIndex, totalMatches - 1);
+
+  // After every render that produces matches, walk the DOM and mark the
+  // Nth <mark> as the "current" one (brighter green) and scroll it into
+  // view. This is a deliberate DOM mutation in an effect — cleaner than
+  // threading a render-phase ref through the article tree.
+  useEffect(() => {
+    const container = articlesContainerRef.current;
+    if (!container) return;
+    const marks = container.querySelectorAll<HTMLElement>("mark.article-search-highlight, mark.article-search-highlight-current");
+    marks.forEach((m, i) => {
+      if (i === effectiveMatchIndex) {
+        m.classList.remove("article-search-highlight");
+        m.classList.add("article-search-highlight-current");
+        // Only auto-scroll when there's an active search and the user
+        // has navigated via the prev/next buttons (or just typed a new
+        // query — first match should be visible).
+        if (trimmedQuery && marks.length > 0) {
+          m.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      } else {
+        m.classList.remove("article-search-highlight-current");
+        m.classList.add("article-search-highlight");
+      }
+    });
+  }, [effectiveMatchIndex, trimmedQuery, articles, version]);
+
+  const goToMatch = useCallback((delta: number) => {
+    if (totalMatches === 0) return;
+    setCurrentMatchIndex((prev) => {
+      const next = (prev + delta) % totalMatches;
+      return next < 0 ? next + totalMatches : next;
+    });
+  }, [totalMatches]);
+
+  // Keyboard shortcut: when the search bar is focused, Enter jumps to
+  // the next match; Shift+Enter jumps to the previous one. Matches the
+  // standard browser find-in-page UX.
+  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      goToMatch(e.shiftKey ? -1 : 1);
+    } else if (e.key === "Escape") {
+      setArticleSearch("");
+      searchInputRef.current?.blur();
+    }
+  };
 
   return (
     <div className="container-legal py-8">
@@ -312,7 +481,77 @@ export function ContentTab({
             )}
           </div>
 
-          <div>
+          {/* In-article content search bar — sticky so it stays visible
+              while the user scrolls through long laws. Highlights every
+              match in green; prev/next buttons + Enter/Shift+Enter jump
+              between matches with auto-scroll. */}
+          <div className="article-search-bar" role="search">
+            <span aria-hidden className="text-[#6b6b6b] shrink-0">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="7"></circle>
+                <line x1="21" y1="21" x2="16.5" y2="16.5"></line>
+              </svg>
+            </span>
+            <input
+              ref={searchInputRef}
+              type="text"
+              value={articleSearch}
+              onChange={(e) => {
+                setArticleSearch(e.target.value);
+                setCurrentMatchIndex(0);
+              }}
+              onKeyDown={handleSearchKeyDown}
+              placeholder="جستجو در متن این قانون…"
+              aria-label="جستجو در متن مواد این قانون"
+              autoComplete="off"
+              spellCheck={false}
+            />
+            {trimmedQuery && (
+              <>
+                <span
+                  className={`count-badge ${totalMatches === 0 ? "zero" : ""}`}
+                  aria-live="polite"
+                >
+                  {totalMatches > 0
+                    ? `${toFa(effectiveMatchIndex + 1)} از ${toFa(totalMatches)}`
+                    : "بدون تطابق"}
+                </span>
+                <button
+                  type="button"
+                  className="nav-btn"
+                  onClick={() => goToMatch(-1)}
+                  disabled={totalMatches === 0}
+                  aria-label="تطابق قبلی"
+                  title="تطابق قبلی (Shift+Enter)"
+                >
+                  ‹ قبلی
+                </button>
+                <button
+                  type="button"
+                  className="nav-btn"
+                  onClick={() => goToMatch(1)}
+                  disabled={totalMatches === 0}
+                  aria-label="تطابق بعدی"
+                  title="تطابق بعدی (Enter)"
+                >
+                  بعدی ›
+                </button>
+                <button
+                  type="button"
+                  className="clear-btn"
+                  onClick={() => {
+                    setArticleSearch("");
+                    searchInputRef.current?.focus();
+                  }}
+                  aria-label="پاک کردن جستجو"
+                >
+                  ✕
+                </button>
+              </>
+            )}
+          </div>
+
+          <div ref={articlesContainerRef}>
             {articles.map((article) => (
               <ArticleView
                 key={article.id}
@@ -320,6 +559,7 @@ export function ContentTab({
                 onOpenLawById={onOpenLawById}
                 onOpenComparison={onOpenComparison}
                 parentLaw={law}
+                highlightQuery={trimmedQuery || undefined}
               />
             ))}
           </div>
