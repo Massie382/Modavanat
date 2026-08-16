@@ -561,3 +561,26 @@ Open follow-up (NOT done — outside this task's file-scope constraint):
   <CookieNotice />
   ```
   This is a one-line + one-import change in a file the task constraints said not to touch, so I left it for a follow-up.
+
+---
+Task ID: 12
+Agent: Main Agent
+Task: Surface matching article(s) with highlighted excerpt inside search result cards (user reported only the law was shown, not the specific article that matched)
+
+Work Log:
+- Read prior worklog for context — Persian RTL legal reference site on Next.js 16 App Router
+- Inspected SearchView.tsx — confirmed the filter already matched against `article.text`/`article.number`, but the result card only rendered law title/description, not the matching article
+- Inspected LawDetailView to confirm whether deep-linking to an article via URL hash was supported — it is not, so kept the click target as "open the law" rather than deep-linking
+- Added `ArticleSnippet` / `LawArticleMatches` types and a `findArticleMatches(law, q)` helper that:
+  - Iterates over `law.articles`, checks both `text.indexOf(q)` and `number.includes(q)`
+  - For each match, builds a windowed snippet (50 chars before / 180 chars after the first match) with `…` ellipses when trimmed
+  - Caps the rendered snippets at 3 per law, but keeps a `totalMatches` count for a "+N more" hint
+- Added a `matchesByLawId` Map memo keyed on `[query]` so the lookup inside the render loop is O(1) and only recomputed when the query changes
+- Updated the result card JSX (converted the `.map` arrow to a block body) to render, below the law description, a styled block per matching article: article number (highlighted if it matched) + the windowed text snippet (highlighted). When more than 3 articles match, shows a "+N ماده دیگر نیز مطابق است" hint
+- Styled the article block with a right-side accent border (#c9b885) and a warm cream background (#faf6ec) so it reads as a distinct sub-result inside the card
+- Verified: `npx eslint src/components/search/SearchView.tsx` → only a pre-existing aria-expanded warning, no new errors; `npx next build` → success
+
+Stage Summary:
+- Search results now show the specific matching article(s) inline inside each law card, with the queried term highlighted in both the article number and the article body excerpt
+- Up to 3 article snippets per law; a "+N more" hint appears when additional articles also match
+- Build passes; lint introduces no new errors (pre-existing warnings in MobileLawDrawer.tsx and SearchSuggestions.tsx were untouched)

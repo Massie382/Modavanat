@@ -15,6 +15,60 @@ interface SearchViewProps {
   onOpenLaw: (law: Law) => void;
 }
 
+// ── Article-snippet extraction ──────────────────────────────────────────
+// When a query matches an article's text (or its number), we surface the
+// matching article directly inside the search result card — not just the
+// parent law. This section computes a windowed snippet of the article text
+// positioned around the first match so the user sees the highlighted term
+// in context.
+
+const MAX_ARTICLE_SNIPPETS_PER_LAW = 3;
+const SNIPPET_PAD_BEFORE = 50;  // chars of context before the first match
+const SNIPPET_PAD_AFTER = 180;  // chars of context after the first match
+
+interface ArticleSnippet {
+  articleId: string;
+  number: string;          // «ماده ۱»
+  snippet: string;         // windowed text around the match (with … if trimmed)
+  matchedInText: boolean;  // whether the query was found in the article text (vs. only the number)
+}
+
+interface LawArticleMatches {
+  snippets: ArticleSnippet[];  // capped at MAX_ARTICLE_SNIPPETS_PER_LAW
+  totalMatches: number;        // total number of articles that matched (may exceed snippets.length)
+}
+
+function findArticleMatches(law: Law, q: string): LawArticleMatches {
+  if (!q) return { snippets: [], totalMatches: 0 };
+  const snippets: ArticleSnippet[] = [];
+  let totalMatches = 0;
+  for (const a of law.articles) {
+    const matchIdx = a.text.indexOf(q);
+    const numberMatches = a.number.includes(q);
+    if (matchIdx === -1 && !numberMatches) continue;
+    totalMatches++;
+
+    // Only build snippet objects up to the display cap; keep counting
+    // totalMatches beyond the cap so we can show a "+N more" hint.
+    if (snippets.length >= MAX_ARTICLE_SNIPPETS_PER_LAW) continue;
+
+    const anchor = matchIdx >= 0 ? matchIdx : 0;
+    const start = Math.max(0, anchor - SNIPPET_PAD_BEFORE);
+    const end = Math.min(a.text.length, anchor + SNIPPET_PAD_AFTER);
+    const leading = start > 0 ? "…" : "";
+    const trailing = end < a.text.length ? "…" : "";
+    const snippet = leading + a.text.slice(start, end) + trailing;
+
+    snippets.push({
+      articleId: a.id,
+      number: a.number,
+      snippet,
+      matchedInText: matchIdx >= 0,
+    });
+  }
+  return { snippets, totalMatches };
+}
+
 /**
  * Highlight every occurrence of `query` inside `text`.
  *
@@ -138,6 +192,23 @@ export function SearchView({ onOpenLaw }: SearchViewProps) {
       return matchesQuery && matchesYear && matchesSubject;
     });
   }, [query, yearFilter, subjectFilter]);
+
+  // For each law in the dataset, pre-compute the matching article snippets
+  // for the current query. We compute this for ALL laws (not just the
+  // filtered result set) because the lookup is by law.id inside the render
+  // loop, and the result set changes with year/subject filters independently
+  // of the query. Only rebuilt when the query changes — cheap enough since
+  // the dataset is small and the inner loop bails on the first non-match.
+  const matchesByLawId = useMemo(() => {
+    const q = query.trim();
+    const m = new Map<string, LawArticleMatches>();
+    if (!q) return m;
+    for (const law of laws) {
+      const matches = findArticleMatches(law, q);
+      if (matches.totalMatches > 0) m.set(law.id, matches);
+    }
+    return m;
+  }, [query]);
 
   const totalPages = Math.max(1, Math.ceil(results.length / SEARCH_PAGE_SIZE));
 
@@ -333,7 +404,9 @@ export function SearchView({ onOpenLaw }: SearchViewProps) {
                 </p>
               </div>
             ) : (
-              pagedResults.map((law) => (
+              pagedResults.map((law) => {
+                const articleMatches = matchesByLawId.get(law.id);
+                return (
                 <button
                   key={law.id}
                   onClick={() => onOpenLaw(law)}
@@ -355,6 +428,36 @@ export function SearchView({ onOpenLaw }: SearchViewProps) {
                   <p className="text-[13px] leading-6 text-[#3d3d3d] line-clamp-2">
                     {highlight(law.description, query)}
                   </p>
+
+                  {/* Matching article snippets — shown when the query matched
+                      one or more articles inside this law. Each snippet shows
+                      the article number (highlighted if it matched) and a
+                      windowed excerpt of the article text with the matched
+                      term highlighted in context. */}
+                  {articleMatches && articleMatches.snippets.length > 0 && (
+                    <div className="mt-3 space-y-2">
+                      {articleMatches.snippets.map((s) => (
+                        <div
+                          key={s.articleId}
+                          className="border-r-2 border-[#c9b885] pr-3 py-1.5 bg-[#faf6ec]"
+                        >
+                          <div className="text-[12px] font-medium text-[#7a5b1e] mb-0.5 cite">
+                            {highlight(s.number, query)}
+                          </div>
+                          <p className="text-[12.5px] leading-6 text-[#3d3d3d]">
+                            {highlight(s.snippet, query)}
+                          </p>
+                        </div>
+                      ))}
+                      {articleMatches.totalMatches > articleMatches.snippets.length && (
+                        <p className="text-[11.5px] text-[#6b6b6b] pr-3">
+                          +{toFa(articleMatches.totalMatches - articleMatches.snippets.length)}{" "}
+                          ماده دیگر نیز مطابق است
+                        </p>
+                      )}
+                    </div>
+                  )}
+
                   {query && (
                     <p className="text-[12px] text-[#6b6b6b] mt-2">
                       {toFa(law.articles.length)} ماده · {toFa(law.amendments.length)} اصلاح ·{" "}
@@ -362,7 +465,8 @@ export function SearchView({ onOpenLaw }: SearchViewProps) {
                     </p>
                   )}
                 </button>
-              ))
+                );
+              })
             )}
           </div>
 
