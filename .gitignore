@@ -10,12 +10,14 @@ tool-results/
 tsconfig.tsbuildinfo
 download-check-*.log
 
-# Drizzle + dev DB artifacts
+# Drizzle + dev DB artifacts (data files — NOT migrations)
+# IMPORTANT: migration SQL files under /drizzle/*.sql MUST be committed,
+# otherwise `bun run db:migrate` finds zero migrations on a fresh clone
+# and the DB schema never gets applied. Only the runtime data dirs are
+# ignored below.
 /db/*.pglite
 /db/*.pglite.*
 /db/*.db
 /db/*.db.*
 /db/custom.db/
 /db/dev.pglite/
-/drizzle/meta/
-/drizzle/*.sql
