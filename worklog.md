@@ -912,3 +912,58 @@ Stage Summary:
 - All article IDs referenced in TOC exist in the corresponding law's articles array (verified by script).
 - Files modified: src/lib/types.ts, src/data/laws.ts, src/components/law/tabs/TableOfContentsTab.tsx, src/components/law/LawDetailView.tsx, src/app/globals.css
 - Helper scripts: scripts/restructure_toc.py, scripts/verify_toc.py
+
+---
+Task ID: 12
+Agent: Main Agent
+Task: Backend Phase 2 (auth) + JSON law import system + nginx/SSL config + git hygiene
+
+Work Log:
+- Scrubbed db/custom.db/ (Postgres datadir) from entire git history using
+  git-filter-repo — repo went from 109MB → 66MB, 1203 → 180 tracked files
+- Tightened .gitignore: excludes .next/standalone, *.pglite, laws-import/*.json,
+  drizzle/meta/ snapshots
+- JSON Law Import System:
+  - src/lib/law-import-types.ts — Zod schema for Law Import File
+    (schemaVersion=1, law, toc tree, articles, amendments, outstandingChanges,
+    references). Matches existing in-memory Law interface.
+  - scripts/import-laws.ts — two-pass importer:
+    Pass 1: laws + TOC tree + articles + commentary (FK-safe)
+    Pass 2: amendments + outstanding_changes + references
+    Cross-law FKs resolved via knownLawIds set; nullable FK + denormalized
+    title/year kept when referenced law isn't imported yet — so files can
+    import in any order
+  - laws-import/q-madani-1347.sample.json — template (1 book→chapter→section→
+    topic→2 articles + 1 amendment + 1 cross-law ref to قانون مجازات اسلامی)
+  - Tested: import + re-import (idempotent via on-conflict-update)
+- Auth (Phase 2):
+  - Swapped next-auth v4 → v5 beta (5.0.0-beta.32), added
+    @auth/drizzle-adapter + nodemailer
+  - Split into Edge-safe src/auth.config.ts (used by middleware for
+    stateless JWT-cookie role checks — NO DB hit per request) and server-only
+    src/auth.ts (Drizzle adapter, Email magic link via nodemailer/local SMTP,
+    Credentials provider)
+  - Added users.password_hash column (scrypt for Phase 4 admin creation)
+  - /api/auth/[...nextauth] route handler
+  - middleware.ts: guards /admin/* (role=admin|super-admin) + /account/*
+- DB tooling: scripts/db-migrate.ts — applies Drizzle SQL via same db client
+  the app uses (PGlite dev / postgres prod), splits on
+  '--> statement-breakpoint' to work around PGlite prepared-statement limit
+- Deploy artifacts:
+  - deploy/nginx/modavanat.ir.conf — TLS 1.2/1.3, OCSP, security headers,
+    gzip, 50MB upload, /socket.io/ WS upgrade for Phase 5,
+    /_next/static immutable caching
+  - deploy/caddy/Caddyfile — auto-HTTPS alternative
+  - deploy/VPS-DEPLOYMENT.md — full setup guide (apt postgres, build,
+    systemd unit, certbot, postfix, law import)
+  - .env.example — documents DATABASE_URL, AUTH_SECRET, NEXTAUTH_URL,
+    SMTP_URL, SMTP_FROM
+- Type-check passes; next build succeeds (all routes compile, middleware
+  works, /api/auth/[...nextauth] is dynamic)
+
+Stage Summary:
+- Local commits ready (Phase 2 + JSON import + deploy artifacts)
+- Push BLOCKED — filter-repo scrubbed embedded GitHub token from remote URL
+- User must push from their machine OR provide a fresh PAT for me to push
+- All Phase 2 work complete; ready to move to Phase 3 (public content APIs)
+  once push is unblocked
