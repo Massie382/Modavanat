@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import type { Law, AmendmentEvent } from "@/lib/types";
-import { laws } from "@/data/laws";
 import { Breadcrumb } from "@/components/site/Breadcrumb";
 import { TableOfContentsTab } from "./tabs/TableOfContentsTab";
 import { ContentTab } from "./tabs/ContentTab";
@@ -150,18 +149,6 @@ export function LawDetailView({ law, onBack, onOpenLawById, initialArticleId }: 
       if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
     };
   }, []);
-
-  // Prev/next law navigation: look up the current law's index in the master
-  // `laws` array. `useMemo` because the array is stable and we only need to
-  // recompute when the law actually changes.
-  const { prevLaw, nextLaw } = useMemo(() => {
-    const idx = laws.findIndex((l) => l.id === law.id);
-    if (idx === -1) return { prevLaw: null, nextLaw: null };
-    return {
-      prevLaw: idx > 0 ? laws[idx - 1] : null,
-      nextLaw: idx < laws.length - 1 ? laws[idx + 1] : null,
-    };
-  }, [law.id]);
 
   // Wrap setSelectedArticleId so that picking an article from the mobile
   // drawer ALSO switches to the "content" tab — otherwise the drawer would
@@ -512,47 +499,6 @@ export function LawDetailView({ law, onBack, onOpenLawById, initialArticleId }: 
         {activeTab === "references" && <ReferencesTab law={law} onOpenLawById={onOpenLawById} />}
         {activeTab === "resources" && <ResourcesTab law={law} onOpenLawById={onOpenLawById} />}
       </div>
-
-      {/* Prev/next law navigation — hairline-bordered bar at the bottom of
-          the law detail page. Shows the previous law (on the start / right
-          side in RTL) and the next law (on the end / left side). Either side
-          is hidden entirely if there is no adjacent law. */}
-      {(prevLaw || nextLaw) && (
-        <nav className="law-prev-next" aria-label="ناوبری قانون قبلی و بعدی">
-          {prevLaw ? (
-            <button
-              type="button"
-              className="pn-prev"
-              onClick={() => onOpenLawById?.(prevLaw.id)}
-              title={`قانون قبلی: ${prevLaw.title}`}
-            >
-              <span className="pn-arrow" aria-hidden="true">«</span>
-              <span className="pn-body">
-                <span className="pn-label">قانون قبلی</span>
-                <span className="pn-title">{prevLaw.title}</span>
-              </span>
-            </button>
-          ) : (
-            <span className="pn-prev is-empty" aria-hidden="true" />
-          )}
-          {nextLaw ? (
-            <button
-              type="button"
-              className="pn-next"
-              onClick={() => onOpenLawById?.(nextLaw.id)}
-              title={`قانون بعدی: ${nextLaw.title}`}
-            >
-              <span className="pn-body">
-                <span className="pn-label">قانون بعدی</span>
-                <span className="pn-title">{nextLaw.title}</span>
-              </span>
-              <span className="pn-arrow" aria-hidden="true">»</span>
-            </button>
-          ) : (
-            <span className="pn-next is-empty" aria-hidden="true" />
-          )}
-        </nav>
-      )}
 
       {/* Mobile article picker drawer — slides in from the LEFT, mirrors the
           desktop right-side ArticlePicker UI (iOS-style scroll-snap list +
