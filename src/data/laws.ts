@@ -49,27 +49,49 @@ const qanoonMadani: Law = {
       type: "book",
       children: [
         {
-          id: "qm-p1",
-          label: "بخش اول",
+          id: "qm-c1",
+          label: "فصل اول",
           title: "مقدمه",
-          type: "part",
+          type: "chapter",
           children: [
-            { id: "qm-a1", label: "ماده ۱", type: "article", articleId: "qm-a1" },
-            { id: "qm-a2", label: "ماده ۲", type: "article", articleId: "qm-a2" },
-            { id: "qm-a3", label: "ماده ۳", type: "article", articleId: "qm-a3" },
+            {
+              id: "qm-s1",
+              label: "باب اول",
+              title: "کلیات",
+              type: "section",
+              children: [
+                {
+                  id: "qm-t1",
+                  label: "مبحث نخست",
+                  title: "نافذ بودن و اجرای قانون",
+                  type: "topic",
+                  articleIds: ["qm-a1", "qm-a2", "qm-a3"],
+                },
+              ],
+            },
           ],
         },
         {
-          id: "qm-p2",
-          label: "بخش سوم",
+          id: "qm-c2",
+          label: "فصل دوم",
           title: "احکام اموال",
-          type: "part",
+          type: "chapter",
           children: [
-            { id: "qm-a10", label: "ماده ۱۰", type: "article", articleId: "qm-a10" },
-            { id: "qm-a11", label: "ماده ۱۱", type: "article", articleId: "qm-a11" },
-            { id: "qm-a12", label: "ماده ۱۲", type: "article", articleId: "qm-a12" },
-            { id: "qm-a13", label: "ماده ۱۳", type: "article", articleId: "qm-a13" },
-            { id: "qm-a14", label: "ماده ۱۴", type: "article", articleId: "qm-a14" },
+            {
+              id: "qm-s2",
+              label: "باب اول",
+              title: "اقرار",
+              type: "section",
+              children: [
+                {
+                  id: "qm-t2",
+                  label: "مبحث نخست",
+                  title: "ماهیت و شرایط اقرار",
+                  type: "topic",
+                  articleIds: ["qm-a10", "qm-a11", "qm-a12", "qm-a13", "qm-a14"],
+                },
+              ],
+            },
           ],
         },
       ],
@@ -81,15 +103,40 @@ const qanoonMadani: Law = {
       type: "book",
       children: [
         {
-          id: "qm-p3",
-          label: "بخش اول",
+          id: "qm-c3",
+          label: "فصل اول",
           title: "در عقد نکاح",
-          type: "part",
+          type: "chapter",
           children: [
-            { id: "qm-a1062", label: "ماده ۱۰۶۲", type: "article", articleId: "qm-a1062" },
-            { id: "qm-a1065", label: "ماده ۱۰۶۵", type: "article", articleId: "qm-a1065" },
-            { id: "qm-a1082", label: "ماده ۱۰۸۲", type: "article", articleId: "qm-a1082" },
-            { id: "qm-a1133", label: "ماده ۱۱۳۳", type: "article", articleId: "qm-a1133" },
+            {
+              id: "qm-s3",
+              label: "باب اول",
+              title: "مقررات عمومی نکاح",
+              type: "section",
+              children: [
+                {
+                  id: "qm-t3",
+                  label: "مبحث نخست",
+                  title: "صیغه و شرایط نکاح",
+                  type: "topic",
+                  articleIds: ["qm-a1062", "qm-a1065"],
+                },
+                {
+                  id: "qm-t4",
+                  label: "مبحث دوم",
+                  title: "مهریه",
+                  type: "topic",
+                  articleIds: ["qm-a1082"],
+                },
+                {
+                  id: "qm-t5",
+                  label: "مبحث سوم",
+                  title: "طلاق و وکالت در طلاق",
+                  type: "topic",
+                  articleIds: ["qm-a1133"],
+                },
+              ],
+            },
           ],
         },
       ],
@@ -100,11 +147,46 @@ const qanoonMadani: Law = {
       title: "ادله اثبات دعوی",
       type: "book",
       children: [
-        { id: "qm-a1275", label: "ماده ۱۲۷۵", type: "article", articleId: "qm-a1275" },
-        { id: "qm-a1284", label: "ماده ۱۲۸۴", type: "article", articleId: "qm-a1284" },
+        {
+          id: "qm-c4",
+          label: "فصل اول",
+          title: "اقرار",
+          type: "chapter",
+          children: [
+            {
+              id: "qm-s4",
+              label: "باب اول",
+              title: "احکام اقرار",
+              type: "section",
+              children: [
+                {
+                  id: "qm-t6",
+                  label: "مبحث نخست",
+                  title: "شرایط شنود اقرار",
+                  type: "topic",
+                  articleIds: ["qm-a1275"],
+                },
+              ],
+            },
+            {
+              id: "qm-s5",
+              label: "باب دوم",
+              title: "بینه و شهادت",
+              type: "section",
+              children: [
+                {
+                  id: "qm-t7",
+                  label: "مبحث نخست",
+                  title: "تعریف بینه",
+                  type: "topic",
+                  articleIds: ["qm-a1284"],
+                },
+              ],
+            },
+          ],
+        },
       ],
-    },
-  ],
+    },    ],
   articles: [
     {
       id: "qm-a1",
@@ -420,11 +502,73 @@ const qanoonMajazat: Law = {
       title: "کلیات",
       type: "book",
       children: [
-        { id: "qmi-a1", label: "ماده ۱", type: "article", articleId: "qmi-a1" },
-        { id: "qmi-a2", label: "ماده ۲", type: "article", articleId: "qmi-a2" },
-        { id: "qmi-a14", label: "ماده ۱۴", type: "article", articleId: "qmi-a14" },
-        { id: "qmi-a18", label: "ماده ۱۸", type: "article", articleId: "qmi-a18" },
-        { id: "qmi-a38", label: "ماده ۳۸", type: "article", articleId: "qmi-a38" },
+        {
+          id: "qmi-c1",
+          label: "فصل اول",
+          title: "مقدمه و تعاریف",
+          type: "chapter",
+          children: [
+            {
+              id: "qmi-s1",
+              label: "باب اول",
+              title: "مفاهیم پایه",
+              type: "section",
+              children: [
+                {
+                  id: "qmi-t1",
+                  label: "مبحث نخست",
+                  title: "مفهوم قانون کیفری",
+                  type: "topic",
+                  articleIds: ["qmi-a1", "qmi-a2"],
+                },
+                {
+                  id: "qmi-t2",
+                  label: "مبحث دوم",
+                  title: "عمد و قصد",
+                  type: "topic",
+                  articleIds: ["qmi-a14", "qmi-a18"],
+                },
+                {
+                  id: "qmi-t3",
+                  label: "مبحث سوم",
+                  title: "تناسب جرم و مجازات",
+                  type: "topic",
+                  articleIds: ["qmi-a38"],
+                },
+              ],
+            },
+          ],
+        },
+        {
+          id: "qmi-c2",
+          label: "فصل دوم",
+          title: "مسئولیت کیفری",
+          type: "chapter",
+          children: [
+            {
+              id: "qmi-s2",
+              label: "باب اول",
+              title: "عوامل رافع مسئولیت",
+              type: "section",
+              children: [
+                {
+                  id: "qmi-t4",
+                  label: "مبحث نخست",
+                  title: "سازمان مجرمانه",
+                  type: "topic",
+                  articleIds: ["qmi-a100"],
+                },
+                {
+                  id: "qmi-t5",
+                  label: "مبحث دوم",
+                  title: "اکراه و اجبار",
+                  type: "topic",
+                  articleIds: ["qmi-a145"],
+                },
+              ],
+            },
+          ],
+        },
       ],
     },
     {
@@ -433,8 +577,29 @@ const qanoonMajazat: Law = {
       title: "حدود",
       type: "book",
       children: [
-        { id: "qmi-a100", label: "ماده ۱۰۰", type: "article", articleId: "qmi-a100" },
-        { id: "qmi-a145", label: "ماده ۱۴۵", type: "article", articleId: "qmi-a145" },
+        {
+          id: "qmi-c3",
+          label: "فصل اول",
+          title: "مقررات عمومی حدود",
+          type: "chapter",
+          children: [
+            {
+              id: "qmi-s3",
+              label: "باب اول",
+              title: "احکام عمومی",
+              type: "section",
+              children: [
+                {
+                  id: "qmi-t6",
+                  label: "مبحث نخست",
+                  title: "تعاریف و دامنه",
+                  type: "topic",
+                  articleIds: [],
+                },
+              ],
+            },
+          ],
+        },
       ],
     },
     {
@@ -443,7 +608,29 @@ const qanoonMajazat: Law = {
       title: "قصاص",
       type: "book",
       children: [
-        { id: "qmi-a345", label: "ماده ۳۴۵", type: "article", articleId: "qmi-a345" },
+        {
+          id: "qmi-c4",
+          label: "فصل اول",
+          title: "قصاص نفس",
+          type: "chapter",
+          children: [
+            {
+              id: "qmi-s4",
+              label: "باب اول",
+              title: "شرایط قصاص",
+              type: "section",
+              children: [
+                {
+                  id: "qmi-t7",
+                  label: "مبحث نخست",
+                  title: "قیود قصاص",
+                  type: "topic",
+                  articleIds: ["qmi-a345"],
+                },
+              ],
+            },
+          ],
+        },
       ],
     },
     {
@@ -452,10 +639,31 @@ const qanoonMajazat: Law = {
       title: "دیات",
       type: "book",
       children: [
-        { id: "qmi-a500", label: "ماده ۵۰۰", type: "article", articleId: "qmi-a500" },
+        {
+          id: "qmi-c5",
+          label: "فصل اول",
+          title: "احکام عمومی دیات",
+          type: "chapter",
+          children: [
+            {
+              id: "qmi-s5",
+              label: "باب اول",
+              title: "تعریف و اقسام",
+              type: "section",
+              children: [
+                {
+                  id: "qmi-t8",
+                  label: "مبحث نخست",
+                  title: "مفهوم دیه",
+                  type: "topic",
+                  articleIds: ["qmi-a500"],
+                },
+              ],
+            },
+          ],
+        },
       ],
-    },
-  ],
+    },    ],
   articles: [
     {
       id: "qmi-a1",
@@ -672,36 +880,111 @@ const qanoonTejarat: Law = {
   toc: [
     {
       id: "qt-book-1",
-      label: "بخش اول",
+      label: "کتاب اول",
       title: "در تجارت و کنش‌های تجاری",
       type: "book",
       children: [
-        { id: "qt-a1", label: "ماده ۱", type: "article", articleId: "qt-a1" },
-        { id: "qt-a2", label: "ماده ۲", type: "article", articleId: "qt-a2" },
-        { id: "qt-a3", label: "ماده ۳", type: "article", articleId: "qt-a3" },
-        { id: "qt-a5", label: "ماده ۵", type: "article", articleId: "qt-a5" },
+        {
+          id: "qt-c1",
+          label: "فصل اول",
+          title: "کنش‌های تجاری",
+          type: "chapter",
+          children: [
+            {
+              id: "qt-s1",
+              label: "باب اول",
+              title: "معاملات تجاری",
+              type: "section",
+              children: [
+                {
+                  id: "qt-t1",
+                  label: "مبحث نخست",
+                  title: "تعریف معاملات تجاری",
+                  type: "topic",
+                  articleIds: ["qt-a1", "qt-a2", "qt-a3"],
+                },
+                {
+                  id: "qt-t2",
+                  label: "مبحث دوم",
+                  title: "دفاتر تجاری",
+                  type: "topic",
+                  articleIds: ["qt-a5"],
+                },
+              ],
+            },
+          ],
+        },
       ],
     },
     {
       id: "qt-book-2",
-      label: "بخش دوم",
+      label: "کتاب دوم",
       title: "در شرکت‌های تجاری",
       type: "book",
       children: [
-        { id: "qt-a20", label: "ماده ۲۰", type: "article", articleId: "qt-a20" },
-        { id: "qt-a55", label: "ماده ۵۵", type: "article", articleId: "qt-a55" },
+        {
+          id: "qt-c2",
+          label: "فصل اول",
+          title: "اقسام شرکت‌های تجاری",
+          type: "chapter",
+          children: [
+            {
+              id: "qt-s2",
+              label: "باب اول",
+              title: "شرکت‌های تجاری",
+              type: "section",
+              children: [
+                {
+                  id: "qt-t3",
+                  label: "مبحث نخست",
+                  title: "تعریف شرکت‌های تجاری",
+                  type: "topic",
+                  articleIds: ["qt-a20"],
+                },
+                {
+                  id: "qt-t4",
+                  label: "مبحث دوم",
+                  title: "شرکت سهامی",
+                  type: "topic",
+                  articleIds: ["qt-a55"],
+                },
+              ],
+            },
+          ],
+        },
       ],
     },
     {
       id: "qt-book-3",
-      label: "بخش سوم",
+      label: "کتاب سوم",
       title: "در اسناد تجاری",
       type: "book",
       children: [
-        { id: "qt-a223", label: "ماده ۲۲۳", type: "article", articleId: "qt-a223" },
+        {
+          id: "qt-c3",
+          label: "فصل اول",
+          title: "برات",
+          type: "chapter",
+          children: [
+            {
+              id: "qt-s3",
+              label: "باب اول",
+              title: "احکام برات",
+              type: "section",
+              children: [
+                {
+                  id: "qt-t5",
+                  label: "مبحث نخست",
+                  title: "تعریف برات",
+                  type: "topic",
+                  articleIds: ["qt-a223"],
+                },
+              ],
+            },
+          ],
+        },
       ],
-    },
-  ],
+    },    ],
   articles: [
     {
       id: "qt-a1",
@@ -859,46 +1142,195 @@ const qanoonKar: Law = {
   toc: [
     {
       id: "qk-book-1",
-      label: "بخش اول",
+      label: "کتاب اول",
       title: "کلیات",
       type: "book",
       children: [
-        { id: "qk-a1", label: "ماده ۱", type: "article", articleId: "qk-a1" },
-        { id: "qk-a2", label: "ماده ۲", type: "article", articleId: "qk-a2" },
-        { id: "qk-a3", label: "ماده ۳", type: "article", articleId: "qk-a3" },
+        {
+          id: "qk-c1",
+          label: "فصل اول",
+          title: "مقدمه و دامنه",
+          type: "chapter",
+          children: [
+            {
+              id: "qk-s1",
+              label: "باب اول",
+              title: "تعاریف",
+              type: "section",
+              children: [
+                {
+                  id: "qk-t1",
+                  label: "مبحث نخست",
+                  title: "هدف قانون",
+                  type: "topic",
+                  articleIds: ["qk-a1"],
+                },
+                {
+                  id: "qk-t2",
+                  label: "مبحث دوم",
+                  title: "دامنه کاربرد",
+                  type: "topic",
+                  articleIds: ["qk-a2"],
+                },
+                {
+                  id: "qk-t3",
+                  label: "مبحث سوم",
+                  title: "تعریف کارگر",
+                  type: "topic",
+                  articleIds: ["qk-a3"],
+                },
+              ],
+            },
+          ],
+        },
       ],
     },
     {
       id: "qk-book-2",
-      label: "بخش دوم",
+      label: "کتاب دوم",
       title: "قرارداد کار",
       type: "book",
       children: [
-        { id: "qk-a10", label: "ماده ۱۰", type: "article", articleId: "qk-a10" },
-        { id: "qk-a11", label: "ماده ۱۱", type: "article", articleId: "qk-a11" },
+        {
+          id: "qk-c2",
+          label: "فصل اول",
+          title: "انعقاد و اقسام قرارداد",
+          type: "chapter",
+          children: [
+            {
+              id: "qk-s2",
+              label: "باب اول",
+              title: "انعقاد قرارداد",
+              type: "section",
+              children: [
+                {
+                  id: "qk-t4",
+                  label: "مبحث نخست",
+                  title: "تعریف قرارداد کار",
+                  type: "topic",
+                  articleIds: ["qk-a10"],
+                },
+                {
+                  id: "qk-t5",
+                  label: "مبحث دوم",
+                  title: "اقسام قرارداد",
+                  type: "topic",
+                  articleIds: ["qk-a11"],
+                },
+              ],
+            },
+          ],
+        },
       ],
     },
     {
       id: "qk-book-3",
-      label: "بخش سوم",
+      label: "کتاب سوم",
       title: "ساعات کار، مرخصی و تعطیلات",
       type: "book",
       children: [
-        { id: "qk-a51", label: "ماده ۵۱", type: "article", articleId: "qk-a51" },
-        { id: "qk-a62", label: "ماده ۶۲", type: "article", articleId: "qk-a62" },
+        {
+          id: "qk-c3",
+          label: "فصل اول",
+          title: "ساعات کار",
+          type: "chapter",
+          children: [
+            {
+              id: "qk-s3",
+              label: "باب اول",
+              title: "حداکثر ساعات کار",
+              type: "section",
+              children: [
+                {
+                  id: "qk-t6",
+                  label: "مبحث نخست",
+                  title: "سقف ساعات کار هفتگی",
+                  type: "topic",
+                  articleIds: ["qk-a51"],
+                },
+              ],
+            },
+          ],
+        },
+        {
+          id: "qk-c4",
+          label: "فصل دوم",
+          title: "مرخصی",
+          type: "chapter",
+          children: [
+            {
+              id: "qk-s4",
+              label: "باب اول",
+              title: "مرخصی استحقاقی",
+              type: "section",
+              children: [
+                {
+                  id: "qk-t7",
+                  label: "مبحث نخست",
+                  title: "حق مرخصی",
+                  type: "topic",
+                  articleIds: ["qk-a62"],
+                },
+              ],
+            },
+          ],
+        },
       ],
     },
     {
       id: "qk-book-4",
-      label: "بخش چهارم",
+      label: "کتاب چهارم",
       title: "دستمزد و مزایا",
       type: "book",
       children: [
-        { id: "qk-a138", label: "ماده ۱۳۸", type: "article", articleId: "qk-a138" },
-        { id: "qk-a142", label: "ماده ۱۴۲", type: "article", articleId: "qk-a142" },
+        {
+          id: "qk-c5",
+          label: "فصل اول",
+          title: "حداقل دستمزد",
+          type: "chapter",
+          children: [
+            {
+              id: "qk-s5",
+              label: "باب اول",
+              title: "تعیین حداقل مزد",
+              type: "section",
+              children: [
+                {
+                  id: "qk-t8",
+                  label: "مبحث نخست",
+                  title: "حداقل مزد",
+                  type: "topic",
+                  articleIds: ["qk-a138"],
+                },
+              ],
+            },
+          ],
+        },
+        {
+          id: "qk-c6",
+          label: "فصل دوم",
+          title: "ساعات اضافه‌کاری",
+          type: "chapter",
+          children: [
+            {
+              id: "qk-s6",
+              label: "باب اول",
+              title: "احکام اضافه‌کاری",
+              type: "section",
+              children: [
+                {
+                  id: "qk-t9",
+                  label: "مبحث نخست",
+                  title: "شرایط کار اضافه",
+                  type: "topic",
+                  articleIds: ["qk-a142"],
+                },
+              ],
+            },
+          ],
+        },
       ],
-    },
-  ],
+    },    ],
   articles: [
     {
       id: "qk-a1",
@@ -1082,56 +1514,127 @@ const qanoonAsasi: Law = {
   },
   toc: [
     {
-      id: "qa-p1",
+      id: "qa-c1",
       label: "فصل اول",
       title: "اصول کلی",
       type: "chapter",
       children: [
-        { id: "qa-a1", label: "اصل یک", type: "article", articleId: "qa-a1" },
-        { id: "qa-a2", label: "اصل دو", type: "article", articleId: "qa-a2" },
-        { id: "qa-a4", label: "اصل چهار", type: "article", articleId: "qa-a4" },
+        {
+          id: "qa-s1",
+          label: "باب اول",
+          title: "حاکمیت و نظام سیاسی",
+          type: "section",
+          children: [
+            {
+              id: "qa-t1",
+              label: "مبحث نخست",
+              title: "حاکمیت ملی و جمهوری اسلامی",
+              type: "topic",
+              articleIds: ["qa-a1", "qa-a2", "qa-a4"],
+            },
+          ],
+        },
       ],
     },
     {
-      id: "qa-p2",
+      id: "qa-c2",
       label: "فصل سوم",
       title: "حقوق ملت",
       type: "chapter",
       children: [
-        { id: "qa-a19", label: "اصل نوزده", type: "article", articleId: "qa-a19" },
-        { id: "qa-a20", label: "اصل بیست", type: "article", articleId: "qa-a20" },
+        {
+          id: "qa-s2",
+          label: "باب اول",
+          title: "برابری و آزادی‌ها",
+          type: "section",
+          children: [
+            {
+              id: "qa-t2",
+              label: "مبحث نخست",
+              title: "برابری و حقوق بنیادین",
+              type: "topic",
+              articleIds: ["qa-a19", "qa-a20"],
+            },
+          ],
+        },
       ],
     },
     {
-      id: "qa-p3",
+      id: "qa-c3",
       label: "فصل ششم",
       title: "قوه مقننه",
       type: "chapter",
       children: [
-        { id: "qa-a71", label: "اصل هفتاد و یک", type: "article", articleId: "qa-a71" },
-        { id: "qa-a85", label: "اصل هشتاد و پنج", type: "article", articleId: "qa-a85" },
+        {
+          id: "qa-s3",
+          label: "باب اول",
+          title: "مجلس شورای اسلامی",
+          type: "section",
+          children: [
+            {
+              id: "qa-t3",
+              label: "مبحث نخست",
+              title: "طرح‌ها و صلاحیت‌ها",
+              type: "topic",
+              articleIds: ["qa-a71"],
+            },
+            {
+              id: "qa-t4",
+              label: "مبحث دوم",
+              title: "هیئت وزیران",
+              type: "topic",
+              articleIds: ["qa-a85"],
+            },
+          ],
+        },
       ],
     },
     {
-      id: "qa-p4",
+      id: "qa-c4",
       label: "فصل دوازدهم",
       title: "شورای نگهبان",
       type: "chapter",
       children: [
-        { id: "qa-a96", label: "اصل نود و شش", type: "article", articleId: "qa-a96" },
-        { id: "qa-a98", label: "اصل نود و هشت", type: "article", articleId: "qa-a98" },
+        {
+          id: "qa-s4",
+          label: "باب اول",
+          title: "ترکیب و صلاحیت",
+          type: "section",
+          children: [
+            {
+              id: "qa-t5",
+              label: "مبحث نخست",
+              title: "ترکیب و وظایف شورا",
+              type: "topic",
+              articleIds: ["qa-a96", "qa-a98"],
+            },
+          ],
+        },
       ],
     },
     {
-      id: "qa-p5",
+      id: "qa-c5",
       label: "فصل سیزدهم",
-      title: "تأسیس شورای بازنگری",
+      title: "شورای بازنگری",
       type: "chapter",
       children: [
-        { id: "qa-a177", label: "اصل صد و هفتاد و هفت", type: "article", articleId: "qa-a177" },
+        {
+          id: "qa-s5",
+          label: "باب اول",
+          title: "اصلاح قانون اساسی",
+          type: "section",
+          children: [
+            {
+              id: "qa-t6",
+              label: "مبحث نخست",
+              title: "رویه اصلاح",
+              type: "topic",
+              articleIds: ["qa-a177"],
+            },
+          ],
+        },
       ],
-    },
-  ],
+    },    ],
   articles: [
     {
       id: "qa-a1",
@@ -1288,35 +1791,88 @@ const qanoonHemayatKhanevadeh: Law = {
   },
   toc: [
     {
-      id: "qhk-p1",
+      id: "qhk-c1",
       label: "فصل اول",
       title: "کلیات",
       type: "chapter",
       children: [
-        { id: "qhk-a1", label: "ماده ۱", type: "article", articleId: "qhk-a1" },
-        { id: "qhk-a2", label: "ماده ۲", type: "article", articleId: "qhk-a2" },
+        {
+          id: "qhk-s1",
+          label: "باب اول",
+          title: "تأسیس و صلاحیت دادگاه‌های خانواده",
+          type: "section",
+          children: [
+            {
+              id: "qhk-t1",
+              label: "مبحث نخست",
+              title: "تأسیس دادگاه خانواده",
+              type: "topic",
+              articleIds: ["qhk-a1"],
+            },
+            {
+              id: "qhk-t2",
+              label: "مبحث دوم",
+              title: "صلاحیت رسیدگی",
+              type: "topic",
+              articleIds: ["qhk-a2"],
+            },
+          ],
+        },
       ],
     },
     {
-      id: "qhk-p2",
+      id: "qhk-c2",
       label: "فصل دوم",
       title: "در شروط ضمن عقد",
       type: "chapter",
       children: [
-        { id: "qhk-a22", label: "ماده ۲۲", type: "article", articleId: "qhk-a22" },
-        { id: "qhk-a25", label: "ماده ۲۵", type: "article", articleId: "qhk-a25" },
+        {
+          id: "qhk-s2",
+          label: "باب اول",
+          title: "شروط ضمن عقد نکاح",
+          type: "section",
+          children: [
+            {
+              id: "qhk-t3",
+              label: "مبحث نخست",
+              title: "اقسام شروط",
+              type: "topic",
+              articleIds: ["qhk-a22"],
+            },
+            {
+              id: "qhk-t4",
+              label: "مبحث دوم",
+              title: "ثبت شروط",
+              type: "topic",
+              articleIds: ["qhk-a25"],
+            },
+          ],
+        },
       ],
     },
     {
-      id: "qhk-p3",
+      id: "qhk-c3",
       label: "فصل سوم",
       title: "در مهریه و نفقه",
       type: "chapter",
       children: [
-        { id: "qhk-a32", label: "ماده ۳۲", type: "article", articleId: "qhk-a32" },
+        {
+          id: "qhk-s3",
+          label: "باب اول",
+          title: "احکام مهریه",
+          type: "section",
+          children: [
+            {
+              id: "qhk-t5",
+              label: "مبحث نخست",
+              title: "اجرای مهریه",
+              type: "topic",
+              articleIds: ["qhk-a32"],
+            },
+          ],
+        },
       ],
-    },
-  ],
+    },    ],
   articles: [
     {
       id: "qhk-a1",

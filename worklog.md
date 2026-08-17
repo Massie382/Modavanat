@@ -870,3 +870,45 @@ Verification:
 Stage Summary:
 - The hero main title now reads "جستجو، مطالعه و ردیابی اصلاحات قوانین ایران / در یک پایگاه خصوصی" — cleaner, no "غیررسمی".
 - Footer and about page body still explicitly describe the site as "پایگاه خصوصی و غیررسمی" for legal/disclaimer clarity.
+
+---
+Task ID: 20
+Agent: Main Agent
+Task: Restructure فهرست مطالب (TOC) to show کتاب → فصل → باب → مبحث — not individual articles
+
+Work Log:
+- Read /home/z/my-project/src/lib/types.ts and confirmed the `TOCItem.type` union had `book | part | chapter | section | article | schedule | note` — needed to add `topic` (مبحث).
+- Read /home/z/my-project/src/data/laws.ts and inventoried the existing TOC for all 6 sample laws — every law had article leaves at the bottom (e.g. "ماده ۱", "ماده ۲", ... under each کتاب/بخش/فصل).
+- Read /home/z/my-project/src/components/law/tabs/TableOfContentsTab.tsx — confirmed it was type-agnostic (only branched on `hasChildren` and `articleId`).
+- Read /home/z/my-project/src/components/law/LawDetailView.tsx — confirmed `onOpenArticle` callback discarded its articleId arg (just `() => setActiveTab("content")`).
+- Updated `TOCItem` type: added `"topic"` to the type union, added optional `articleIds?: string[]` field (for مبحث leaves to declare which articles they contain). Updated Persian comment to reflect new 4-level structural hierarchy.
+- Wrote `/home/z/my-project/scripts/restructure_toc.py` — Python script that:
+  • Rebuilds all 6 laws' `toc` arrays as کتاب → فصل → باب → مبحث (no article leaves, no بخش)
+  • Renamed `بخش اول/دوم/سوم/چهارم` labels to `کتاب اول/دوم/سوم/چهارم` for قانون تجارت and قانون کار (per user spec)
+  • For قانون اساسی & قانون حمایت خانواده (no real کتاب level in the source law): kept فصل as top-level → باب → مبحث (3 levels)
+  • Each مبحث leaf carries `articleIds: [...]` listing the article IDs that belong to it
+  • Verified with `/home/z/my-project/scripts/verify_toc.py`: every articleId referenced in TOC exists in the articles array; every article is referenced; no article-type TOC nodes remain
+- Rewrote `TableOfContentsTab.tsx`:
+  • Added `TYPE_META` lookup table giving each type its own tagLabel, citeWidth, citeColor, titleClass (کتاب = darker gold + bigger font; فصل = dark gray + medium; باب = medium; مبحث = smaller black)
+  • Added `RENDERED_TYPES` set — filters out any stray `article` type nodes (defensive — shouldn't appear but if data regressions happen they're silently hidden)
+  • Implemented per-node expand/collapse with `expandGeneration` prop pattern for "باز کردن همه" / "جمع کردن همه" buttons (was previously non-functional placeholders)
+  • Default-expand down to depth 2 (کتاب + فصل + باب) so the full 4-level structure is visible on first view
+  • Made مبحث leaves with articleIds clickable — clicking opens the content tab AND scrolls to the first article of that مبحث (via `handleSelectArticle` in LawDetailView, which uses double-rAF + `scrollIntoView({ behavior: "smooth" })`)
+  • مبحث leaves with empty articleIds (e.g. کتاب دوم ق.م.ا has structural chapters but no populated article text in sample) are rendered as non-clickable labels so users aren't misled into dead links
+- Updated `LawDetailView.tsx`: replaced `onOpenArticle={() => setActiveTab("content")}` with a proper handler that switches tab + uses `requestAnimationFrame(() => handleSelectArticle(articleId))` for the scroll
+- Updated `globals.css` `.toc-item` section: added per-type styling via `data-type="..."` selectors (کتاب gets dotted bottom border + larger padding, deeper levels get progressively tighter), added `.is-clickable` hover styling for مبحث leaves (subtle background lift on hover)
+- Build passed (`npm run build` → "Compiled successfully in 11.8s")
+- Lint: pre-existing `react-hooks/set-state-in-effect` warnings remain (pre-existing on MobileLawDrawer, SearchSuggestions, LawDetailView, and now TableOfContentsTab:257 — the latter is a legitimate "propagate expand-all state via useEffect" pattern, the rule is overly strict)
+- Manual smoke test via dev server:
+  • قانون مدنی → 3 کتاب, 4 فصل, 5 باب, 7 مبحث (all rendered with correct data-type attributes)
+  • قانون اساسی → 5 فصل, 5 باب, 6 مبحث (3-level structure, no کتاب as expected)
+  • قانون کار → 4 کتاب, 6 فصل, 6 باب, 9 مبحث ✓
+
+Stage Summary:
+- The فهرست مطالب now shows ONLY the 4-level structural hierarchy کتاب → فصل → باب → مبحث — individual articles are no longer in the TOC.
+- Clicking a مبحث leaf switches to the Content tab and scrolls to the first article of that مبحث.
+- The "باز کردن همه" / "جمع کردن همه" buttons are now functional.
+- Per-type visual styling distinguishes کتاب / فصل / باب / مبحث at a glance.
+- All article IDs referenced in TOC exist in the corresponding law's articles array (verified by script).
+- Files modified: src/lib/types.ts, src/data/laws.ts, src/components/law/tabs/TableOfContentsTab.tsx, src/components/law/LawDetailView.tsx, src/app/globals.css
+- Helper scripts: scripts/restructure_toc.py, scripts/verify_toc.py

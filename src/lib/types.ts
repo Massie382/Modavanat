@@ -69,11 +69,14 @@ export interface ArticleNode {
 
 export interface TOCItem {
   id: string;
-  label: string;           // «فصل اول»، «ماده ۱»
+  label: string;           // «کتاب اول»، «فصل اول»، «مبحث نخست»
   title?: string;          // «احکام عمومی»
-  type: "book" | "part" | "chapter" | "section" | "article" | "schedule" | "note";
+  // سلسله‌مراتب ساختاری فهرست مطالب: کتاب → فصل → باب → مبحث
+  // مواد جداگانه در فهرست نشان داده نمی‌شوند؛ در زبانهٔ متن در دسترس‌اند.
+  type: "book" | "chapter" | "section" | "topic" | "part" | "article" | "schedule" | "note";
   children?: TOCItem[];
-  articleId?: string;      // اتصال به متن ماده
+  articleId?: string;      // در صورت وجود، اتصال به متن ماده (باقیمانده برای سازگاری)
+  articleIds?: string[];   // فهرست مواد زیرمجموعهٔ این گره (برای فیلتر زبانهٔ متن)
 }
 
 export interface OutstandingChange {

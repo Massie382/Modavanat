@@ -471,7 +471,27 @@ export function LawDetailView({ law, onBack, onOpenLawById, initialArticleId }: 
       {/* Tab content */}
       <div className="bg-white">
         {activeTab === "contents" && (
-          <TableOfContentsTab law={law} onOpenArticle={() => setActiveTab("content")} />
+          <TableOfContentsTab
+            law={law}
+            onOpenArticle={(articleId) => {
+              // Switch to the content tab AND scroll to the first
+              // article of the clicked مبحث. We defer the scroll via
+              // `requestAnimationFrame` (single rAF is enough here
+              // because the content tab's article list is rendered
+              // synchronously on tab switch — unlike the initial
+              // mount which needs double rAF for fonts/images).
+              setActiveTab("content");
+              if (articleId) {
+                // Use the existing handleSelectArticle path so we get
+                // the same scroll-into-view behavior the mobile drawer
+                // and the desktop article picker use. The tab switch
+                // above is also handled inside handleSelectArticle,
+                // so the redundant setActiveTab above is harmless —
+                // we keep it for clarity.
+                requestAnimationFrame(() => handleSelectArticle(articleId));
+              }
+            }}
+          />
         )}
         {activeTab === "content" && (
           <ContentTab

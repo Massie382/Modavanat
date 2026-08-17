@@ -655,7 +655,12 @@ a.link-legal:hover {
   .sub-tab-edge.is-on { animation: none; }
 }
 
-/* TOC tree */
+/* TOC tree — 4-level structural hierarchy کتاب → فصل → باب → مبحث.
+   Per-type styling is driven by [data-type="..."] on each .toc-item-wrap.
+   The base .toc-item rule below sets the shared row layout; the
+   per-type rules below tweak weight, size, and color so the user can
+   distinguish a کتاب (heavier, larger) from a مبحث (lighter, smaller)
+   at a glance. */
 .toc-item {
   display: flex;
   align-items: baseline;
@@ -674,6 +679,33 @@ a.link-legal:hover {
   color: var(--ink-muted);
   font-size: 12.5px;
   margin-inline-start: 0.5rem;
+}
+
+/* Per-type accents on the toggle/leaf row */
+.toc-item-wrap[data-type="book"] > .toc-item {
+  border-block-end: 1px dotted var(--rule);
+  padding-block: 0.45rem;
+}
+.toc-item-wrap[data-type="chapter"] > .toc-item {
+  padding-block: 0.4rem;
+}
+.toc-item-wrap[data-type="section"] > .toc-item {
+  padding-block: 0.35rem;
+}
+.toc-item-wrap[data-type="topic"] > .toc-item {
+  padding-block: 0.3rem;
+}
+
+/* Clickable مبحث leaves (with articleIds) get a subtle hover lift to
+   signal interactivity — non-leaf rows don't get this since clicking
+   them only toggles the expand/collapse. */
+.toc-item.is-clickable {
+  cursor: pointer;
+  border-radius: 3px;
+  transition: background-color 120ms ease-out;
+}
+.toc-item.is-clickable:hover {
+  background-color: var(--paper-soft, #fafaf8);
 }
 
 /* Timeline rail */
