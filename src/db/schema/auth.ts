@@ -18,6 +18,10 @@ export const users = pgTable("users", {
   // doesn't read this field — it's for our authorization checks in
   // API routes (e.g. /api/admin/*).
   role: text("role").notNull().default("user"),
+  // bcrypt-style hash. Stored separately from OAuth users (who have
+  // no password). For Phase 4 admin creation flow we'll use scrypt
+  // (node:crypto, no native binary) to stay VPS-portable.
+  passwordHash: text("password_hash"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

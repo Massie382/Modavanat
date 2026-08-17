@@ -1,0 +1,65 @@
+# ─────────────────────────────────────────────────────────────────────
+# Caddy reverse-proxy config for قانون‌یاب (modavanat.ir)
+#
+# Install on the VPS:
+#   sudo cp deploy/caddy/Caddyfile /etc/caddy/Caddyfile
+#   sudo systemctl reload caddy
+#
+# Caddy auto-obtains + auto-renews Let's Encrypt certs. The first time
+# you start Caddy, it validates via HTTP-01 — ensure DNS A/AAAA
+# records for modavanat.ir + www.modavanat.ir both point at the VPS
+# before starting Caddy.
+#
+# Cert files end up at:
+#   /var/lib/caddy/.local/share/caddy/certificates/acme-v02.api.letsencrypt.org-directory/modavanat.ir/modavanat.ir.crt
+#   .../modavanat.ir.key
+# (Caddy manages these — you don't need to touch them.)
+# ─────────────────────────────────────────────────────────────────────
+
+{
+	# Global options — email for Let's Encrypt expiry notices
+	email admin@modavanat.ir
+	# Allow Caddy to bind to ports 80/443 (already does via systemd
+	# CAP_NET_BIND_SERVICE or setcap).
+}
+
+# Apex domain + www → reverse proxy to Next.js on :3000
+modavanat.ir, www.modavanat.ir {
+	# Standard security headers
+	header {
+		Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+		X-Frame-Options SAMEORIGIN
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		Permissions-Policy "geolocation=(), microphone=(), camera=()"
+	}
+
+	# Allow large uploads (law import JSONs)
+	request_body {
+		max_size 50MB
+	}
+
+	# Compress responses
+	encode gzip zstd
+
+	# Next.js standalone app
+	reverse_proxy 127.0.0.1:3000 {
+		header_up Host {host}
+		header_up X-Real-IP {remote_host}
+		header_up X-Forwarded-For {remote_host}
+		header_up X-Forwarded-Proto {scheme}
+	}
+
+	# Socket.io endpoint (Phase 5)
+	@socketio path /socket.io/*
+	handle @socketio {
+		reverse_proxy 127.0.0.1:3001
+	}
+
+	# Long-cache _next/static (immutable hashed assets)
+	@static path /_next/static/*
+	handle @static {
+		header Cache-Control "public, max-age=31536000, immutable"
+		reverse_proxy 127.0.0.1:3000
+	}
+}

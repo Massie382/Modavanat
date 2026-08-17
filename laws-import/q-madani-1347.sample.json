@@ -1,0 +1,131 @@
+{
+  "schemaVersion": 1,
+  "law": {
+    "id": "q-madani-1347",
+    "title": "قانون مدنی ایران",
+    "shortTitle": "قانون مدنی",
+    "type": "قانون عادی",
+    "year": 1347,
+    "number": "۹۴",
+    "status": "amended",
+    "extent": "کشوری",
+    "subject": "مدنی",
+    "promulgatingAuthority": "مجلس شورای اسلامی",
+    "approvedDate": "۱۳۴۷/۰۲/۱۷",
+    "effectiveDate": "۱۳۴۷/۰۲/۱۷",
+    "lastRevisionDate": "۱۴۰۳/۰۹/۲۰",
+    "description": "مجموعه‌ای از قواعد عمومی حقوق مدنی ایران در سه کتاب کلیات، اموال و مالکیت و دعواهای مربوطه.",
+    "longDescription": "قانون مدنی ایران مصوب ۱۳۴۷ یکی از مهم‌ترین قوانین پایه نظام حقوقی ایران است. این قانون در سه کتاب کلیات (احکام عمومی، خانواده، مالکیت)، اموال و اقاریر و دعاوی تنظیم شده و در طول سال‌ها بارها اصلاح شده است. این قانون پایه‌ی حقوق خصوصی ایران به شمار می‌رود و مواد آن در روابط قراردادی، ارث، خانواده و اموال اعمال می‌شود.",
+    "originalVersion": {
+      "approvedDate": "۱۳۴۷/۰۲/۱۷",
+      "description": "نسخه اصلی قانون مدنی بدون اعمال اصلاحات پس از ۱۳۴۷."
+    }
+  },
+  "toc": [
+    {
+      "id": "q-madani-1347/book-1",
+      "type": "book",
+      "label": "کتاب اول",
+      "title": "کلیات",
+      "orderIndex": 0,
+      "children": [
+        {
+          "id": "q-madani-1347/book-1/chapter-1",
+          "type": "chapter",
+          "label": "فصل اول",
+          "title": "مقدمه و کلیات",
+          "orderIndex": 0,
+          "children": [
+            {
+              "id": "q-madani-1347/book-1/chapter-1/section-1",
+              "type": "section",
+              "label": "باب اول",
+              "title": "قواعد عمومی",
+              "orderIndex": 0,
+              "children": [
+                {
+                  "id": "q-madani-1347/book-1/chapter-1/section-1/topic-1",
+                  "type": "topic",
+                  "label": "مبحث نخست",
+                  "title": "اشخاص و اقامت",
+                  "orderIndex": 0,
+                  "articleIds": [
+                    "q-madani-1347/book-1/chapter-1/section-1/topic-1/art-1",
+                    "q-madani-1347/book-1/chapter-1/section-1/topic-1/art-2"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "articles": [
+    {
+      "id": "q-madani-1347/book-1/chapter-1/section-1/topic-1/art-1",
+      "number": "ماده ۱",
+      "title": "اعتبار قانون در زمان",
+      "text": "قانون که برای عموم وضع شده است در مورد گذشته اثر ندارد مگر اینکه صریحاً یا ضمناً ترتیب اثر مخصوص به خود را برای گذشته مقرر داشته باشد.\n\n[ت1]عبارت «مگر اینکه صریحاً یا ضمناً ترتیب اثر مخصوص به خود را برای گذشته مقرر داشته باشد» به «مگر اینکه صریحاً ترتیب اثر مخصوص به خود را برای گذشته مقرر داشته باشد» اصلاح شد.[ت1]",
+      "orderIndex": 0,
+      "commentary": [
+        {
+          "marker": "ت1",
+          "effectType": "اصلاح",
+          "date": "۱۳۷۹/۰۸/۰۹",
+          "affectingLaw": {
+            "lawId": "q-taadol-dadgasht-1379",
+            "title": "قانون تعدیل برخی از مواد قانون مدنی",
+            "year": 1379,
+            "number": "۲۶۷",
+            "provisionLabel": "ماده ۱"
+          },
+          "text": "در اجرای اصل ۱۶۹ قانون اساسی و برای تسریع در رسیدگی به دعاوی، عبارت «یا ضمناً» از ماده ۱ قانون مدنی حذف شد."
+        }
+      ]
+    },
+    {
+      "id": "q-madani-1347/book-1/chapter-1/section-1/topic-1/art-2",
+      "number": "ماده ۲",
+      "title": "لزوم قانون",
+      "text": "قانون بر همه اشخاص اعم از این که جزو امت ایران باشند یا نیستند و اعم از این که برای اشخاص خصوص وضع شده یا در میان آن‌ها انحصار داشته و یا برای عموم وضع شده باشد حکومت دارد.",
+      "orderIndex": 1
+    }
+  ],
+  "amendments": [
+    {
+      "id": "q-madani-1347/amd-1",
+      "date": "۱۳۷۹/۰۸/۰۹",
+      "dateLabel": "آبان ۱۳۷۹",
+      "effectType": "اصلاح",
+      "affectedProvision": "ماده ۱",
+      "affectedProvisionId": "q-madani-1347/book-1/chapter-1/section-1/topic-1/art-1",
+      "affectingLaw": {
+        "lawId": "q-taadol-dadgasht-1379",
+        "title": "قانون تعدیل برخی از مواد قانون مدنی",
+        "year": 1379,
+        "number": "۲۶۷",
+        "provisionLabel": "ماده ۱"
+      },
+      "description": "عبارت «یا ضمناً» از متن ماده ۱ قانون مدنی حذف شد.",
+      "appliedToText": true,
+      "beforeText": "قانون که برای عموم وضع شده است در مورد گذشته اثر ندارد مگر اینکه صریحاً یا ضمناً ترتیب اثر مخصوص به خود را برای گذشته مقرر داشته باشد.",
+      "afterText": "قانون که برای عموم وضع شده است در مورد گذشته اثر ندارد مگر اینکه صریحاً ترتیب اثر مخصوص به خود را برای گذشته مقرر داشته باشد."
+    }
+  ],
+  "outstandingChanges": [],
+  "references": [
+    {
+      "direction": "cites",
+      "target": {
+        "lawId": "q-majazat-islami-1392",
+        "title": "قانون مجازات اسلامی",
+        "year": 1392,
+        "provisionLabel": "ماده ۲"
+      },
+      "sourceProvision": "ماده ۱",
+      "targetProvision": "ماده ۲",
+      "context": "ماده ۱ قانون مدنی در باره اصل لزوم قانون، با ماده ۲ قانون مجازات اسلامی مرتبط است."
+    }
+  ]
+}
