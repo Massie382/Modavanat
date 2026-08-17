@@ -1,12 +1,40 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { PageHead, StatTile, Card, Badge, Notice } from "@/components/admin/primitives";
-import { siteStats, monthlyVisits, lawTypeDistribution, topSearchedLaws, defaultActivity, defaultNotifications } from "@/lib/admin-data";
+import { monthlyVisits, lawTypeDistribution, topSearchedLaws, defaultActivity, defaultNotifications } from "@/lib/admin-data";
 import { faNum } from "@/components/admin/primitives";
+import type { SiteStats } from "@/lib/queries/users";
 
 export default function AdminDashboard() {
   const maxVisits = Math.max(...monthlyVisits.map((m) => m.visits));
+  const [stats, setStats] = useState<SiteStats | null>(null);
+  const [statsError, setStatsError] = useState<string | null>(null);
+
+  // Fetch real stats from DB on mount — admin-only endpoint.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/admin/stats");
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        if (!cancelled) {
+          setStats(data.stats as SiteStats);
+          setStatsError(null);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setStatsError(err instanceof Error ? err.message : "خطا در بارگذاری آمار");
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <>
       <PageHead
@@ -26,15 +54,21 @@ export default function AdminDashboard() {
 
       {/* Stat grid */}
       <div className="admin-stat-grid">
-        <StatTile label="کل قوانین" value={faNum(siteStats.totalLaws)} delta="۲ قانون این هفته" deltaDir="up" />
-        <StatTile label="مواد قانونی" value={faNum(siteStats.totalArticles)} />
-        <StatTile label="اصلاحات ثبت‌شده" value={faNum(siteStats.totalAmendments)} />
-        <StatTile label="ارجاعات متقابل" value={faNum(siteStats.totalReferences)} />
-        <StatTile label="فایل‌های PDF" value={faNum(siteStats.totalPdfs)} />
-        <StatTile label="کاربران پایگاه" value={faNum(siteStats.totalUsers)} delta="۴ کاربر جدید" deltaDir="up" />
-        <StatTile label="تیکت‌های باز" value={faNum(siteStats.openTickets)} delta="نیاز به پاسخ" deltaDir="down" />
-        <StatTile label="خریدها" value={faNum(siteStats.totalPurchases)} />
+        <StatTile label="کل قوانین" value={stats ? faNum(stats.totalLaws) : "…"} />
+        <StatTile label="مواد قانونی" value={stats ? faNum(stats.totalArticles) : "…"} />
+        <StatTile label="اصلاحات ثبت‌شده" value={stats ? faNum(stats.totalAmendments) : "…"} />
+        <StatTile label="ارجاعات متقابل" value={stats ? faNum(stats.totalReferences) : "…"} />
+        <StatTile label="فایل‌های PDF" value={faNum(0)} />
+        <StatTile label="کاربران پایگاه" value={stats ? faNum(stats.totalUsers) : "…"} />
+        <StatTile label="مدیران" value={stats ? faNum(stats.totalAdmins) : "…"} />
+        <StatTile label="تیکت‌های باز" value={faNum(0)} delta="آینده" deltaDir="down" />
       </div>
+
+      {statsError && (
+        <Notice variant="warning">
+          بارگذاری آمار ناموفق بود: {statsError}
+        </Notice>
+      )}
 
       <div className="admin-grid-2">
         {/* Visits chart */}

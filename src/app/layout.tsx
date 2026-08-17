@@ -2,6 +2,12 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { CookieNotice } from "@/components/site/CookieNotice";
+import { LawsProvider } from "@/components/providers/LawsProvider";
+import {
+  getLawCardList,
+  getReferencedLawTitles,
+  getDecadeStats,
+} from "@/lib/queries/laws";
 
 // Vazirmatn is loaded from LOCAL files — no build-time fetch to Google,
 // no runtime request to fonts.gstatic.com. The @font-face declarations
@@ -34,15 +40,38 @@ export const metadata: Metadata = {
   authors: [{ name: "modavanat.ir" }],
 };
 
-export default function RootLayout({
+// Force dynamic — we want fresh DB data on every request (the law
+// catalog can change at runtime via the admin UI). Next.js will still
+// cache the fetch results in production via our queries layer's
+// internal caching.
+export const dynamic = "force-dynamic";
+
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Fetch law cards + cross-ref titles + decade stats ONCE per
+  // request at the root layout level, then provide via Context.
+  // Client components (Header, BrowseView, SearchView, BookmarksTab,
+  // TimelineTab, ReferencesTab, AmendmentComparisonView) consume
+  // via useLaws() / useReferencedLawTitles() / useDecadeStats().
+  const [laws, referencedLawTitles, decadeStats] = await Promise.all([
+    getLawCardList(),
+    getReferencedLawTitles(),
+    getDecadeStats(),
+  ]);
+
   return (
     <html lang="fa" dir="rtl">
       <body className="font-sans antialiased bg-background text-foreground">
-        {children}
+        <LawsProvider
+          laws={laws}
+          referencedLawTitles={referencedLawTitles}
+          decadeStats={decadeStats}
+        >
+          {children}
+        </LawsProvider>
         <Toaster />
         <CookieNotice />
       </body>

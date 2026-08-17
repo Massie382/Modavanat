@@ -6,7 +6,7 @@ import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { toFa } from "@/lib/utils";
 import type { Law } from "@/lib/types";
-import { laws } from "@/data/laws";
+import { useLaws } from "@/components/providers/LawsProvider";
 import { SearchSuggestions } from "@/components/ui/SearchSuggestions";
 
 /**
@@ -29,10 +29,11 @@ export function Header() {
   const router = useRouter();
 
   // Latest revision date across all laws — drives the "آخرین به‌روزرسانی"
-  // timestamp in the primary nav bar. Cheap (6 laws) so we run it on every
-  // render. Dates are Persian-digit "YYYY/MM/DD" strings; lexicographic
-  // comparison orders them correctly because Persian digits share the same
-  // relative ordering as ASCII digits in Unicode.
+  // timestamp in the primary nav bar. Cheap lookup, runs on every render.
+  // Dates are Persian-digit "YYYY/MM/DD" strings; lexicographic comparison
+  // orders them correctly because Persian digits share the same relative
+  // ordering as ASCII digits in Unicode.
+  const laws = useLaws();
   const latestUpdate = laws.reduce(
     (latest, l) => (l.lastRevisionDate > latest ? l.lastRevisionDate : latest),
     ""

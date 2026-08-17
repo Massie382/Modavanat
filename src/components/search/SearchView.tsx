@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import type { ReactNode } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { laws, decadeStats } from "@/data/laws";
+import { useLaws, useDecadeStats } from "@/components/providers/LawsProvider";
 import type { Law } from "@/lib/types";
 import { toFa, statusLabel, statusPillClass } from "@/lib/utils";
 import { Pager } from "@/components/ui/Pager";
@@ -103,6 +103,8 @@ function highlight(text: string, query: string): ReactNode {
 export function SearchView({ onOpenLaw, onOpenArticle }: SearchViewProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const laws = useLaws();
+  const decadeStats = useDecadeStats();
 
   // ── URL is the single source of truth for filter state ────────────────
   const query = searchParams.get("q") ?? "";

@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import { laws } from "@/data/laws";
+import { useLaws } from "@/components/providers/LawsProvider";
 import { toFa } from "@/lib/utils";
 import { Pager } from "@/components/ui/Pager";
 
@@ -21,10 +21,11 @@ export function BookmarksTab({
   bookmarks: BookmarkItem[];
   onRemove: (lawId: string) => void;
 }) {
+  const laws = useLaws();
   const [filter, setFilter] = useState<"all" | "in-force" | "amended" | "revoked">("all");
   const [page, setPage] = useState(1);
 
-  // Join with real law data
+  // Join with real law data (from the LawsProvider context)
   const enriched = useMemo(() => {
     return bookmarks
       .map((b) => {
@@ -32,7 +33,7 @@ export function BookmarksTab({
         return law ? { ...b, law } : null;
       })
       .filter((x): x is BookmarkItem & { law: NonNullable<ReturnType<typeof laws.find>> } => x !== null);
-  }, [bookmarks]);
+  }, [bookmarks, laws]);
 
   const filtered = useMemo(() => {
     if (filter === "all") return enriched;

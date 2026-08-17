@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from "react";
 import type { Law, AmendmentEvent, EffectType } from "@/lib/types";
 import { toFa, formatJalaliDate, shortJalaliDate, provisionRefLabel } from "@/lib/utils";
-import { referencedLawTitles } from "@/data/laws";
+import { useReferencedLawTitles } from "@/components/providers/LawsProvider";
 import { Pager } from "@/components/ui/Pager";
 
 const TIMELINE_PAGE_SIZE = 5;
@@ -29,6 +29,7 @@ function normalizeJalaliDate(s: string): string {
 }
 
 export function TimelineTab({ law, onOpenLawById, onOpenComparison }: TimelineTabProps) {
+  const referencedLawTitles = useReferencedLawTitles();
   const [direction, setDirection] = useState<Direction>("affected");
   const [showOutstanding, setShowOutstanding] = useState(false);
   const [sortBy, setSortBy] = useState<"date" | "provision" | "effect">("date");

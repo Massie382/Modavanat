@@ -11,7 +11,10 @@
     "db:push": "drizzle-kit push",
     "db:migrate": "bun run scripts/db-migrate.ts",
     "db:studio": "drizzle-kit studio",
-    "db:import-laws": "bun run scripts/import-laws.ts laws-import"
+    "db:import-laws": "bun run scripts/import-laws.ts laws-import",
+    "db:seed": "bun run scripts/seed-db.ts",
+    "db:seed-reset": "bun run scripts/seed-db.ts --reset",
+    "create-admin": "bun run scripts/create-admin.ts"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.3",

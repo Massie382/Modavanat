@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { laws } from "@/data/laws";
+import { useLaws } from "@/components/providers/LawsProvider";
 import type { Law } from "@/lib/types";
 import { toFa, statusLabel, statusPillClass } from "@/lib/utils";
 
@@ -14,6 +14,8 @@ export function BrowseView({ onOpenLaw }: BrowseViewProps) {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [typeFilter, setTypeFilter] = useState<string>("");
   const [subjectFilter, setSubjectFilter] = useState<string>("");
+
+  const laws = useLaws();
 
   const subjects = Array.from(new Set(laws.map((l) => l.subject)));
   const types = Array.from(new Set(laws.map((l) => l.type)));

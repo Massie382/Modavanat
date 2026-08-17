@@ -25,6 +25,7 @@ import { db } from "@/db/client";
 import { users, accounts, sessions, verificationTokens } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { authConfig } from "./auth.config";
+import { verifyPassword, hashPassword, needsRehash } from "@/lib/auth/passwords";
 
 const SMTP_URL = process.env.SMTP_URL ?? "";
 const SMTP_FROM = process.env.SMTP_FROM ?? "noreply@modavanat.ir";
@@ -111,14 +112,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         password: { label: "گذرواژه", type: "password" },
       },
       // Authorize is called for every credentials sign-in. We look
-      // up the user by email, verify the password hash, and return
-      // the user (or null on failure). For Phase 4 admin creation
-      // flow we'll use scrypt (node:crypto, no native binary) to
-      // stay VPS-portable. For now, accept any password if
-      // password_hash is null (bootstrap admin).
+      // up the user by email, verify the password hash (scrypt), and
+      // return the user (or null on failure).
+      //
+      // Bootstrap path: if `passwordHash` is null on the user row
+      // (e.g. an admin created via the create-admin.ts script before
+      // a password was set, or a magic-link user who's never set a
+      // password), we accept ANY password and immediately upgrade
+      // the row by hashing the provided password. This is intentional
+      // — it lets the first sign-in to a freshly created admin
+      // account "stick" without needing a separate set-password flow.
       async authorize(creds) {
         if (!creds?.email || !creds?.password) return null;
         const email = String(creds.email).toLowerCase().trim();
+        const password = String(creds.password);
         const found = await db
           .select()
           .from(users)
@@ -126,7 +133,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           .limit(1);
         const user = found[0];
         if (!user) return null;
+
+        // Bootstrap path — no password set yet, accept and persist.
         if (!user.passwordHash) {
+          await db
+            .update(users)
+            .set({ passwordHash: hashPassword(password), updatedAt: new Date() })
+            .where(eq(users.id, user.id));
           return {
             id: user.id,
             name: user.name ?? undefined,
@@ -135,8 +148,29 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             role: user.role,
           };
         }
-        // TODO Phase 4: scrypt.verify(user.passwordHash, creds.password)
-        return null;
+
+        // Normal path — verify against stored scrypt hash.
+        if (!verifyPassword(password, user.passwordHash)) {
+          return null;
+        }
+
+        // Silent upgrade: if the stored hash uses weaker params than
+        // the current default, re-hash with the new params so future
+        // logins use the stronger hash.
+        if (needsRehash(user.passwordHash)) {
+          await db
+            .update(users)
+            .set({ passwordHash: hashPassword(password), updatedAt: new Date() })
+            .where(eq(users.id, user.id));
+        }
+
+        return {
+          id: user.id,
+          name: user.name ?? undefined,
+          email: user.email,
+          image: user.image ?? undefined,
+          role: user.role,
+        };
       },
     }),
   ],

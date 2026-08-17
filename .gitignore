@@ -13,5 +13,9 @@ download-check-*.log
 # Drizzle + dev DB artifacts
 /db/*.pglite
 /db/*.pglite.*
+/db/*.db
+/db/*.db.*
+/db/custom.db/
+/db/dev.pglite/
 /drizzle/meta/
 /drizzle/*.sql

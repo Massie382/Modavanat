@@ -1,14 +1,14 @@
 import type { MetadataRoute } from "next";
-import { laws } from "@/data/laws";
+import { getLawCardList } from "@/lib/queries/laws";
 
 /**
  * Dynamic sitemap (served at /sitemap.xml).
  *
  * Generated via Next.js 16's `sitemap()` function. The static top-level
  * pages are listed with explicit priorities/changefreq, and every law in
- * `laws` becomes its own `/law/[id]` entry with `lastmod` set to the law's
- * `lastRevisionDate` so search engines see when each statute was last
- * revised.
+ * the DB becomes its own `/law/[id]` entry with `lastmod` set to the
+ * law's `lastRevisionDate` so search engines see when each statute was
+ * last revised.
  *
  * Note: `metadataBase` is configured on the root `metadata` export in
  * `src/app/layout.tsx`, which Next.js uses to resolve relative URLs in
@@ -18,7 +18,7 @@ import { laws } from "@/data/laws";
  */
 const SITE_ORIGIN = "https://modavanat.ir";
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const staticEntries: MetadataRoute.Sitemap = [
     {
       url: `${SITE_ORIGIN}/`,
@@ -82,7 +82,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
   // law entries when the string isn't a parseable ISO/Gregorian date.
   // The `lastmod` tag is optional in the sitemap protocol — omitting it
   // for Jalali dates is safer than emitting a wrong date.
-  const lawEntries: MetadataRoute.Sitemap = laws.map((law) => {
+  const allLaws = await getLawCardList();
+  const lawEntries: MetadataRoute.Sitemap = allLaws.map((law) => {
     let lastModified: Date | undefined;
     const parsed = new Date(law.lastRevisionDate);
     if (!Number.isNaN(parsed.getTime())) {

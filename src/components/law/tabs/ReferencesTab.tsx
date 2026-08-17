@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { Law, ReferenceRelation } from "@/lib/types";
 import { toFa, provisionRefLabel } from "@/lib/utils";
-import { laws as allLaws } from "@/data/laws";
+import { useLaws } from "@/components/providers/LawsProvider";
 
 interface ReferencesTabProps {
   law: Law;
@@ -21,12 +21,13 @@ const DIRECTION_LABELS: Record<RefDirection, string> = {
 };
 
 /** Check if a law id is one of our main laws (i.e., has a full record in the database). */
-function isViewable(lawId?: string): boolean {
+function isViewable(lawId: string | undefined, allLaws: Law[]): boolean {
   if (!lawId) return false;
   return allLaws.some((l) => l.id === lawId);
 }
 
 export function ReferencesTab({ law, onOpenLawById }: ReferencesTabProps) {
+  const allLaws = useLaws();
   const [filter, setFilter] = useState<RefDirection>("all");
 
   const filtered = law.references.filter((r) => filter === "all" || r.direction === filter);
@@ -125,7 +126,7 @@ export function ReferencesTab({ law, onOpenLawById }: ReferencesTabProps) {
                     >
                       {provisionRefLabel(ref.target)}
                     </button>
-                    {isViewable(ref.target.lawId) ? (
+                    {isViewable(ref.target.lawId, allLaws) ? (
                       <span className="text-[11px] text-[#2b2b2b] pill pill-in-force cite">
                         در پایگاه موجود
                       </span>

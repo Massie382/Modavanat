@@ -1,5 +1,6 @@
 import { Header } from "@/components/site/Header";
 import { Footer } from "@/components/site/Footer";
+import { NotificationListener } from "@/components/site/NotificationListener";
 
 /**
  * Layout for all public-facing pages (home, browse, search, law detail,
@@ -11,6 +12,11 @@ import { Footer } from "@/components/site/Footer";
  * The skip-to-content link is keyboard-only (visually hidden until focused)
  * and lets keyboard users jump straight to <main> without tabbing through
  * the entire header on every page.
+ *
+ * <NotificationListener /> opens an SSE connection on mount and surfaces
+ * incoming notifications (new amendments, system messages, etc.) as
+ * toasts. Connection is fire-and-forget — falls back to no-op if the
+ * SSE endpoint is unreachable.
  */
 export default function PublicLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -26,6 +32,7 @@ export default function PublicLayout({ children }: { children: React.ReactNode }
         {children}
       </main>
       <Footer />
+      <NotificationListener />
     </div>
   );
 }

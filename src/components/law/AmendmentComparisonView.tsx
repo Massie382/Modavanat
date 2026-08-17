@@ -13,7 +13,7 @@ import {
   filterAfter,
   diffStats,
 } from "@/lib/diff";
-import { laws as allLaws } from "@/data/laws";
+import { useLaws } from "@/components/providers/LawsProvider";
 
 interface AmendmentComparisonViewProps {
   amendment: AmendmentEvent;
@@ -22,7 +22,7 @@ interface AmendmentComparisonViewProps {
   onNavigateToAmendingLaw?: (lawId: string) => void;
 }
 
-function isViewable(lawId?: string): boolean {
+function isViewable(lawId: string | undefined, allLaws: Law[]): boolean {
   if (!lawId) return false;
   return allLaws.some((l) => l.id === lawId);
 }
@@ -66,6 +66,7 @@ export function AmendmentComparisonView({
   onClose,
   onNavigateToAmendingLaw,
 }: AmendmentComparisonViewProps) {
+  const allLaws = useLaws();
   // Close on Escape
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -93,7 +94,7 @@ export function AmendmentComparisonView({
 
   const stats = useMemo(() => diffStats(segments), [segments]);
   const hasDiff = segments.length > 0;
-  const viewable = isViewable(amendment.affectingLaw.lawId);
+  const viewable = isViewable(amendment.affectingLaw.lawId, allLaws);
 
   return (
     <div
