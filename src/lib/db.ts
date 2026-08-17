@@ -1,13 +1,6 @@
-import { PrismaClient } from '@prisma/client'
-
-const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined
-}
-
-export const db =
-  globalForPrisma.prisma ??
-  new PrismaClient({
-    log: ['query'],
-  })
-
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = db
+/**
+ * @deprecated — use `@/db/client` directly. This thin shim exists for
+ * legacy imports (`import { db } from "@/lib/db"`) that haven't been
+ * migrated yet. It just re-exports the Drizzle client.
+ */
+export { db, type DB } from "@/db/client";

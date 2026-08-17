@@ -9,3 +9,9 @@ dev.log
 tool-results/
 tsconfig.tsbuildinfo
 download-check-*.log
+
+# Drizzle + dev DB artifacts
+/db/*.pglite
+/db/*.pglite.*
+/drizzle/meta/
+/drizzle/*.sql
