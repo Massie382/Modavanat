@@ -15,6 +15,7 @@ import * as referencesMod from "./references";
 import * as authMod from "./auth";
 import * as accountMod from "./account";
 import * as settingsMod from "./settings";
+import * as phase7Mod from "./vocabularies";
 
 export * from "./_enums";
 export * from "./laws";
@@ -25,6 +26,7 @@ export * from "./references";
 export * from "./auth";
 export * from "./account";
 export * from "./settings";
+export * from "./vocabularies";
 
 export const schema = {
   ...enums,
@@ -36,4 +38,5 @@ export const schema = {
   ...authMod,
   ...accountMod,
   ...settingsMod,
+  ...phase7Mod,
 } satisfies Record<string, unknown>;

@@ -1,12 +1,36 @@
 "use client";
 
-import { PageHead, Card, Field, Badge, Switch, Notice } from "@/components/admin/primitives";
+import { PageHead, Card, Field, Switch, Notice } from "@/components/admin/primitives";
 import { useToast } from "@/hooks/use-toast";
+import { useAdminSettings } from "@/hooks/use-admin-settings";
 
-// Phase 7 — frontend only. Navigation settings will be persisted via
-// /api/admin/settings?key=navigation (scaffolded) but the form below
-// is not yet wired to read/write that endpoint.
-const navigationMock = {
+// Phase 7 — wired to /api/admin/settings?key=navigation.
+interface NavLink {
+  id: string;
+  label: string;
+  href: string;
+  visible: boolean;
+}
+interface FooterColumn {
+  id: string;
+  title: string;
+  links: NavLink[];
+}
+interface AuthLinks {
+  signinLabel: string;
+  signupLabel: string;
+  signinHref: string;
+  signupHref: string;
+}
+interface NavigationSettings {
+  topStripLinks: NavLink[];
+  primaryNav: NavLink[];
+  footerColumns: FooterColumn[];
+  authLinks: AuthLinks;
+  searchPlaceholder: string;
+}
+
+const defaults: NavigationSettings = {
   topStripLinks: [
     { id: "ts-1", label: "دسترسی‌پذیری", href: "/accessibility", visible: true },
     { id: "ts-2", label: "راهنما", href: "/guide", visible: true },
@@ -62,44 +86,170 @@ const navigationMock = {
 
 export default function NavigationSettingsPage() {
   const { toast } = useToast();
+  const { data, setData, loading, error, saving, save } =
+    useAdminSettings<NavigationSettings>("navigation", defaults);
+
+  const onSave = async () => {
+    const ok = await save();
+    toast({
+      title: ok ? "ذخیره شد" : "خطا",
+      description: ok ? "تنظیمات ناوبری ذخیره شد." : error ?? "خطا در ذخیره",
+    });
+  };
+
   return (
     <div className="admin-stack">
-      <PageHead title="فهرست‌ها و ناوبری" subtitle="مدیریت پیوندهای ناوبری در سرصفحه، پاصفحه و صفحات احراز هویت" actions={<button className="admin-btn admin-btn-primary" onClick={() => toast({ title: "اطلاع", description: "ذخیره در فاز ۷." })}>ذخیره</button>} />
-
-      <Notice variant="warning">Phase 7 — frontend only. ذخیره‌سازی ناوبری در فاز ۷ به /api/admin/settings وصل خواهد شد.</Notice>
+      <PageHead
+        title="فهرست‌ها و ناوبری"
+        subtitle="مدیریت پیوندهای ناوبری در سرصفحه، پاصفحه و صفحات احراز هویت"
+        actions={
+          <button
+            className="admin-btn admin-btn-primary"
+            onClick={onSave}
+            disabled={saving || loading}
+          >
+            {saving ? "در حال ذخیره…" : "ذخیره"}
+          </button>
+        }
+      />
+      {loading && <Notice variant="info">در حال بارگذاری…</Notice>}
+      {error && <Notice variant="danger">خطا: {error}</Notice>}
 
       <Card title="نوار بالایی سرصفحه" desc="پیوندهای کمکی در نوار باریک بالای سرصفحه">
-        <NavList items={navigationMock.topStripLinks} />
+        <NavList
+          items={data.topStripLinks}
+          onChange={(items) => setData({ ...data, topStripLinks: items })}
+        />
       </Card>
 
       <Card title="ناوبری اصلی" desc="۴ مورد اصلی در نوار زغالی سرصفحه">
-        <NavList items={navigationMock.primaryNav} />
+        <NavList
+          items={data.primaryNav}
+          onChange={(items) => setData({ ...data, primaryNav: items })}
+        />
       </Card>
 
       <Card title="پیوندهای احراز هویت" desc="متن و آدرس دکمه‌های ورود/ثبت‌نام">
         <div className="admin-grid-2">
-          <Field label="متن دکمه ورود"><input className="admin-input" defaultValue={navigationMock.authLinks.signinLabel} /></Field>
-          <Field label="آدرس ورود"><input className="admin-input admin-mono" dir="ltr" defaultValue={navigationMock.authLinks.signinHref} /></Field>
-          <Field label="متن دکمه ثبت‌نام"><input className="admin-input" defaultValue={navigationMock.authLinks.signupLabel} /></Field>
-          <Field label="آدرس ثبت‌نام"><input className="admin-input admin-mono" dir="ltr" defaultValue={navigationMock.authLinks.signupHref} /></Field>
+          <Field label="متن دکمه ورود">
+            <input
+              className="admin-input"
+              value={data.authLinks.signinLabel}
+              onChange={(e) =>
+                setData({
+                  ...data,
+                  authLinks: { ...data.authLinks, signinLabel: e.target.value },
+                })
+              }
+            />
+          </Field>
+          <Field label="آدرس ورود">
+            <input
+              className="admin-input admin-mono"
+              dir="ltr"
+              value={data.authLinks.signinHref}
+              onChange={(e) =>
+                setData({
+                  ...data,
+                  authLinks: { ...data.authLinks, signinHref: e.target.value },
+                })
+              }
+            />
+          </Field>
+          <Field label="متن دکمه ثبت‌نام">
+            <input
+              className="admin-input"
+              value={data.authLinks.signupLabel}
+              onChange={(e) =>
+                setData({
+                  ...data,
+                  authLinks: { ...data.authLinks, signupLabel: e.target.value },
+                })
+              }
+            />
+          </Field>
+          <Field label="آدرس ثبت‌نام">
+            <input
+              className="admin-input admin-mono"
+              dir="ltr"
+              value={data.authLinks.signupHref}
+              onChange={(e) =>
+                setData({
+                  ...data,
+                  authLinks: { ...data.authLinks, signupHref: e.target.value },
+                })
+              }
+            />
+          </Field>
         </div>
       </Card>
 
       <Card title="جستجوی سرصفحه">
-        <Field label="متن راهنمای جستجو"><input className="admin-input" defaultValue={navigationMock.searchPlaceholder} /></Field>
+        <Field label="متن راهنمای جستجو">
+          <input
+            className="admin-input"
+            value={data.searchPlaceholder}
+            onChange={(e) => setData({ ...data, searchPlaceholder: e.target.value })}
+          />
+        </Field>
       </Card>
 
       <Card title="ستون‌های پاصفحه" desc="۳ ستون با چند پیوند هر کدام">
         <div className="admin-grid-3">
-          {navigationMock.footerColumns.map((col) => (
-            <div key={col.id} style={{ border: "1px solid var(--admin-border)", borderRadius: 4, padding: "0.75rem" }}>
-              <Field label="عنوان ستون"><input className="admin-input admin-input-sm" defaultValue={col.title} /></Field>
+          {data.footerColumns.map((col, ci) => (
+            <div
+              key={col.id}
+              style={{ border: "1px solid var(--admin-border)", borderRadius: 4, padding: "0.75rem" }}
+            >
+              <Field label="عنوان ستون">
+                <input
+                  className="admin-input admin-input-sm"
+                  value={col.title}
+                  onChange={(e) => {
+                    const next = [...data.footerColumns];
+                    next[ci] = { ...col, title: e.target.value };
+                    setData({ ...data, footerColumns: next });
+                  }}
+                />
+              </Field>
               <div className="admin-stack-sm" style={{ marginTop: "0.5rem" }}>
-                {col.links.map((l) => (
+                {col.links.map((l, li) => (
                   <div key={l.id} className="admin-row" style={{ fontSize: 11.5 }}>
-                    <Switch on={l.visible} onChange={() => {}} />
-                    <span style={{ flex: 1 }}>{l.label}</span>
-                    <code className="admin-mono admin-muted" dir="ltr">{l.href}</code>
+                    <Switch
+                      on={l.visible}
+                      onChange={(v) => {
+                        const next = [...data.footerColumns];
+                        const links = [...col.links];
+                        links[li] = { ...l, visible: v };
+                        next[ci] = { ...col, links };
+                        setData({ ...data, footerColumns: next });
+                      }}
+                    />
+                    <input
+                      className="admin-input admin-input-sm"
+                      style={{ flex: 1 }}
+                      value={l.label}
+                      onChange={(e) => {
+                        const next = [...data.footerColumns];
+                        const links = [...col.links];
+                        links[li] = { ...l, label: e.target.value };
+                        next[ci] = { ...col, links };
+                        setData({ ...data, footerColumns: next });
+                      }}
+                    />
+                    <input
+                      className="admin-input admin-input-sm admin-mono"
+                      dir="ltr"
+                      style={{ width: 120 }}
+                      value={l.href}
+                      onChange={(e) => {
+                        const next = [...data.footerColumns];
+                        const links = [...col.links];
+                        links[li] = { ...l, href: e.target.value };
+                        next[ci] = { ...col, links };
+                        setData({ ...data, footerColumns: next });
+                      }}
+                    />
                   </div>
                 ))}
               </div>
@@ -111,20 +261,57 @@ export default function NavigationSettingsPage() {
   );
 }
 
-function NavList({ items }: { items: typeof navigationMock.topStripLinks }) {
+function NavList({
+  items,
+  onChange,
+}: {
+  items: NavLink[];
+  onChange: (items: NavLink[]) => void;
+}) {
   return (
     <table className="admin-table">
-      <thead><tr><th>متن</th><th>آدرس</th><th className="col-narrow">نمایش</th><th className="col-narrow">عمل</th></tr></thead>
+      <thead>
+        <tr>
+          <th>متن</th>
+          <th>آدرس</th>
+          <th className="col-narrow">نمایش</th>
+        </tr>
+      </thead>
       <tbody>
-        {items.map((l) => (
+        {items.map((l, i) => (
           <tr key={l.id}>
-            <td><input className="admin-input admin-input-sm" defaultValue={l.label} /></td>
-            <td><input className="admin-input admin-input-sm admin-mono" dir="ltr" defaultValue={l.href} /></td>
-            <td className="col-narrow"><Switch on={l.visible} onChange={() => {}} /></td>
+            <td>
+              <input
+                className="admin-input admin-input-sm"
+                value={l.label}
+                onChange={(e) => {
+                  const next = [...items];
+                  next[i] = { ...l, label: e.target.value };
+                  onChange(next);
+                }}
+              />
+            </td>
+            <td>
+              <input
+                className="admin-input admin-input-sm admin-mono"
+                dir="ltr"
+                value={l.href}
+                onChange={(e) => {
+                  const next = [...items];
+                  next[i] = { ...l, href: e.target.value };
+                  onChange(next);
+                }}
+              />
+            </td>
             <td className="col-narrow">
-              <button className="admin-btn admin-btn-sm admin-btn-ghost">↑</button>
-              <button className="admin-btn admin-btn-sm admin-btn-ghost">↓</button>
-              <button className="admin-btn admin-btn-sm admin-btn-ghost">حذف</button>
+              <Switch
+                on={l.visible}
+                onChange={(v) => {
+                  const next = [...items];
+                  next[i] = { ...l, visible: v };
+                  onChange(next);
+                }}
+              />
             </td>
           </tr>
         ))}

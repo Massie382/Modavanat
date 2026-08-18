@@ -1,14 +1,39 @@
 "use client";
 
 import { useState } from "react";
-import { PageHead, Card, Field, Switch, Tabs, Badge, Notice } from "@/components/admin/primitives";
+import { PageHead, Card, Field, Tabs, Notice } from "@/components/admin/primitives";
 import { useToast } from "@/hooks/use-toast";
+import { useAdminSettings } from "@/hooks/use-admin-settings";
 
-// Phase 7 — frontend only. Branding settings are persisted via
-// /api/admin/settings?key=branding (scaffolded) but the form below
-// is not yet wired to read/write that endpoint. Values are inlined
-// so the page renders without depending on the old mock module.
-const brandingMock = {
+// Phase 7 — wired to /api/admin/settings?key=branding. Settings
+// are deep-merged on top of these defaults so old DB rows pick up
+// newly added fields automatically.
+interface BrandingSettings {
+  siteName: string;
+  tagline: string;
+  description: string;
+  logos: {
+    light: string;
+    dark: string;
+    account: string;
+    favicon: string;
+    ogImage: string;
+    appleTouchIcon: string;
+  };
+  logoDimensions: { width: number; height: number };
+  headerHeightDesktop: number;
+  headerHeightMobile: number;
+  containerMaxWidth: number;
+  footerBlurb: string;
+  copyrightText: string;
+  version: string;
+  lastUpdated: string;
+  errorReportUrl: string;
+  postalAddress: string;
+  postalCode: string;
+}
+
+const defaults: BrandingSettings = {
   siteName: "مدونات",
   tagline: "مرجع قوانین و مقررات جمهوری اسلامی ایران",
   description:
@@ -31,28 +56,97 @@ const brandingMock = {
   version: "نسخه ۲.۴.۱",
   lastUpdated: "۱۴۰۴/۰۵/۰۶",
   errorReportUrl: "mailto:tech@modavanat.ir",
-  postalAddress: "تهران، خیابان ولیعصر، بالاتر از میدان ونک، پلاک ۱۲۳۴، طبقه ۴",
+  postalAddress:
+    "تهران، خیابان ولیعصر، بالاتر از میدان ونک، پلاک ۱۵۳۴، طبقه ۴",
   postalCode: "۱۹۶۱۹۵۴۳۲۱",
 };
 
 export default function BrandingSettingsPage() {
   const { toast } = useToast();
   const [tab, setTab] = useState("identity");
+  const { data, setData, loading, error, saving, save } =
+    useAdminSettings<BrandingSettings>("branding", defaults);
+
+  const onSave = async () => {
+    const ok = await save();
+    toast({
+      title: ok ? "ذخیره شد" : "خطا در ذخیره",
+      description: ok
+        ? "تنظیمات برندینگ با موفقیت ذخیره شد."
+        : error ?? "ذخیره با خطا مواجه شد.",
+    });
+  };
+
   return (
     <>
-      <PageHead title="نام و نشان" subtitle="هویت بصری برند، لوگوها و اطلاعات پایه" actions={<button className="admin-btn admin-btn-primary" onClick={() => toast({ title: "اطلاع", description: "ذخیره در فاز ۷ پیاده‌سازی خواهد شد." })}>ذخیره</button>} />
-      <Notice variant="warning">Phase 7 — frontend only. ذخیره‌سازی تنظیمات در فاز ۷ به /api/admin/settings وصل خواهد شد.</Notice>
-      <Tabs tabs={[{ id: "identity", label: "هویت" }, { id: "logos", label: "لوگوها" }, { id: "header", label: "سرصفحه" }, { id: "footer", label: "پاصفحه" }, { id: "contact", label: "اطلاعات تماس" }]} active={tab} onChange={setTab} />
+      <PageHead
+        title="نام و نشان"
+        subtitle="هویت بصری برند، لوگوها و اطلاعات پایه"
+        actions={
+          <button
+            className="admin-btn admin-btn-primary"
+            onClick={onSave}
+            disabled={saving || loading}
+          >
+            {saving ? "در حال ذخیره…" : "ذخیره"}
+          </button>
+        }
+      />
+      {loading && <Notice variant="info">در حال بارگذاری تنظیمات…</Notice>}
+      {error && <Notice variant="danger">خطا: {error}</Notice>}
+      <Tabs
+        tabs={[
+          { id: "identity", label: "هویت" },
+          { id: "logos", label: "لوگوها" },
+          { id: "header", label: "سرصفحه" },
+          { id: "footer", label: "پاصفحه" },
+          { id: "contact", label: "اطلاعات تماس" },
+        ]}
+        active={tab}
+        onChange={setTab}
+      />
 
       {tab === "identity" && (
         <div className="admin-grid-2">
           <Card title="نام و توضیحات">
-            <Field label="نام سایت"><input className="admin-input" defaultValue={brandingMock.siteName} /></Field>
-            <Field label="شعار (Tagline)"><input className="admin-input" defaultValue={brandingMock.tagline} /></Field>
-            <Field label="توضیحات کوتاه"><textarea className="admin-textarea" defaultValue={brandingMock.description} rows={3} /></Field>
+            <Field label="نام سایت">
+              <input
+                className="admin-input"
+                value={data.siteName}
+                onChange={(e) => setData({ ...data, siteName: e.target.value })}
+              />
+            </Field>
+            <Field label="شعار (Tagline)">
+              <input
+                className="admin-input"
+                value={data.tagline}
+                onChange={(e) => setData({ ...data, tagline: e.target.value })}
+              />
+            </Field>
+            <Field label="توضیحات کوتاه">
+              <textarea
+                className="admin-textarea"
+                rows={3}
+                value={data.description}
+                onChange={(e) => setData({ ...data, description: e.target.value })}
+              />
+            </Field>
             <div className="admin-grid-2">
-              <Field label="نسخه"><input className="admin-input" defaultValue={brandingMock.version} /></Field>
-              <Field label="آخرین به‌روزرسانی"><input className="admin-input" defaultValue={brandingMock.lastUpdated} dir="ltr" /></Field>
+              <Field label="نسخه">
+                <input
+                  className="admin-input"
+                  value={data.version}
+                  onChange={(e) => setData({ ...data, version: e.target.value })}
+                />
+              </Field>
+              <Field label="آخرین به‌روزرسانی">
+                <input
+                  className="admin-input"
+                  dir="ltr"
+                  value={data.lastUpdated}
+                  onChange={(e) => setData({ ...data, lastUpdated: e.target.value })}
+                />
+              </Field>
             </div>
           </Card>
         </div>
@@ -63,28 +157,96 @@ export default function BrandingSettingsPage() {
           <Card title="لوگوها" desc="تصاویر برند در حالت‌های مختلف">
             <div className="admin-grid-3">
               {([
-                { key: "light", label: "لوگوی روشن (سرصفحه)", val: brandingMock.logos.light },
-                { key: "dark", label: "لوگوی تیره (پاصفحه)", val: brandingMock.logos.dark },
-                { key: "account", label: "لوگوی پنل کاربری", val: brandingMock.logos.account },
-                { key: "favicon", label: "Favicon", val: brandingMock.logos.favicon || "(بدون)" },
-                { key: "ogImage", label: "تصویر OpenGraph", val: brandingMock.logos.ogImage || "(بدون)" },
-                { key: "appleTouchIcon", label: "Apple Touch Icon", val: brandingMock.logos.appleTouchIcon || "(بدون)" },
-              ] as const).map((l) => (
-                <div key={l.key} style={{ border: "1px solid var(--admin-border)", borderRadius: 4, padding: "0.75rem", textAlign: "center" }}>
-                  <div style={{ height: 80, display: "grid", placeItems: "center", backgroundColor: "var(--admin-surface-sunken)", borderRadius: 4, marginBottom: "0.5rem" }}>
-                    {l.val && l.val !== "(بدون)" ? <span className="admin-muted">تصویر</span> : <span className="admin-muted">آپلود نشده</span>}
+                { key: "light", label: "لوگوی روشن (سرصفحه)" },
+                { key: "dark", label: "لوگوی تیره (پاصفحه)" },
+                { key: "account", label: "لوگوی پنل کاربری" },
+                { key: "favicon", label: "Favicon" },
+                { key: "ogImage", label: "تصویر OpenGraph" },
+                { key: "appleTouchIcon", label: "Apple Touch Icon" },
+              ] as const).map((l) => {
+                const val = data.logos[l.key as keyof BrandingSettings["logos"]] || "";
+                return (
+                  <div
+                    key={l.key}
+                    style={{
+                      border: "1px solid var(--admin-border)",
+                      borderRadius: 4,
+                      padding: "0.75rem",
+                      textAlign: "center",
+                    }}
+                  >
+                    <div
+                      style={{
+                        height: 80,
+                        display: "grid",
+                        placeItems: "center",
+                        backgroundColor: "var(--admin-surface-sunken)",
+                        borderRadius: 4,
+                        marginBottom: "0.5rem",
+                      }}
+                    >
+                      {val ? (
+                        <span className="admin-muted">تصویر</span>
+                      ) : (
+                        <span className="admin-muted">آپلود نشده</span>
+                      )}
+                    </div>
+                    <div style={{ fontSize: 12, fontWeight: 500, marginBottom: "0.25rem" }}>
+                      {l.label}
+                    </div>
+                    <input
+                      className="admin-input admin-input-sm admin-mono"
+                      dir="ltr"
+                      value={val}
+                      placeholder="مسیر فایل"
+                      onChange={(e) =>
+                        setData({
+                          ...data,
+                          logos: { ...data.logos, [l.key]: e.target.value },
+                        })
+                      }
+                    />
                   </div>
-                  <div style={{ fontSize: 12, fontWeight: 500, marginBottom: "0.25rem" }}>{l.label}</div>
-                  <code className="admin-mono admin-muted" dir="ltr" style={{ display: "block", marginBottom: "0.5rem", fontSize: 10 }}>{l.val}</code>
-                  <button className="admin-btn admin-btn-sm admin-btn-ghost">آپلود</button>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </Card>
           <Card title="ابعاد لوگو">
             <div className="admin-grid-2">
-              <Field label="عرض (px)"><input className="admin-input" type="number" defaultValue={brandingMock.logoDimensions.width} dir="ltr" /></Field>
-              <Field label="ارتفاع (px)"><input className="admin-input" type="number" defaultValue={brandingMock.logoDimensions.height} dir="ltr" /></Field>
+              <Field label="عرض (px)">
+                <input
+                  className="admin-input"
+                  type="number"
+                  dir="ltr"
+                  value={data.logoDimensions.width}
+                  onChange={(e) =>
+                    setData({
+                      ...data,
+                      logoDimensions: {
+                        ...data.logoDimensions,
+                        width: Number(e.target.value) || 0,
+                      },
+                    })
+                  }
+                />
+              </Field>
+              <Field label="ارتفاع (px)">
+                <input
+                  className="admin-input"
+                  type="number"
+                  dir="ltr"
+                  value={data.logoDimensions.height}
+                  onChange={(e) =>
+                    setData({
+                      ...data,
+                      logoDimensions: {
+                        ...data.logoDimensions,
+                        height: Number(e.target.value) || 0,
+                      },
+                    })
+                  }
+                />
+              </Field>
             </div>
           </Card>
         </div>
@@ -93,25 +255,89 @@ export default function BrandingSettingsPage() {
       {tab === "header" && (
         <Card title="تنظیمات سرصفحه">
           <div className="admin-grid-2">
-            <Field label="ارتفاع سرصفحه - دسکتاپ (px)"><input className="admin-input" type="number" defaultValue={brandingMock.headerHeightDesktop} dir="ltr" /></Field>
-            <Field label="ارتفاع سرصفحه - موبایل (px)"><input className="admin-input" type="number" defaultValue={brandingMock.headerHeightMobile} dir="ltr" /></Field>
+            <Field label="ارتفاع سرصفحه - دسکتاپ (px)">
+              <input
+                className="admin-input"
+                type="number"
+                dir="ltr"
+                value={data.headerHeightDesktop}
+                onChange={(e) =>
+                  setData({ ...data, headerHeightDesktop: Number(e.target.value) || 0 })
+                }
+              />
+            </Field>
+            <Field label="ارتفاع سرصفحه - موبایل (px)">
+              <input
+                className="admin-input"
+                type="number"
+                dir="ltr"
+                value={data.headerHeightMobile}
+                onChange={(e) =>
+                  setData({ ...data, headerHeightMobile: Number(e.target.value) || 0 })
+                }
+              />
+            </Field>
           </div>
-          <Field label="حداکثر عرض محتوا (px)"><input className="admin-input" type="number" defaultValue={brandingMock.containerMaxWidth} dir="ltr" /></Field>
+          <Field label="حداکثر عرض محتوا (px)">
+            <input
+              className="admin-input"
+              type="number"
+              dir="ltr"
+              value={data.containerMaxWidth}
+              onChange={(e) =>
+                setData({ ...data, containerMaxWidth: Number(e.target.value) || 0 })
+              }
+            />
+          </Field>
         </Card>
       )}
 
       {tab === "footer" && (
         <Card title="تنظیمات پاصفحه">
-          <Field label="متن معرفی برند"><textarea className="admin-textarea" defaultValue={brandingMock.footerBlurb} rows={4} /></Field>
-          <Field label="متن کپی‌رایت"><input className="admin-input" defaultValue={brandingMock.copyrightText} /></Field>
-          <Field label="نشانی گزارش خطا"><input className="admin-input" dir="ltr" defaultValue={brandingMock.errorReportUrl} /></Field>
+          <Field label="متن معرفی برند">
+            <textarea
+              className="admin-textarea"
+              rows={4}
+              value={data.footerBlurb}
+              onChange={(e) => setData({ ...data, footerBlurb: e.target.value })}
+            />
+          </Field>
+          <Field label="متن کپی‌رایت">
+            <input
+              className="admin-input"
+              value={data.copyrightText}
+              onChange={(e) => setData({ ...data, copyrightText: e.target.value })}
+            />
+          </Field>
+          <Field label="نشانی گزارش خطا">
+            <input
+              className="admin-input"
+              dir="ltr"
+              value={data.errorReportUrl}
+              onChange={(e) => setData({ ...data, errorReportUrl: e.target.value })}
+            />
+          </Field>
         </Card>
       )}
 
       {tab === "contact" && (
         <Card title="اطلاعات تماس پایه">
-          <Field label="نشانی پستی"><textarea className="admin-textarea" defaultValue={brandingMock.postalAddress} rows={2} /></Field>
-          <Field label="کد پستی"><input className="admin-input" dir="ltr" defaultValue={brandingMock.postalCode} /></Field>
+          <Field label="نشانی پستی">
+            <textarea
+              className="admin-textarea"
+              rows={2}
+              value={data.postalAddress}
+              onChange={(e) => setData({ ...data, postalAddress: e.target.value })}
+            />
+          </Field>
+          <Field label="کد پستی">
+            <input
+              className="admin-input"
+              dir="ltr"
+              value={data.postalCode}
+              onChange={(e) => setData({ ...data, postalCode: e.target.value })}
+            />
+          </Field>
         </Card>
       )}
     </>

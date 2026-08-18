@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, use } from "react";
+import { useState, useEffect, use, useRef, useCallback } from "react";
 import Link from "next/link";
 import { PageHead, Card, Badge, Tabs, Field, Switch, Notice, EmptyState, faNum, statusBadgeVariant } from "@/components/admin/primitives";
 import { useToast } from "@/hooks/use-toast";
@@ -504,47 +504,272 @@ function ChangesTab({ law }: { law: Law }) {
 }
 
 /* ════════════════ PDFS TAB — multiple uploads ════════════════ */
+interface LawPdfRow {
+  id: string;
+  label: string;
+  version: string | null;
+  filePath: string;
+  fileSize: number | null;
+  pageCount: number | null;
+  isPrimary: boolean;
+  uploadedBy: string | null;
+  createdAt: string;
+}
 function PdfsTab({ lawId, lawTitle }: { lawId: string; lawTitle: string }) {
-  // Phase 7 — frontend only. PDF uploads + storage are not yet
-  // implemented. The dropzone + table below render an empty state.
-  void lawId; void lawTitle;
-  const pdfs: never[] = [];
+  const { toast } = useToast();
+  const [pdfs, setPdfs] = useState<LawPdfRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [newLabel, setNewLabel] = useState("");
+  const [newVersion, setNewVersion] = useState("");
+  const [newIsPrimary, setNewIsPrimary] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  void lawTitle;
+
+  const reload = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/admin/laws/${encodeURIComponent(lawId)}/pdfs`, {
+        cache: "no-store",
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = (await res.json()) as { pdfs: LawPdfRow[] };
+      setPdfs(data.pdfs);
+    } catch (err) {
+      toast({
+        title: "خطا",
+        description: err instanceof Error ? err.message : String(err),
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [lawId, toast]);
+
+  useEffect(() => {
+    reload();
+  }, [reload]);
+
+  const onUpload = async () => {
+    if (!selectedFile) {
+      toast({ title: "خطا", description: "ابتدا فایل را انتخاب کنید." });
+      return;
+    }
+    if (!newLabel.trim()) {
+      toast({ title: "خطا", description: "برچسب فایل الزامی است." });
+      return;
+    }
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", selectedFile);
+      fd.append("label", newLabel.trim());
+      if (newVersion.trim()) fd.append("version", newVersion.trim());
+      fd.append("isPrimary", newIsPrimary ? "true" : "false");
+      const res = await fetch(`/api/admin/laws/${encodeURIComponent(lawId)}/pdfs`, {
+        method: "POST",
+        body: fd,
+        cache: "no-store",
+      });
+      if (!res.ok) {
+        const j = (await res.json()) as { message?: string };
+        throw new Error(j.message ?? `HTTP ${res.status}`);
+      }
+      await reload();
+      setSelectedFile(null);
+      setNewLabel("");
+      setNewVersion("");
+      setNewIsPrimary(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      toast({ title: "آپلود شد", description: "فایل PDF با موفقیت آپلود شد." });
+    } catch (err) {
+      toast({
+        title: "خطا",
+        description: err instanceof Error ? err.message : String(err),
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const onSetPrimary = async (pdfId: string) => {
+    try {
+      const res = await fetch(
+        `/api/admin/laws/${encodeURIComponent(lawId)}/pdfs/${encodeURIComponent(pdfId)}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ isPrimary: true }),
+          cache: "no-store",
+        }
+      );
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      await reload();
+      toast({ title: "تنظیم شد", description: "فایل به‌عنوان اصلی نشانه‌گذاری شد." });
+    } catch (err) {
+      toast({
+        title: "خطا",
+        description: err instanceof Error ? err.message : String(err),
+      });
+    }
+  };
+
+  const onDelete = async (pdfId: string) => {
+    if (!confirm("از حذف این فایل PDF مطمئن هستید؟")) return;
+    try {
+      const res = await fetch(
+        `/api/admin/laws/${encodeURIComponent(lawId)}/pdfs/${encodeURIComponent(pdfId)}`,
+        { method: "DELETE", cache: "no-store" }
+      );
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      await reload();
+      toast({ title: "حذف شد", description: "فایل حذف شد." });
+    } catch (err) {
+      toast({
+        title: "خطا",
+        description: err instanceof Error ? err.message : String(err),
+      });
+    }
+  };
+
+  const formatBytes = (bytes: number | null) => {
+    if (!bytes) return "—";
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+  };
+
   return (
     <Card
       title="فایل‌های PDF"
       desc="می‌توانید چند فایل PDF برای هر قانون آپلود کنید — نسخه اصلی، نسخه اصلاح‌شده، خلاصه تغییرات و…"
-      actions={<button className="admin-btn admin-btn-sm admin-btn-primary">+ آپلود PDF</button>}
     >
-      {/* Upload dropzone */}
+      {/* Upload form */}
       <div
         style={{
           border: "2px dashed var(--admin-border)",
           borderRadius: 6,
-          padding: "2rem",
-          textAlign: "center",
+          padding: "1.5rem",
           marginBottom: "1rem",
           backgroundColor: "var(--admin-surface-sunken)",
-          cursor: "pointer",
         }}
       >
-        <div style={{ color: "var(--admin-ink-muted)", marginBottom: "0.5rem" }}>
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ margin: "0 auto 0.5rem", display: "block" }}>
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" />
-          </svg>
-          <div style={{ fontSize: 13, color: "var(--admin-ink-soft)" }}>فایل PDF را اینجا بکشید یا کلیک کنید</div>
-          <div style={{ fontSize: 11, marginTop: "0.25rem" }}>حداکثر اندازه: ۲۰ مگابایت · فقط PDF</div>
+        <div className="admin-grid-2">
+          <Field label="برچسب فایل" hint="الزامی">
+            <input
+              className="admin-input"
+              value={newLabel}
+              onChange={(e) => setNewLabel(e.target.value)}
+              placeholder="مثلاً نسخه اصلی، نسخه اصلاح‌شده"
+            />
+          </Field>
+          <Field label="نسخه (اختیاری)">
+            <input
+              className="admin-input"
+              value={newVersion}
+              onChange={(e) => setNewVersion(e.target.value)}
+              placeholder="مثلاً 1.0، 1392-08-15"
+              dir="ltr"
+            />
+          </Field>
+        </div>
+        <div className="admin-row-between" style={{ margin: "0.5rem 0" }}>
+          <span style={{ fontSize: 13 }}>تنظیم به‌عنوان فایل اصلی</span>
+          <Switch on={newIsPrimary} onChange={setNewIsPrimary} />
+        </div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="application/pdf,.pdf"
+          style={{ marginBottom: "0.75rem" }}
+          onChange={(e) => setSelectedFile(e.target.files?.[0] ?? null)}
+        />
+        <div className="admin-row" style={{ justifyContent: "flex-end" }}>
+          <button
+            className="admin-btn admin-btn-primary"
+            onClick={onUpload}
+            disabled={uploading}
+          >
+            {uploading ? "در حال آپلود…" : "+ آپلود PDF"}
+          </button>
         </div>
       </div>
 
-      {pdfs.length > 0 ? (
+      {loading ? (
+        <div className="admin-muted" style={{ textAlign: "center", padding: "1rem" }}>
+          در حال بارگذاری…
+        </div>
+      ) : pdfs.length > 0 ? (
         <table className="admin-table">
           <thead>
             <tr>
-              <th>عنوان</th><th>نسخه</th><th className="col-num">اندازه</th><th className="col-num">صفحات</th>
-              <th>آپلود توسط</th><th>تاریخ</th><th>اصلی</th><th className="col-narrow">عمل</th>
+              <th>عنوان</th>
+              <th>نسخه</th>
+              <th className="col-num">اندازه</th>
+              <th>آپلود توسط</th>
+              <th>تاریخ</th>
+              <th>اصلی</th>
+              <th className="col-narrow">عمل</th>
             </tr>
           </thead>
-          <tbody></tbody>
+          <tbody>
+            {pdfs.map((p) => (
+              <tr key={p.id}>
+                <td>
+                  <strong>{p.label}</strong>
+                  <br />
+                  <a
+                    href={p.filePath}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="admin-mono admin-muted"
+                    dir="ltr"
+                    style={{ fontSize: 11 }}
+                  >
+                    {p.filePath}
+                  </a>
+                </td>
+                <td>{p.version ?? "—"}</td>
+                <td className="col-num">{formatBytes(p.fileSize)}</td>
+                <td>
+                  <code className="admin-mono admin-muted">{p.uploadedBy?.slice(0, 8) ?? "—"}</code>
+                </td>
+                <td>
+                  <span style={{ fontSize: 11 }}>
+                    {new Intl.DateTimeFormat("fa-IR").format(new Date(p.createdAt))}
+                  </span>
+                </td>
+                <td className="col-narrow">
+                  {p.isPrimary ? (
+                    <Badge variant="success">اصلی</Badge>
+                  ) : (
+                    <button
+                      className="admin-btn admin-btn-sm admin-btn-ghost"
+                      onClick={() => onSetPrimary(p.id)}
+                    >
+                      تنظیم اصلی
+                    </button>
+                  )}
+                </td>
+                <td className="col-narrow">
+                  <a
+                    href={p.filePath}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="admin-btn admin-btn-sm admin-btn-ghost"
+                  >
+                    دانلود
+                  </a>
+                  <button
+                    className="admin-btn admin-btn-sm admin-btn-ghost"
+                    onClick={() => onDelete(p.id)}
+                  >
+                    حذف
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
         </table>
       ) : (
         <EmptyState title="فایلی آپلود نشده" desc="برای این قانون هنوز فایل PDF ثبت نشده است." />

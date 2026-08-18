@@ -516,3 +516,60 @@ export async function getReferencedLawTitles(): Promise<
   }
   return getReferencedLawTitlesRaw();
 }
+
+// ─── Phase 7 — admin mutations ────────────────────────────────────────
+
+export interface NewLawInput {
+  id: string;
+  title: string;
+  shortTitle?: string;
+  type:
+    | "قانون عادی"
+    | "قانون اساسی"
+    | "آیین‌نامه"
+    | "بخشنامه"
+    | "مقررات";
+  year: number;
+  number?: string;
+  status?: "in-force" | "amended" | "revoked" | "pending";
+  extent: string;
+  subject: string;
+  promulgatingAuthority: string;
+  approvedDate: string;
+  effectiveDate: string;
+  lastRevisionDate: string;
+  description: string;
+  longDescription?: string;
+}
+
+/**
+ * Phase 7: insert a new law. Caller is responsible for auth checks
+ * (admin-only). Throws on conflict (duplicate id).
+ */
+export async function createLaw(input: NewLawInput): Promise<Law> {
+  await db.insert(lawsTable).values({
+    id: input.id,
+    title: input.title,
+    shortTitle: input.shortTitle ?? null,
+    type: input.type,
+    year: input.year,
+    number: input.number ?? null,
+    status: input.status ?? "in-force",
+    extent: input.extent,
+    subject: input.subject,
+    promulgatingAuthority: input.promulgatingAuthority,
+    approvedDate: input.approvedDate,
+    effectiveDate: input.effectiveDate,
+    lastRevisionDate: input.lastRevisionDate,
+    description: input.description,
+    longDescription: input.longDescription ?? null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  });
+
+  // Return a Law-shaped object — for the empty nested fields we
+  // use the same getLawByIdRaw() loader that the public API uses.
+  const created = await getLawByIdRaw(input.id);
+  if (!created) throw new Error("Failed to fetch created law");
+  return created;
+}
