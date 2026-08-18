@@ -1,47 +1,84 @@
 "use client";
 
-import { useState, FormEvent, useEffect, useRef } from "react";
+import { useState, FormEvent, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import { Field, PasswordInput, AgreementCheckbox } from "@/components/auth/AuthFields";
+import {
+  normalizePhone,
+  toAsciiDigits,
+  maskIdentifier,
+} from "@/lib/auth/identifier";
 
 type IdentifierKind = "email" | "phone";
+type Step = "form" | "otp" | "done";
+
+// Persian digit → ASCII digit map for normalizing user input.
+const PERSIAN_DIGITS = "۰۱۲۳۴۵۶۷۸۹";
 
 export default function SignUpPage() {
+  const [step, setStep] = useState<Step>("form");
   const [username, setUsername] = useState("");
   const [identifierKind, setIdentifierKind] = useState<IdentifierKind>("email");
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [agree, setAgree] = useState(false);
+  const [otp, setOtp] = useState("");
   const [errors, setErrors] = useState<{
     username?: string | null;
     identifier?: string | null;
     password?: string | null;
     confirm?: string | null;
     agree?: string | null;
+    otp?: string | null;
     form?: string | null;
   }>({});
   const [submitting, setSubmitting] = useState(false);
-  const [done, setDone] = useState(false);
+  const [resendIn, setResendIn] = useState(0);
+  const resendTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Move focus to the success message heading when the simulated
   // "verification email sent" state is entered.
   const successHeadingRef = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
-    if (done) {
+    if (step === "done") {
       successHeadingRef.current?.focus();
     }
-  }, [done]);
+  }, [step]);
+
+  // Resend cooldown timer.
+  useEffect(() => {
+    if (resendIn <= 0) {
+      if (resendTimer.current) {
+        clearInterval(resendTimer.current);
+        resendTimer.current = null;
+      }
+      return;
+    }
+    if (!resendTimer.current) {
+      resendTimer.current = setInterval(() => {
+        setResendIn((s) => Math.max(0, s - 1));
+      }, 1000);
+    }
+    return () => {
+      if (resendIn <= 0 && resendTimer.current) {
+        clearInterval(resendTimer.current);
+        resendTimer.current = null;
+      }
+    };
+  }, [resendIn]);
+
+  const startResendCooldown = useCallback(() => setResendIn(60), []);
 
   const identifierLabel =
-    identifierKind === "email" ? "ایمیل" : "شماره تلفن";
+    identifierKind === "email" ? "ایمیل" : "شماره موبایل";
   const placeholder =
     identifierKind === "email"
       ? "example@modavanat.ir"
       : "۰۹۱۲۳۴۵۶۷۸۹";
 
-  const validate = () => {
+  const validateForm = () => {
     const next: typeof errors = {};
     const u = username.trim();
     if (!u) {
@@ -60,10 +97,12 @@ export default function SignUpPage() {
         next.identifier = "قالب ایمیل معتبر نیست.";
       }
     } else {
-      // phone — accept Persian or ASCII digits
-      const normalized = id.replace(/[۰-۹]/g, (d) => String("۰۱۲۳۴۵۶۷۸۹".indexOf(d)));
-      if (!/^0?9\d{9}$/.test(normalized)) {
-        next.identifier = "شماره تلفن باید با ۰۹ شروع شود و ۱۱ رقم باشد.";
+      // phone — normalize Persian digits then validate
+      const normalized = id.replace(/[۰-۹]/g, (d) =>
+        String(PERSIAN_DIGITS.indexOf(d))
+      );
+      if (!normalizePhone(normalized)) {
+        next.identifier = "شماره موبایل نامعتبر است. باید با ۰۹ شروع شود و ۱۱ رقم باشد.";
       }
     }
 
@@ -85,33 +124,53 @@ export default function SignUpPage() {
     return next;
   };
 
-  const handleSubmit = async (e: FormEvent) => {
+  const handleFormSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    const next = validate();
+    const next = validateForm();
     setErrors(next);
     if (Object.keys(next).length > 0) return;
 
     setSubmitting(true);
-    // POST to the real /api/auth/signup endpoint which creates the
-    // user row (scrypt-hashed password) + sends a verification magic
-    // link via the `tokens` table.
+    // POST to /api/auth/signup. The server creates the user row
+    // (scrypt-hashed password) and sends a verification email OR an
+    // OTP SMS depending on `kind`.
     try {
+      const payload =
+        identifierKind === "email"
+          ? {
+              kind: "email" as const,
+              name: username.trim(),
+              email: identifier.trim().toLowerCase(),
+              password,
+            }
+          : {
+              kind: "phone" as const,
+              name: username.trim(),
+              phone: identifier.trim(),
+              password,
+            };
       const r = await fetch("/api/auth/signup", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          name: username.trim(),
-          email: identifier.trim().toLowerCase(),
-          password,
-        }),
+        body: JSON.stringify(payload),
       });
       const j = await r.json().catch(() => ({}));
       if (r.ok) {
-        setDone(true);
+        if (identifierKind === "phone") {
+          // Phone signup: advance to the OTP step. The OTP has been
+          // sent via SMS; the user types it in the next step.
+          setStep("otp");
+          startResendCooldown();
+        } else {
+          // Email signup: the verification magic link has been emailed.
+          setStep("done");
+        }
       } else if (r.status === 409) {
-        setErrors({ identifier: j.error ?? "این ایمیل قبلاً ثبت شده است." });
+        setErrors({ identifier: j.error ?? "این ایمیل/شماره قبلاً ثبت شده است." });
       } else if (r.status === 429) {
         setErrors({ form: j.error ?? "تلاش‌های بیش از حد. لطفاً بعداً تلاش کنید." });
+      } else if (r.status === 502) {
+        setErrors({ form: j.error ?? "ارسال پیامک ناموفق بود. لطفاً دوباره تلاش کنید." });
       } else {
         setErrors({ form: j.error ?? "خطایی در زمان ثبت‌نام رخ داد." });
       }
@@ -121,12 +180,89 @@ export default function SignUpPage() {
     setSubmitting(false);
   };
 
-  if (done) {
+  const validateOtp = () => {
+    const next: typeof errors = {};
+    const norm = toAsciiDigits(otp).replace(/\D/g, "");
+    if (!norm) next.otp = "کد تأیید را وارد کنید.";
+    else if (norm.length !== 6) next.otp = "کد تأیید باید ۶ رقم باشد.";
+    return next;
+  };
+
+  const handleOtpResend = async () => {
+    if (resendIn > 0 || submitting) return;
+    setErrors({});
+    setSubmitting(true);
+    try {
+      const r = await fetch("/api/auth/verify-phone", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ phone: identifier.trim() }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (r.ok) {
+        startResendCooldown();
+        setOtp("");
+      } else if (r.status === 429) {
+        setErrors({ form: j.error ?? "تلاش‌های بیش از حد. لطفاً بعداً تلاش کنید." });
+      } else if (r.status === 502) {
+        setErrors({ form: j.error ?? "ارسال پیامک ناموفق بود." });
+      } else {
+        setErrors({ form: j.error ?? "ارسال مجدد ناموفق بود." });
+      }
+    } catch {
+      setErrors({ form: "ارتباط با سرور ناموفق بود." });
+    }
+    setSubmitting(false);
+  };
+
+  const handleOtpSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    const next = validateOtp();
+    setErrors(next);
+    if (Object.keys(next).length > 0) return;
+
+    setSubmitting(true);
+    try {
+      const r = await fetch("/api/auth/verify-phone", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          phone: identifier.trim(),
+          otp: toAsciiDigits(otp).replace(/\D/g, ""),
+        }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (r.ok) {
+        setStep("done");
+      } else if (r.status === 410) {
+        setErrors({ form: j.error ?? "کد نامعتبر یا منقضی است." });
+        setOtp("");
+      } else if (r.status === 429) {
+        setErrors({ form: j.error ?? "تلاش‌های بیش از حد. لطفاً بعداً تلاش کنید." });
+      } else {
+        setErrors({ form: j.error ?? "خطایی رخ داد. لطفاً دوباره تلاش کنید." });
+      }
+    } catch {
+      setErrors({ form: "ارتباط با سرور ناموفق بود." });
+    }
+    setSubmitting(false);
+  };
+
+  // ─── Done step ───
+  if (step === "done") {
+    const successSubtitle =
+      identifierKind === "email"
+        ? "برای فعال‌سازی حساب، صندوق ورودی ایمیل خود را بررسی کنید."
+        : "شماره موبایل شما تأیید شد.";
+    const successBody =
+      identifierKind === "email"
+        ? "یک پیام تأیید به ایمیل شما ارسال شد. روی پیوند داخل پیام کلیک کنید تا حساب شما فعال شود."
+        : "حساب شما با موفقیت فعال شد. اکنون می‌توانید وارد شوید.";
     return (
       <AuthLayout
         eyebrow="ثبت‌نام"
         title="حساب شما ساخته شد"
-        subtitle="برای فعال‌سازی حساب، لطفاً صندوق ورودی ایمیل خود را بررسی کنید."
+        subtitle={successSubtitle}
         footer={
           <div className="auth-switch">
             حساب دارید؟
@@ -140,17 +276,27 @@ export default function SignUpPage() {
               <polyline points="20 6 9 17 4 12" />
             </svg>
           </div>
-          <h2
-            ref={successHeadingRef}
-            tabIndex={-1}
-            className="text-[14px] font-normal text-[#3d3d3d] leading-7 outline-none"
-          >
-            یک پیام تأیید به{" "}
-            <strong className="font-legal font-semibold text-[#1a1a1a]" dir="ltr">
-              {identifier.trim()}
-            </strong>{" "}
-            ارسال شد. روی پیوند داخل پیام کلیک کنید تا حساب شما فعال شود.
-          </h2>
+          {identifierKind === "email" ? (
+            <h2
+              ref={successHeadingRef}
+              tabIndex={-1}
+              className="text-[14px] font-normal text-[#3d3d3d] leading-7 outline-none"
+            >
+              یک پیام تأیید به{" "}
+              <strong className="font-legal font-semibold text-[#1a1a1a]" dir="ltr">
+                {identifier.trim()}
+              </strong>{" "}
+              ارسال شد. روی پیوند داخل پیام کلیک کنید تا حساب شما فعال شود.
+            </h2>
+          ) : (
+            <h2
+              ref={successHeadingRef}
+              tabIndex={-1}
+              className="text-[14px] font-normal text-[#3d3d3d] leading-7 outline-none"
+            >
+              {successBody}
+            </h2>
+          )}
           <Link href="/signin" className="auth-submit mt-5" style={{ textDecoration: "none" }}>
             ادامه به ورود
           </Link>
@@ -159,6 +305,101 @@ export default function SignUpPage() {
     );
   }
 
+  // ─── OTP step (phone signup) ───
+  if (step === "otp") {
+    return (
+      <AuthLayout
+        eyebrow="ثبت‌نام"
+        title="کد تأیید را وارد کنید"
+        subtitle={`یک کد ۶ رقمی به ${maskIdentifier("phone", identifier)} پیامک شد.`}
+        footer={
+          <div className="auth-switch">
+            شماره اشتباه بود؟
+            <button
+              type="button"
+              onClick={() => {
+                setStep("form");
+                setOtp("");
+                setErrors({});
+                setResendIn(0);
+              }}
+              className="link-legal bg-transparent p-0 border-0 cursor-pointer font-inherit"
+            >
+              تغییر شماره
+            </button>
+          </div>
+        }
+      >
+        <form onSubmit={handleOtpSubmit} noValidate className="space-y-5">
+          {errors.form && (
+            <div className="auth-error-banner" role="alert" style={{
+              background: "#fef2f2",
+              border: "1px solid #fecaca",
+              color: "#b91c1c",
+              padding: "0.75rem 1rem",
+              borderRadius: 6,
+              fontSize: 13,
+            }}>
+              {errors.form}
+            </div>
+          )}
+          <Field
+            label="کد تأیید"
+            htmlFor="otp"
+            error={errors.otp}
+            hint={errors.otp ? undefined : "کد ۶ رقمی پیامک‌شده را وارد کنید. این کد تنها ۵ دقیقه معتبر است."}
+          >
+            <input
+              id="otp"
+              type="text"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              value={otp}
+              onChange={(e) => {
+                const norm = toAsciiDigits(e.target.value).replace(/\D/g, "").slice(0, 6);
+                setOtp(norm);
+              }}
+              placeholder="••••••"
+              dir="ltr"
+              className={`auth-input auth-code-input ${errors.otp ? "is-error" : ""}`}
+              style={{ textAlign: "center", letterSpacing: "0.5em" }}
+              autoFocus
+            />
+          </Field>
+          <button
+            type="submit"
+            className="auth-submit"
+            disabled={submitting}
+          >
+            {submitting ? (
+              <>
+                <span className="inline-block w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                در حال بررسی…
+              </>
+            ) : (
+              "تأیید و فعال‌سازی"
+            )}
+          </button>
+          <div className="text-center text-[12.5px] text-[#6b6b6b]">
+            {resendIn > 0 ? (
+              <>ارسال مجدد کد تا {resendIn} ثانیه دیگر</>
+            ) : (
+              <button
+                type="button"
+                onClick={handleOtpResend}
+                disabled={submitting}
+                className="link-legal bg-transparent p-0 border-0 cursor-pointer font-inherit disabled:opacity-50"
+              >
+                ارسال مجدد کد
+              </button>
+            )}
+          </div>
+        </form>
+      </AuthLayout>
+    );
+  }
+
+  // ─── Default form step ───
   return (
     <AuthLayout
       eyebrow="ثبت‌نام"
@@ -171,7 +412,7 @@ export default function SignUpPage() {
         </div>
       }
     >
-      <form onSubmit={handleSubmit} noValidate className="space-y-5">
+      <form onSubmit={handleFormSubmit} noValidate className="space-y-5">
         {errors.form && (
           <div role="alert" style={{
             background: "#fef2f2",
@@ -210,7 +451,11 @@ export default function SignUpPage() {
               type="button"
               role="tab"
               aria-selected={identifierKind === "email"}
-              onClick={() => setIdentifierKind("email")}
+              onClick={() => {
+                setIdentifierKind("email");
+                setIdentifier("");
+                setErrors({});
+              }}
               className={`auth-segment ${identifierKind === "email" ? "is-active" : ""}`}
             >
               ایمیل
@@ -219,7 +464,11 @@ export default function SignUpPage() {
               type="button"
               role="tab"
               aria-selected={identifierKind === "phone"}
-              onClick={() => setIdentifierKind("phone")}
+              onClick={() => {
+                setIdentifierKind("phone");
+                setIdentifier("");
+                setErrors({});
+              }}
               className={`auth-segment ${identifierKind === "phone" ? "is-active" : ""}`}
             >
               شماره تلفن

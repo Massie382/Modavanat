@@ -13,6 +13,12 @@ export const users = pgTable("users", {
   name: text("name"),
   email: text("email").notNull().unique(),
   emailVerified: timestamp("email_verified", { withTimezone: true }),
+  // Phase 8 (SMS): Iranian mobile normalized to 989XXXXXXXXX (e.g.
+  // "989121234567"). NULL for email-only users. A partial unique index
+  // (WHERE phone IS NOT NULL) is created by the migration so multiple
+  // email-only rows don't conflict on the NULL value.
+  phone: text("phone"),
+  phoneVerified: timestamp("phone_verified", { withTimezone: true }),
   image: text("image"),
   // App-level role: regular user / admin / super-admin. NextAuth itself
   // doesn't read this field — it's for our authorization checks in

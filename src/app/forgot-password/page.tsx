@@ -4,29 +4,14 @@ import { useState, FormEvent, useEffect, useRef } from "react";
 import Link from "next/link";
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import { Field, PasswordInput } from "@/components/auth/AuthFields";
+import {
+  normalizePhone,
+  toAsciiDigits,
+  maskIdentifier,
+} from "@/lib/auth/identifier";
 
 type IdentifierKind = "email" | "phone";
 type Step = "request" | "verify" | "reset" | "done";
-
-// Persian digit → ASCII digit map for normalizing user input.
-const PERSIAN_DIGITS = "۰۱۲۳۴۵۶۷۸۹";
-const toAsciiDigits = (s: string) =>
-  s.replace(/[۰-۹]/g, (d) => String(PERSIAN_DIGITS.indexOf(d)));
-
-// Mask an identifier so we don't leak the full email/phone on the verify screen.
-function maskIdentifier(kind: IdentifierKind, value: string): string {
-  const v = value.trim();
-  if (kind === "email") {
-    const [name, domain] = v.split("@");
-    if (!domain) return v;
-    const visible = name.slice(0, Math.min(2, name.length));
-    return `${visible}${"•".repeat(Math.max(2, name.length - 2))}@${domain}`;
-  }
-  // phone — keep first 3 and last 2 digits
-  const normalized = toAsciiDigits(v).replace(/\D/g, "");
-  if (normalized.length < 6) return normalized;
-  return `${normalized.slice(0, 3)}${"•".repeat(normalized.length - 5)}${normalized.slice(-2)}`;
-}
 
 export default function ForgotPasswordPage() {
   const [step, setStep] = useState<Step>("request");
@@ -56,7 +41,6 @@ export default function ForgotPasswordPage() {
     if (heading instanceof HTMLElement) {
       heading.tabIndex = -1;
       heading.focus();
-      // Reset scroll in case the browser jumped to the heading.
       if (typeof window !== "undefined" && window.scrollY > 0) {
         window.scrollTo({ top: 0, behavior: "auto" });
       }
@@ -87,7 +71,7 @@ export default function ForgotPasswordPage() {
 
   const startResendCooldown = () => setResendIn(60);
 
-  const identifierLabel = identifierKind === "email" ? "ایمیل" : "شماره تلفن";
+  const identifierLabel = identifierKind === "email" ? "ایمیل" : "شماره موبایل";
   const placeholder =
     identifierKind === "email"
       ? "example@modavanat.ir"
@@ -105,8 +89,8 @@ export default function ForgotPasswordPage() {
       }
     } else {
       const normalized = toAsciiDigits(v);
-      if (!/^0?9\d{9}$/.test(normalized)) {
-        next.identifier = "شماره تلفن باید با ۰۹ شروع شود و ۱۱ رقم باشد.";
+      if (!normalizePhone(normalized)) {
+        next.identifier = "شماره موبایل نامعتبر است. باید با ۰۹ شروع شود و ۱۱ رقم باشد.";
       }
     }
     return next;
@@ -119,11 +103,18 @@ export default function ForgotPasswordPage() {
     if (Object.keys(next).length > 0) return;
 
     setSubmitting(true);
+    // Send the right payload shape: the server branches on `kind`.
+    // (Pre-Phase-8 clients sent `{ email }` only — still works thanks
+    // to the .or() fallback in the Zod schema.)
+    const payload =
+      identifierKind === "email"
+        ? { kind: "email" as const, email: identifier.trim().toLowerCase() }
+        : { kind: "phone" as const, phone: identifier.trim() };
     try {
       const r = await fetch("/api/auth/forgot-password", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ email: identifier.trim().toLowerCase() }),
+        body: JSON.stringify(payload),
       });
       const j = await r.json().catch(() => ({}));
       if (r.ok || r.status === 200) {
@@ -131,6 +122,8 @@ export default function ForgotPasswordPage() {
         startResendCooldown();
       } else if (r.status === 429) {
         setErrors({ identifier: j.error ?? "تلاش‌های بیش از حد. لطفاً بعداً تلاش کنید." });
+      } else if (r.status === 502) {
+        setErrors({ identifier: j.error ?? "ارسال پیامک ناموفق بود. لطفاً دوباره تلاش کنید." });
       } else {
         setErrors({ identifier: j.error ?? "خطایی رخ داد. لطفاً دوباره تلاش کنید." });
       }
@@ -171,11 +164,15 @@ export default function ForgotPasswordPage() {
     if (resendIn > 0 || submitting) return;
     setErrors({});
     setSubmitting(true);
+    const payload =
+      identifierKind === "email"
+        ? { kind: "email" as const, email: identifier.trim().toLowerCase() }
+        : { kind: "phone" as const, phone: identifier.trim() };
     try {
       const r = await fetch("/api/auth/forgot-password", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ email: identifier.trim().toLowerCase() }),
+        body: JSON.stringify(payload),
       });
       const j = await r.json().catch(() => ({}));
       if (r.ok) {
@@ -183,6 +180,8 @@ export default function ForgotPasswordPage() {
         setCode("");
       } else if (r.status === 429) {
         setErrors({ identifier: j.error ?? "تلاش‌های بیش از حد. لطفاً بعداً تلاش کنید." });
+      } else if (r.status === 502) {
+        setErrors({ identifier: j.error ?? "ارسال پیامک ناموفق بود." });
       } else {
         setErrors({ identifier: j.error ?? "خطایی رخ داد. لطفاً دوباره تلاش کنید." });
       }
@@ -215,15 +214,28 @@ export default function ForgotPasswordPage() {
     if (Object.keys(next).length > 0) return;
 
     setSubmitting(true);
+    // Send the right payload shape. The server branches on `kind` to
+    // look up the user by email OR phone, then verifies the OTP and
+    // sets the new password.
+    const payload =
+      identifierKind === "email"
+        ? {
+            kind: "email" as const,
+            email: identifier.trim().toLowerCase(),
+            otp: toAsciiDigits(code).replace(/\D/g, ""),
+            password,
+          }
+        : {
+            kind: "phone" as const,
+            phone: identifier.trim(),
+            otp: toAsciiDigits(code).replace(/\D/g, ""),
+            password,
+          };
     try {
       const r = await fetch("/api/auth/reset-password", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          email: identifier.trim().toLowerCase(),
-          otp: toAsciiDigits(code).replace(/\D/g, ""),
-          password,
-        }),
+        body: JSON.stringify(payload),
       });
       const j = await r.json().catch(() => ({}));
       if (r.ok) {
@@ -326,7 +338,7 @@ export default function ForgotPasswordPage() {
           </Field>
 
           <p className="text-[12px] text-[#9c9c9c] -mt-1">
-            کد را از ایمیل خود وارد کنید. این کد تنها ۱۵ دقیقه معتبر است.
+            کد را از {identifierKind === "email" ? "ایمیل" : "پیامک"} خود وارد کنید. این کد تنها ۱۵ دقیقه معتبر است.
           </p>
 
           <button
@@ -377,6 +389,18 @@ export default function ForgotPasswordPage() {
         }
       >
         <form onSubmit={handleResetSubmit} noValidate className="space-y-5">
+          {errors.form && (
+            <div role="alert" style={{
+              background: "#fef2f2",
+              border: "1px solid #fecaca",
+              color: "#b91c1c",
+              padding: "0.75rem 1rem",
+              borderRadius: 6,
+              fontSize: 13,
+            }}>
+              {errors.form}
+            </div>
+          )}
           <Field
             label="رمز عبور جدید"
             htmlFor="password"

@@ -1,15 +1,19 @@
 /**
  * Token helpers — create + verify short-TTL, single-use tokens for:
- *   - Email verification (on signup) — 32-byte URL token
- *   - Password reset (on forgot-password) — 6-digit numeric OTP
+ *   - Email verification (on signup) — 32-byte URL token, 24h TTL
+ *   - Password reset (on forgot-password) — 6-digit numeric OTP, 15-min TTL
+ *   - Phone signup verification — 6-digit numeric OTP, 5-min TTL
+ *   - Phone signin OTP — 6-digit numeric OTP, 3-min TTL
  *
  * Both are stored in the `tokens` table as a SHA-256 hex hash of the
- * plaintext. The plaintext is sent to the user (via email). We never
- * log the plaintext.
+ * plaintext. The plaintext is sent to the user (via email or SMS). We
+ * never log the plaintext.
  *
  * Flow:
  *   createToken(userId, "email_verification")   →  { token, hash, expires }
  *   createToken(userId, "password_reset")      →  { otp, hash, expires }
+ *   createToken(userId, "phone_signup")         →  { otp, hash, expires }
+ *   createToken(userId, "phone_signin")         →  { otp, hash, expires }
  *   verifyToken(type, plaintext)               →  Token | null  (also marks as used)
  */
 
@@ -20,6 +24,14 @@ import { eq, and, lt } from "drizzle-orm";
 
 const EMAIL_VERIFICATION_TTL_MS = 24 * 60 * 60 * 1000; // 24h
 const PASSWORD_RESET_TTL_MS = 15 * 60 * 1000; // 15 min
+const PHONE_SIGNUP_TTL_MS = 5 * 60 * 1000; // 5 min
+const PHONE_SIGNIN_TTL_MS = 3 * 60 * 1000; // 3 min
+
+export type TokenType =
+  | "email_verification"
+  | "password_reset"
+  | "phone_signup"
+  | "phone_signin";
 
 function sha256Hex(s: string): string {
   return createHash("sha256").update(s, "utf8").digest("hex");
@@ -36,23 +48,40 @@ function genOtp(): string {
   return String(randomInt(0, 1_000_000)).padStart(6, "0");
 }
 
+function ttlFor(type: TokenType): number {
+  switch (type) {
+    case "email_verification":
+      return EMAIL_VERIFICATION_TTL_MS;
+    case "password_reset":
+      return PASSWORD_RESET_TTL_MS;
+    case "phone_signup":
+      return PHONE_SIGNUP_TTL_MS;
+    case "phone_signin":
+      return PHONE_SIGNIN_TTL_MS;
+  }
+}
+
+/** Whether a given token type is delivered as a 6-digit OTP (vs. a URL token). */
+function isOtpType(type: TokenType): boolean {
+  return (
+    type === "password_reset" ||
+    type === "phone_signup" ||
+    type === "phone_signin"
+  );
+}
+
 /**
  * Mint a new token. Stores the SHA-256 hash in the DB and returns the
- * plaintext (to be sent via email). Caller is responsible for sending
- * the email — this function is DB-only.
+ * plaintext (to be sent via email or SMS). Caller is responsible for
+ * delivering it — this function is DB-only.
  */
 export async function createToken(
   userId: string,
-  type: "email_verification" | "password_reset"
+  type: TokenType
 ): Promise<{ plaintext: string; hash: string; expires: Date }> {
-  const plaintext = type === "email_verification" ? genUrlToken() : genOtp();
+  const plaintext = isOtpType(type) ? genOtp() : genUrlToken();
   const hash = sha256Hex(plaintext);
-  const expires = new Date(
-    Date.now() +
-      (type === "email_verification"
-        ? EMAIL_VERIFICATION_TTL_MS
-        : PASSWORD_RESET_TTL_MS)
-  );
+  const expires = new Date(Date.now() + ttlFor(type));
   await db.insert(tokens).values({
     id: crypto.randomUUID(),
     userId,
@@ -72,7 +101,7 @@ export async function createToken(
  * throwing.
  */
 export async function verifyToken(
-  type: "email_verification" | "password_reset",
+  type: TokenType,
   plaintext: string
 ): Promise<typeof tokens.$inferSelect | null> {
   if (!plaintext) return null;

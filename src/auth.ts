@@ -32,6 +32,8 @@ import {
   recordLoginSuccess,
 } from "@/lib/auth/rate-limit";
 import { logAudit } from "@/lib/auth/audit";
+import { verifyToken } from "@/lib/auth/tokens";
+import { normalizePhone, toAsciiDigits } from "@/lib/auth/identifier";
 
 const SMTP_URL = process.env.SMTP_URL ?? "";
 const SMTP_FROM = process.env.SMTP_FROM ?? "noreply@modavanat.ir";
@@ -116,35 +118,127 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       credentials: {
         email: { label: "ایمیل", type: "email" },
         password: { label: "گذرواژه", type: "password" },
+        // Phase 8 (SMS) — extra fields for the phone-OTP signin branch.
+        // NextAuth passes whatever the client sends; `authorize` branches
+        // on `purpose` to pick the right verification path.
+        phone: { label: "شماره موبایل", type: "tel" },
+        otp: { label: "کد یکبار مصرف", type: "text" },
+        purpose: { label: "نوع ورود", type: "text" },
       },
       // Authorize is called for every credentials sign-in. Flow:
-      //   1. Pre-flight rate-limit check (IP + email buckets, account
-      //      lockout). If locked, return null — the user sees a generic
-      //      "invalid credentials" message on the form, but the audit
-      //      log + lockout column capture the truth.
-      //   2. Lookup user by email. If not found, record failure + return null.
-      //   3. Bootstrap path: if passwordHash is null (e.g. admin
-      //      created via create-admin.ts before a password was set,
-      //      or a magic-link user who's never set a password), accept
-      //      ANY password and immediately upgrade the row by hashing
-      //      the provided password. First sign-in sticks.
-      //   4. Normal path: scrypt verify. On mismatch, record failure +
-      //      return null. On match, record success, silently upgrade
-      //      weak hashes, return the user object.
+      //   ── Branch A: `purpose === "phone-otp"` (Phase 8 SMS signin) ──
+      //     1. Look up the user by normalized phone.
+      //     2. Verify the OTP against the `phone_signin` tokens table
+      //        (3-min TTL, single-use). verifyToken marks it as used.
+      //     3. On success, return the user object (no password needed
+      //        — OTP ownership proves identity).
+      //     4. On failure, return null (the client surfaces a generic
+      //        "invalid code" error).
+      //
+      //   ── Branch B: email + password (default) ──
+      //     1. Pre-flight rate-limit check (IP + email buckets, account
+      //        lockout). If locked, return null — the user sees a
+      //        generic "invalid credentials" message on the form, but
+      //        the audit log + lockout column capture the truth.
+      //     2. Lookup user by email. If not found, record failure + return null.
+      //     3. Bootstrap path: if passwordHash is null (e.g. admin
+      //        created via create-admin.ts before a password was set,
+      //        or a magic-link user who's never set a password), accept
+      //        ANY password and immediately upgrade the row by hashing
+      //        the provided password. First sign-in sticks.
+      //     4. Normal path: scrypt verify. On mismatch, record failure
+      //        + return null. On match, record success, silently
+      //        upgrade weak hashes, return the user object.
       //
       // Note on the IP plumbing: NextAuth v5 passes the Next.js
       // Request object as the second `authorize` arg, but typing it is
       // awkward. We cast to any and read the headers we care about.
       async authorize(creds, req) {
-        if (!creds?.email || !creds?.password) return null;
-        const email = String(creds.email).toLowerCase().trim();
-        const password = String(creds.password);
+        if (!creds) return null;
+
         // Resolve client IP from request headers (set by nginx/Caddy).
         const r = req as unknown as { headers?: Record<string, string | null> } | undefined;
         const ip =
           (r?.headers?.["x-forwarded-for"]?.split(",")?.[0]?.trim()) ||
           r?.headers?.["x-real-ip"]?.trim() ||
           "0.0.0.0";
+
+        // ── Branch A: phone-OTP signin (Phase 8 SMS) ────────────────
+        if (creds.purpose === "phone-otp") {
+          const phoneRaw = String(creds.phone ?? "");
+          const phone = normalizePhone(phoneRaw);
+          if (!phone) return null;
+          const otp = toAsciiDigits(String(creds.otp ?? "")).replace(/\D/g, "");
+          if (!otp) return null;
+
+          const found = await db
+            .select()
+            .from(users)
+            .where(eq(users.phone, phone))
+            .limit(1);
+          const user = found[0];
+          if (!user) {
+            // User not found — audit + return null. Don't reveal the
+            // reason; the signin page surfaces a generic "invalid code"
+            // message either way.
+            await logAudit({
+              actorUserId: null,
+              action: "user.login.failed",
+              targetType: "user",
+              targetId: phone,
+              metadata: { reason: "no_such_user", kind: "phone_otp" },
+              ip,
+            });
+            return null;
+          }
+          if (!user.phoneVerified) {
+            // Phone never verified — refuse OTP signin (user must use
+            // password first, then the phone gets verified on signup
+            // or via /account settings).
+            await logAudit({
+              actorUserId: user.id,
+              action: "user.login.failed",
+              targetType: "user",
+              targetId: user.id,
+              metadata: { reason: "phone_not_verified", kind: "phone_otp" },
+              ip,
+            });
+            return null;
+          }
+          const token = await verifyToken("phone_signin", otp);
+          if (!token || token.userId !== user.id) {
+            await logAudit({
+              actorUserId: user.id,
+              action: "user.login.failed",
+              targetType: "user",
+              targetId: user.id,
+              metadata: { reason: "invalid_or_expired_otp", kind: "phone_otp" },
+              ip,
+            });
+            return null;
+          }
+          await recordLoginSuccess(user.email);
+          await logAudit({
+            actorUserId: user.id,
+            action: "user.login.success",
+            targetType: "user",
+            targetId: user.id,
+            metadata: { kind: "phone_otp" },
+            ip,
+          });
+          return {
+            id: user.id,
+            name: user.name ?? undefined,
+            email: user.email,
+            image: user.image ?? undefined,
+            role: user.role,
+          };
+        }
+
+        // ── Branch B: email + password (default) ───────────────────
+        if (!creds?.email || !creds?.password) return null;
+        const email = String(creds.email).toLowerCase().trim();
+        const password = String(creds.password);
 
         // 1) Pre-flight rate-limit + lockout check.
         const pre = await preLoginCheck(email, ip);

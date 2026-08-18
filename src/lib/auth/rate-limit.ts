@@ -32,6 +32,21 @@ const FORGOT_PW_EMAIL_WINDOW_MS = 60 * 60 * 1000; // 1 hour
 const SIGNUP_IP_THRESHOLD = 5;
 const SIGNUP_IP_WINDOW_MS = 60 * 60 * 1000; // 1 hour
 
+// Phone OTP rate-limits (Phase 8 SMS):
+//   Per-phone OTP requests: 3 per 10 min — catches OTP-bombing of a
+//     victim's phone (an attacker who knows the number can't spam SMS).
+//   Per-IP phone OTP requests: 10 per 10 min — catches distributed
+//     enumeration of phone numbers from one source.
+//   Per-IP phone OTP *verify* attempts: 20 per 5 min — generous, since
+//     retry on typo is common. Above 20 in 5 min, the IP gets a 5-min
+//     cooldown.
+const PHONE_OTP_PER_PHONE_THRESHOLD = 3;
+const PHONE_OTP_PER_PHONE_WINDOW_MS = 10 * 60 * 1000; // 10 min
+const PHONE_OTP_PER_IP_THRESHOLD = 10;
+const PHONE_OTP_PER_IP_WINDOW_MS = 10 * 60 * 1000; // 10 min
+const PHONE_OTP_VERIFY_PER_IP_THRESHOLD = 20;
+const PHONE_OTP_VERIFY_PER_IP_WINDOW_MS = 5 * 60 * 1000; // 5 min
+
 // ── Internal types ────────────────────────────────────────────────────
 interface Bucket {
   count: number;
@@ -255,6 +270,62 @@ export function checkSignupRate(ip: string): RateLimitResult {
     };
   }
   const remaining = Math.max(0, SIGNUP_IP_THRESHOLD - count);
+  return { ok: true, remaining, retryAfterMs: 0, message: "" };
+}
+
+/**
+ * Phone OTP request rate limit — per-phone AND per-IP.
+ *
+ * Used by /api/auth/phone-otp/send (signin OTP) and the signup + reset
+ * flows when the identifier kind is phone. Catches both OTP-bombing of
+ * a victim's phone (per-phone threshold) and distributed enumeration
+ * of phone numbers from one source (per-IP threshold).
+ *
+ * Note: the `phone` arg MUST already be normalized via
+ * `normalizePhone()` so the per-phone bucket key is stable.
+ */
+export function checkPhoneOtpRate(phone: string, ip: string): RateLimitResult {
+  const ipCount = hitBucket("phone-otp-ip", ip, PHONE_OTP_PER_IP_WINDOW_MS);
+  if (ipCount > PHONE_OTP_PER_IP_THRESHOLD) {
+    return {
+      ok: false,
+      remaining: 0,
+      retryAfterMs: PHONE_OTP_PER_IP_WINDOW_MS,
+      message: "تعداد درخواست کد پیامک از این نشانی بیش از حد مجاز است. لطفاً ۱۰ دقیقه بعد تلاش کنید.",
+    };
+  }
+  const phoneCount = hitBucket("phone-otp-phone", phone, PHONE_OTP_PER_PHONE_WINDOW_MS);
+  if (phoneCount > PHONE_OTP_PER_PHONE_THRESHOLD) {
+    return {
+      ok: false,
+      remaining: 0,
+      retryAfterMs: PHONE_OTP_PER_PHONE_WINDOW_MS,
+      message: "تعداد درخواست کد برای این شماره بیش از حد مجاز است. لطفاً ۱۰ دقیقه بعد تلاش کنید.",
+    };
+  }
+  const remaining = Math.max(0, PHONE_OTP_PER_PHONE_THRESHOLD - phoneCount);
+  return { ok: true, remaining, retryAfterMs: 0, message: "" };
+}
+
+/**
+ * Phone OTP *verify* attempt rate limit — per-IP only.
+ *
+ * Used by the verify-phone, phone-otp signin verify, and reset-password
+ * (phone kind) flows. Generous threshold (20 per 5 min) since typo
+ * retries are common. Above the threshold, the IP gets a 5-min cooldown
+ * — same as the per-IP login limit.
+ */
+export function checkPhoneOtpVerifyRate(ip: string): RateLimitResult {
+  const count = hitBucket("phone-otp-verify-ip", ip, PHONE_OTP_VERIFY_PER_IP_WINDOW_MS);
+  if (count > PHONE_OTP_VERIFY_PER_IP_THRESHOLD) {
+    return {
+      ok: false,
+      remaining: 0,
+      retryAfterMs: PHONE_OTP_VERIFY_PER_IP_WINDOW_MS,
+      message: "تعداد تلاش برای تأیید کد بیش از حد مجاز است. لطفاً ۵ دقیقه بعد تلاش کنید.",
+    };
+  }
+  const remaining = Math.max(0, PHONE_OTP_VERIFY_PER_IP_THRESHOLD - count);
   return { ok: true, remaining, retryAfterMs: 0, message: "" };
 }
 

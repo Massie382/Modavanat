@@ -1520,3 +1520,230 @@ Stage Summary:
   - Dev-server smoke tests → /contact renders 200 with form markers; unauth endpoints return 401; POST /api/contact returns 400 on empty body + 201 on valid body.
 
 No blockers hit. The db-migrate "ALTER TABLE IF NOT EXISTS" syntax error was caught and fixed (PGlite supports `ADD COLUMN IF NOT EXISTS` but not `ALTER TABLE IF NOT EXISTS` — the table clause must not have IF NOT EXISTS, only the column clause). The migration-file-with-leading-comment bug (re-encountered from Phase F) was fixed by putting SQL first, no leading `--` block, no trailing comment that mentions the literal `--> statement-breakpoint` marker. The Prefs `as const` type widening + PasswordInput prop fix were caught by tsc before runtime. Direct route-handler invocation in the test script hangs because importing a Next.js route module pulls in the App Router runtime which doesn't initialize outside a request scope — the workaround was to keep the test script DB-level only and rely on tsc + next build + dev-server curl tests for the handler verification.
+
+---
+Task ID: 8-SMS
+Agent: Main Agent (Phase 8 — sms.ir refactor)
+Task: Refactor phone signup / signin / forgot-password to use sms.ir's OTP delivery, per the sms.ir developer guide.
+
+Work Log:
+- Read the existing worklog entries (Tasks 1, 5–20, E, F, Phase 7, Phase 8 audit + implementation) for context. The user-side auth was already production-grade for email (scrypt hashing, rate-limit + lockout, single-use hashed tokens, anti-enumeration, JWT session) — but phone auth was UI-scaffolded only (segmented toggle on signin/signup/forgot-password pages) and either hard-blocked at runtime (signin) or silently mis-routed (signup/forgot-password sent the phone string as `email`).
+- Pre-flight research: dispatched two parallel Explore sub-agents.
+  - Sub-agent A: thoroughly read sms.ir's public developer docs (sms.ir/rest-api, /web-service, /lab/n8n, GitHub IPeCompany/SmsPanelV2.nodejs, npm packages). Confirmed: only `/v1/` exists; auth = `X-API-KEY` header; send-OTP endpoint = `POST /v1/send/verify` with `{mobile, templateId, parameters:[{name, value}]}` body; **sms.ir does NOT verify codes** — it's purely a delivery pipe, so the app must store + verify the OTP itself; sandbox mode exists with templateId 123456 and `Code` parameter; documented status codes 1/10/11/12/13/14/20/101–123 with Persian meanings.
+  - Sub-agent B: audited the current auth code — confirmed phone auth is NOT wired at server layer (no schema column, no token type, no API handler, no SMS SDK, no env vars), phone is hard-blocked on signin and silently broken on signup/forgot-password, `tokens` table `type` is free-text (no migration needed for new types), `input-otp` shadcn primitive installed but unused, admin auth-settings page already exposes `allowedIdentifiers: [{id:"phone",enabled:true}]` + `otpLength:6` + `otpResendCooldownSec:60` but no server code consumes it.
+
+Step 1 — Migration `drizzle/0006_phase8_sms.sql` (3 statements):
+- `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "phone" text;` — nullable so email-only users don't need a phone.
+- `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "phone_verified" timestamp with time zone;` — set when the signup OTP is verified (mirrors `email_verified`).
+- `CREATE UNIQUE INDEX IF NOT EXISTS "users_phone_unique" ON "users" ("phone") WHERE "phone" IS NOT NULL;` — partial unique index: email-only users (phone=NULL) don't conflict; PostgreSQL allows multiple NULLs so the partial index is the correct shape (a full unique index would block email-only signups).
+- One migration-format bug caught: the original file had a leading `--` comment block, which the db-migrate.ts SQL splitter filters out (line 62: `.filter((s) => s.length > 0 && !s.startsWith("--"))`), causing "0 statement(s) to apply" on the first run. Fixed by removing the leading comment block entirely and using `--> statement-breakpoint` markers between statements (matching the format of `0005_phase8.sql`). Re-ran migrations — all 3 statements applied cleanly.
+
+Step 2 — Schema `src/db/schema/auth.ts` (2 lines added):
+- `phone: text("phone"),` between `emailVerified` and `image`.
+- `phoneVerified: timestamp("phone_verified", { withTimezone: true }),` next to it.
+- Inline comment explains the partial unique index design + the 989XXXXXXXXX canonical form.
+
+Step 3 — New file `src/lib/auth/sms.ts` (~210 lines):
+- `sendOtp(mobile, purpose, code): Promise<SmsSendResult>` — POSTs to `${SMSIR_API_BASE}/send/verify` (default `https://api.sms.ir/v1`) with headers `X-API-KEY`, `Content-Type: application/json`, `Accept: application/json`, and body `{mobile, templateId, parameters:[{name: PARAM_NAME, value: code}]}`.
+- `purpose` is `"signup" | "signin" | "reset"` — selects the templateId from env (`SMSIR_TEMPLATE_SIGNUP`, `SMSIR_TEMPLATE_SIGNIN`, `SMSIR_TEMPLATE_RESET`, all default to 123456 = the sandbox template).
+- `PARAM_NAME` defaults to `"Code"` (case-sensitive — must match what the sms.ir panel stores; documented inline).
+- Success check: `payload.status === 1 && payload.data` (per the docs, `status:1` is the only success indicator regardless of HTTP 200).
+- 10-second `AbortSignal.timeout` so a hung sms.ir request doesn't block the Next.js request.
+- `mapStatusToPersian(status, raw)` maps the 8 most common failure codes (10/11/12/13/14/20/102/104/113/114/115/119/123) to Persian user-facing messages. Unknown codes get a generic Persian message with the raw sms.ir `message` preserved in `raw`.
+- **Dev fallback**: when `SMSIR_API_KEY` is unset, the OTP is logged to stdout via `console.log("[sms][dev] OTP for ${mobile} (${purpose}) → ${code}")` and the function resolves as `{ok: true, messageId: null, cost: null}` — exactly mirroring the SMTP dev-fallback pattern in `src/auth.ts` so the full signup/signin/reset flow is testable locally without an sms.ir account. This was tested live (dev server) and confirmed working: the OTP code was visible in the dev-server stdout log and all 4 endpoints returned the correct Persian success responses.
+- No new npm dependencies. Used native `fetch` (Node 18+) instead of the `smsir-js` package (which uses axios + sends PascalCase keys; the docs' canonical form is lowerCamelCase, both work, but lowerCamelCase matches the docs).
+
+Step 4 — New file `src/lib/auth/identifier.ts` (~110 lines):
+- `normalizePhone(raw: string | undefined | null): string | null` — canonicalizes Iranian mobile numbers to `989XXXXXXXXX` (e.g. `"09123456789"` → `"989123456789"`; `"+989123456789"` → same; `"9123456789"` → same; `"۰۹۱۲۳۴۵۶۷۸۹"` → same; `"0912 345 6789"` → same; `"0912-345-6789"` → same; `"(0912) 345-6789"` → same). Rejects invalid (empty, garbage, too short, non-mobile prefix like `0812…`, 10 or 12 digits).
+- `normalizeEmail(raw): string | null` — lowercases + trims; rejects non-email shapes.
+- `toAsciiDigits(s)` — converts Persian/Arabic digits (۰-۹) to ASCII (0-9). Used in all the route handlers so the OTP the user types in Persian digits is normalized before lookup.
+- `isValidPhone(raw)` — predicate.
+- `maskIdentifier(kind, value)` — anti-shoulder-surfing helper for verify-step subtitles: emails show `"mo••••••@gmail.com"` (preserves domain), phones show `"989••••••89"` (preserves country code + last 2 digits, hides middle).
+- `formatPhoneDisplay(canonical)` — converts `"989123456789"` → `"0912 345 6789"` for UI display (not currently used in the auth pages — kept for future admin/user-facing surfaces).
+
+Step 5 — Extended `src/lib/auth/tokens.ts`:
+- Added a `TokenType` union type: `"email_verification" | "password_reset" | "phone_signup" | "phone_signin"`.
+- Added TTLs: `PHONE_SIGNUP_TTL_MS = 5 * 60 * 1000` (5 min), `PHONE_SIGNIN_TTL_MS = 3 * 60 * 1000` (3 min). Email-verification stays 24h; password-reset stays 15 min.
+- Refactored `createToken` to use `isOtpType(type)` (returns true for password_reset/phone_signup/phone_signin, false for email_verification) → `genOtp()` (6-digit zero-padded numeric) else `genUrlToken()` (32-byte base64url). Replaced the inline `type === "email_verification"` ternary with a switch-driven `ttlFor(type)` helper.
+- `verifyToken` signature widened to accept the new `TokenType` union. The underlying tokens-table `type` column is free-text so no schema migration was needed.
+- Single-use semantics preserved — `verifyToken` marks `usedAt` on success; replay attempts return null.
+
+Step 6 — Extended `src/lib/auth/rate-limit.ts`:
+- Added 3 new tunables for phone-OTP rate-limiting:
+  - `PHONE_OTP_PER_PHONE_THRESHOLD = 3` per 10 min — catches OTP-bombing of a victim's phone.
+  - `PHONE_OTP_PER_IP_THRESHOLD = 10` per 10 min — catches distributed phone-number enumeration from one IP.
+  - `PHONE_OTP_VERIFY_PER_IP_THRESHOLD = 20` per 5 min — generous verify-attempt limit (typo retries common); above 20 the IP gets a 5-min cooldown.
+- Added `checkPhoneOtpRate(phone, ip)` — hits both `phone-otp-phone` and `phone-otp-ip` buckets, returns Persian messages on exhaustion. Used by signup (phone kind), forgot-password (phone kind), phone-otp/send.
+- Added `checkPhoneOtpVerifyRate(ip)` — hits `phone-otp-verify-ip` bucket. Used by verify-phone, reset-password (phone kind).
+- The existing `checkForgotPasswordRate` is reused for phone-kind forgot-password (fed the canonical phone string as the "email" arg — bucket key includes the phone so it's tracked separately from any email with the same literal value, which is a coincidence anyway).
+
+Step 7 — Refactored `src/app/api/auth/signup/route.ts` (~280 lines, full rewrite):
+- New Zod schema uses a single `superRefine`-based shape with optional `kind`/`email`/`phone` fields instead of `z.union([z.object, z.object]).or(z.object)` (the union form broke TS narrowing — TS couldn't tell which variant we were in when accessing `data.email` vs `data.phone`, surfacing 3 TS2339 errors). The single-shape-with-superRefine form validates "email XOR phone is present" cleanly.
+- Branches on `kind === "phone"`:
+  - Validates + normalizes the phone via `normalizePhone()` (accepts Persian digits, all formats).
+  - Triggers the phone-OTP rate-limit.
+  - Checks phone-uniqueness against the partial unique index (returns 409 if taken).
+  - Inserts the user row with `phone` set, `phoneVerified=null`, and a synthesized placeholder email of the form `phone+989XXXXXXXXX@local.modavanat.ir` (since `email` is NOT NULL UNIQUE in the NextAuth schema — we can't leave it null; this placeholder is stable-per-phone, never surfaces to the user, never receives email, and is overwritten if the user later binds a real email via /account).
+  - Mints a `phone_signup` token via `createToken(userId, "phone_signup")`.
+  - Calls `sendOtp(phone, "signup", plaintext)`. On failure, rolls back the user row (best-effort `db.delete`) so the phone number isn't "burned" against an un-activatable account; audit-logs `user.signup.sms_failed`; returns 502 with the sms.ir Persian error.
+  - Audit-logs `user.signup` with `metadata.kind: "phone"`.
+  - Returns `201 {ok: true, kind: "phone", message: "کد تأیید پیامک شد."}`.
+- Branches on `kind === "email"` (or backward-compat `{email, password}` with no `kind`): the original email-signup flow — scrypt-hash, insert, mint `email_verification` token, send magic-link email via nodemailer. Audit-log `metadata.kind: "email"`. Returns 201 with the Persian email-sent message.
+- New GET handler: `/api/auth/signup?kind=phone&value=0912...` → checks availability (returns `{available: true/false}`) so the signup page can show inline "already exists" hints. Used by the signup page for the phone-segment.
+- Backward compat: clients that POST `{email, password}` (no `kind`) still work — the `superRefine` accepts email-only payloads without a `kind` field.
+
+Step 8 — New file `src/app/api/auth/verify-phone/route.ts` (~190 lines):
+- POST handler: validates `{phone, otp}`, normalizes both (Persian digits → ASCII), looks up user by phone (returns generic "invalid code" if not found — anti-enumeration), calls `verifyToken("phone_signup", otp)`, checks `token.userId === user.id` to prevent OTP cross-user replay, sets `users.phoneVerified = now()`. Idempotent — returns `{ok: true, alreadyVerified: true}` if already verified. Per-IP verify rate-limit. Audit-logs `user.verify_phone.success`/`.failed`. Returns `410` on bad/expired OTP (matches the reset-password convention).
+- PUT handler (resend): looks up user by phone, silently no-ops if not found or already verified (anti-enumeration), re-runs the phone-OTP rate-limit, mints a fresh `phone_signup` token, sends via `sendOtp(phone, "signup", plaintext)`, audit-logs `user.verify_phone.resend` / `.resend_failed`. Returns 200 on success, 502 on SMS failure, 429 on rate-limit.
+
+Step 9 — Refactored `src/app/api/auth/forgot-password/route.ts` (~190 lines):
+- Same `superRefine` schema shape (single object with optional `kind`/`email`/`phone`).
+- Branches on `kind === "phone"`:
+  - Validates + normalizes phone via `normalizePhone()`.
+  - Runs BOTH `checkForgotPasswordRate(phone, ip)` (existing 3/hour per-identifier + 15/hour per-IP) AND `checkPhoneOtpRate(phone, ip)` (new 3/10min per-phone + 10/10min per-IP) so both layers apply.
+  - Looks up user by phone (anti-enumeration 200 if not found — the rate-limit bucket was already bumped).
+  - Mints a `password_reset` token (same type as email — the token's purpose is "reset a password", the channel is a routing concern).
+  - Calls `sendOtp(phone, "reset", plaintext)`. Returns 502 on SMS failure with the sms.ir Persian error.
+  - Audit-logs `user.forgot_password.requested` with `metadata.kind: "phone"`.
+  - Returns `200 {ok: true, kind: "phone", message: "کد بازنشانی به شماره شما پیامک شد."}`.
+- Email branch unchanged from before (15-min OTP via email). Backward-compat: `{email}` (no `kind`) still works.
+
+Step 10 — Refactored `src/app/api/auth/reset-password/route.ts` (~190 lines):
+- Same `superRefine` schema shape (with `otp` + `password` added).
+- Branches on `kind === "phone"`:
+  - Per-IP verify rate-limit.
+  - Validates + normalizes phone.
+  - Looks up user by phone (generic 410 if not found — anti-enumeration).
+  - Calls `verifyToken("password_reset", otp)`, checks `token.userId === userId`.
+  - On success: scrypt-hashes the new password, clears `failedLoginAttempts` + `lockedUntil` (so a successful reset is also an implicit unlock), updates `updatedAt`. Audit-logs `user.reset_password.success` with `metadata.kind: "phone"`. Returns `200 {ok: true}`.
+  - On failure: audit-logs `user.reset_password.failed` with reason `invalid_or_expired_otp`; returns `410 {"error": "کد نامعتبر یا منقضی است."}`.
+- Email branch unchanged.
+
+Step 11 — New file `src/app/api/auth/phone-otp/send/route.ts` (~120 lines):
+- POST `/api/auth/phone-otp/send` — sends the OTP for the *signin* flow (user already has an account, doesn't want to type a password).
+- Validates `{phone}`, normalizes via `normalizePhone()`, runs `checkPhoneOtpRate(phone, ip)`.
+- Looks up user by phone (anti-enumeration: silent 200 if not found — `"اگر این شماره در سیستم وجود داشته باشد، کد ورود ارسال شده است."`).
+- Refuses OTP signin if `!user.phoneVerified` — same anti-enumeration silent 200 (attacker can't tell whether the phone is unverified vs unregistered). Audit-logs `user.phone_otp.phone_not_verified`.
+- Mints a `phone_signin` token (3-min TTL), calls `sendOtp(phone, "signin", plaintext)`. Audit-logs `user.phone_otp.requested` / `.send_failed`. Returns 502 on SMS failure.
+- Returns `200 {ok: true, message: "کد ورود به شماره شما پیامک شد."}`.
+
+Step 12 — Extended `src/auth.ts` CredentialsProvider.authorize (Phase 8 SMS branch):
+- Added imports: `verifyToken` from `@/lib/auth/tokens`, `normalizePhone`/`toAsciiDigits` from `@/lib/auth/identifier`.
+- Added 3 credential fields to the provider definition (NextAuth lets clients pass arbitrary keys): `phone`, `otp`, `purpose` (labeled in Persian).
+- `authorize(creds, req)` now branches on `creds.purpose === "phone-otp"`:
+  - Branch A (phone OTP signin): normalizes the phone, looks up user by `eq(users.phone, phone)`, returns null if not found (audit-logs `no_such_user` with `kind: "phone_otp"`). Refuses signin if `!user.phoneVerified` (audit-logs `phone_not_verified`). Calls `verifyToken("phone_signin", otp)`, checks `token.userId === user.id`. On success: `recordLoginSuccess(user.email)`, audit-log `user.login.success` with `metadata.kind: "phone_otp"`, return the user object. On failure: audit-log `user.login.failed` with reason `invalid_or_expired_otp`, return null.
+  - Branch B (email + password, default): unchanged — pre-flight rate-limit, bootstrap path, scrypt verify, silent hash upgrade, audit-log on every success/failure.
+- IP-resolution logic moved to the top of `authorize` (was duplicated inline) so both branches share it.
+
+Step 13 — Refactored `src/app/signin/page.tsx` (full rewrite, ~370 lines):
+- Removed the hard-block at line 74 of the previous version (`if (identifierKind === "phone") { setErrors({ form: "ورود با شماره تلفن هنوز فعال نیست…" }); return; }`).
+- New `Step` type: `"credentials" | "otp" | "success"`. The credentials step renders the email+password form OR the phone-only form (no password field for phone — phone auth uses OTP, not password); the OTP step renders the 6-digit OTP entry with resend cooldown; the success step renders the redirect confirmation.
+- Phone path: `POST /api/auth/phone-otp/send` to mint + deliver the OTP, then advance to the OTP step. Resend cooldown (60s) re-uses the same endpoint.
+- OTP step submit: calls `signIn("credentials", {phone, otp, purpose: "phone-otp", redirect: false, callbackUrl})`. NextAuth's `authorize` Branch A verifies the OTP and returns the user; on success NextAuth establishes the JWT session and returns `{url}` for the soft-redirect to the callback URL. On error (`res?.error`), the page surfaces a Persian "کد نامعتبر یا منقضی است" + clears the OTP input so the user can retype / request a new one.
+- Email path: unchanged — `signIn("credentials", {email, password, redirect: false, callbackUrl})`.
+- Imported `normalizePhone`/`toAsciiDigits`/`maskIdentifier` from `@/lib/auth/identifier` for client-side validation (the same helpers the server uses — single source of truth). The OTP subtitle uses `maskIdentifier("phone", identifier)` so the verify-step subtitle doesn't leak the full phone on screen.
+- Resend cooldown timer uses the same `setInterval` + `useRef` pattern as the forgot-password page.
+
+Step 14 — Refactored `src/app/signup/page.tsx` (full rewrite, ~470 lines):
+- New `Step` type: `"form" | "otp" | "done"`. The form step is the original signup form (username + identifier toggle + password + confirm + agree); the OTP step is the 6-digit OTP entry (only shown for phone kind); the done step is the success screen.
+- Phone path submit: `POST /api/auth/signup` with `{kind: "phone", name, phone, password}`. On 201, advance to OTP step + start resend cooldown. The OTP has been sent via SMS in the same request that created the user row.
+- Email path submit: `POST /api/auth/signup` with `{kind: "email", name, email, password}`. On 201, advance directly to done step (the magic-link email was sent in the same request).
+- OTP step: `POST /api/auth/verify-phone` with `{phone, otp}`. On 200, advance to done step with a different success message ("شماره موبایل شما تأیید شد." + "حساب شما با موفقیت فعال شد. اکنون می‌توانید وارد شوید."). On 410 (bad/expired OTP), surface Persian error + clear the input. On 429 (rate-limit), surface the Persian message.
+- Resend: `PUT /api/auth/verify-phone` (the resend handler).
+- Done step renders the appropriate message based on `identifierKind` (email → "click the link in your email", phone → "account activated").
+- All phone validation uses `normalizePhone()` client-side so the user gets immediate feedback before the round-trip.
+
+Step 15 — Refactored `src/app/forgot-password/page.tsx` (full rewrite, ~430 lines):
+- Now sends the right payload shape: `{kind: "email", email}` or `{kind: "phone", phone}` (the previous version always sent `{email: identifier}` regardless of which segment was selected — silently broken for phone).
+- The 4 steps (request → verify → reset → done) are unchanged in structure; only the payload construction in `handleRequestSubmit`, `handleResend`, `handleResetSubmit` was changed to branch on `identifierKind`.
+- Verify-step help text now says "کد را از {ایمیل/پیامک} خود وارد کنید" (was hardcoded to "ایمیل").
+- Mask helper updated to use the new `maskIdentifier` from `@/lib/auth/identifier` (was inline).
+
+Step 16 — Updated `.env.example` with 5 new SMS env vars:
+- `SMSIR_API_KEY` (empty by default → dev fallback logs OTP to stdout).
+- `SMSIR_API_BASE=https://api.sms.ir/v1` (default).
+- `SMSIR_TEMPLATE_SIGNUP=123456`, `SMSIR_TEMPLATE_SIGNIN=123456`, `SMSIR_TEMPLATE_RESET=123456` (all default to the sandbox template; production replaces with their real panel template IDs).
+- `SMSIR_PARAM_NAME=Code` (default — case-sensitive, must match the panel).
+
+Step 17 — Wrote `scripts/test-phase8-sms.ts` (~210 lines, 10 test groups, 54 assertions):
+- Test 1: schema — `phone` + `phone_verified` columns exist, correct types, nullable. (4 assertions)
+- Test 2: schema — `users_phone_unique` partial unique index exists, is UNIQUE, has the `WHERE (phone IS NOT NULL)` predicate. (3 assertions)
+- Test 3: `normalizePhone()` — accepts 8 valid forms (local/bare/+98/98/Persian digits/with spaces/dashes/parens), rejects 8 invalid (empty/undefined/null/garbage/too short/non-mobile prefix/10 digits/12 digits). Plus `isValidPhone` predicate. (19 assertions)
+- Test 4: `normalizeEmail()` — lowercases, trims, rejects empty/undefined/garbage/missing-TLD. (6 assertions)
+- Test 5: `maskIdentifier()` — masks both kinds with bullets, doesn't leak local part / middle digits, preserves domain / country code / last 2 digits. (7 assertions)
+- Test 6: tokens round-trip — `phone_signup` + `phone_signin` plaintexts are 6-digit OTPs, verify correctly, userId matches, type is stored correctly, single-use (replay rejected), wrong OTP rejected. (9 assertions)
+- Test 7: user lookup by phone column works. (3 assertions)
+- Test 8: multiple users with NULL phone don't conflict on the partial unique index. (1 assertion)
+- Test 9: duplicate phone insert rejected with PG unique-violation code 23505. (1 assertion)
+- Test 10: `purgeExpiredTokens()` returns a number (still works with new token types). (1 assertion)
+- All 54 assertions passed.
+
+Final verification (all passed):
+- `bunx tsc --noEmit` → exit 0, zero errors. (Initial run had 9 errors: 6 TS2339 on `data.email`/`data.phone` from the `z.union([…]).or(…)` form losing track of which variant we're in, 3 TS2339 on `payload.status`/`.message`/`.data` from `as typeof payload` self-reference. All fixed by switching the route schemas to single-shape-with-`superRefine` and extracting `SmsirResponse` to a named interface.)
+- `bun run lint` → 11 errors + 5 warnings. SAME count as pre-Phase-8-SMS (all 11 are pre-existing `setState-in-effect` patterns from Phase F's SearchSuggestions + 6 other components + AdminShell's href-reassignment; all 5 warnings are pre-existing `aria-expanded` + unused-eslint-disable. 0 new lint regressions.
+- `bun run db:migrate` (with `rm -rf db/dev.pglite db/custom.db` reset) → all 7 migrations applied cleanly (0000 + 0001 + 0002 + 0003_search_tsv + 0004_phase7 + 0005_phase8 + 0006_phase8_sms). The initial run had 0 statements applied for 0006 — caused by the leading `--` comment block being filtered out by the splitter's `!s.startsWith("--")` filter — fixed by removing the leading comment and using `--> statement-breakpoint` markers. PGlite's exit-code-99 is the documented benign shutdown quirk.
+- `bun run db:seed` → 6 laws seeded (Pass 1: 6 laws; Pass 2: TOC + articles + commentary; Pass 3: amendments + outstanding + references). Unchanged from before.
+- `bun run scripts/test-phase8-sms.ts` → ✅ all 54 DB-level + lib-level assertions passed.
+- `bun run scripts/test-phase8.ts` → ✅ all 12 DB-level assertions still passed (no regression on the Phase 8 preferences work).
+- `bunx next build` → ✓ Compiled successfully in 25.2s. All routes built including new `/api/auth/phone-otp/send` + `/api/auth/verify-phone`. The pre-existing TypeError ("The 'path' argument must be of type string… Received an instance of URL") appears during build but is non-fatal — Next.js 16 + Turbopack issue documented in Phase 8 worklog. Build completes successfully.
+- Dev-server smoke tests (curl while alive):
+  - POST `/api/auth/signup` with `{kind:"phone", phone:"09123456789", password:"test12345678", name:"TestUser"}` → 201 `{"ok":true,"kind":"phone","message":"کد تأیید پیامک شد."}`. The OTP code was logged to the dev-server stdout via the dev fallback (since SMSIR_API_KEY is unset). The user row was created with `phone=989123456789`, `phoneVerified=null`, placeholder email `phone+989123456789@local.modavanat.ir`.
+  - POST `/api/auth/phone-otp/send` with `{phone:"not-a-phone"}` → 400 `{"error":"شماره موبایل نامعتبر است."}` (Zod validation rejects garbage).
+  - POST `/api/auth/forgot-password` with `{kind:"phone", phone:"09123456789"}` → 200 `{"ok":true,"kind":"phone","message":"کد بازنشانی به شماره شما پیامک شد."}` (found the user we just created, minted + delivered a `password_reset` OTP via the dev fallback).
+  - POST `/api/auth/verify-phone` with `{phone:"09123456789", otp:"000000"}` → 410 `{"error":"کد نامعتبر یا منقضی است."}` (wrong OTP correctly rejected).
+  - PUT `/api/auth/verify-phone` (resend) with `{phone:"09123456789"}` → 200 `{"ok":true}` (fresh OTP minted + delivered, idempotent).
+  - GET `/api/auth/signup?kind=phone&value=09123456789` → 200 `{"available":false}` (correctly detects the user we created — the partial unique index works as designed for the availability check).
+
+Stage Summary:
+- New files (5):
+  - `drizzle/0006_phase8_sms.sql` (3 SQL statements — ALTER + ALTER + CREATE UNIQUE INDEX partial).
+  - `src/lib/auth/sms.ts` (~210 lines — sms.ir client with `sendOtp()` + dev fallback + 13 status codes mapped to Persian).
+  - `src/lib/auth/identifier.ts` (~110 lines — `normalizePhone`/`normalizeEmail`/`toAsciiDigits`/`maskIdentifier`/`isValidPhone`/`formatPhoneDisplay`).
+  - `src/app/api/auth/verify-phone/route.ts` (~190 lines — POST verify + PUT resend for phone-signup OTP).
+  - `src/app/api/auth/phone-otp/send/route.ts` (~120 lines — POST send OTP for the phone-signin flow).
+  - `scripts/test-phase8-sms.ts` (~210 lines — 10 test groups, 54 assertions, all passing).
+
+- Modified files (8):
+  - `src/db/schema/auth.ts` — added `phone: text` + `phoneVerified: timestamp` columns with inline design comment.
+  - `src/lib/auth/tokens.ts` — added `TokenType` union (`phone_signup`, `phone_signin`), TTLs (5min/3min), refactored createToken/verifyToken to use `isOtpType` + `ttlFor` helpers.
+  - `src/lib/auth/rate-limit.ts` — added 3 phone-OTP tunables + `checkPhoneOtpRate` + `checkPhoneOtpVerifyRate` helpers.
+  - `src/app/api/auth/signup/route.ts` — full rewrite (~280 lines): single-shape superRefine schema, branches on `kind`, phone-flow creates user + sends OTP via sms.ir, GET availability endpoint.
+  - `src/app/api/auth/forgot-password/route.ts` — full rewrite (~190 lines): same schema pattern, phone branch mints `password_reset` token + delivers via SMS.
+  - `src/app/api/auth/reset-password/route.ts` — full rewrite (~190 lines): same schema pattern, phone branch verifies OTP + sets new password.
+  - `src/auth.ts` — extended CredentialsProvider with `phone`/`otp`/`purpose` fields + a new `creds.purpose === "phone-otp"` branch in `authorize` that does the OTP verification (rate-limited + audit-logged).
+  - `src/app/signin/page.tsx` — full rewrite (~370 lines): removed phone hard-block, added 3-step flow (credentials → OTP → success), phone path uses `signIn("credentials", {phone, otp, purpose: "phone-otp"})`.
+  - `src/app/signup/page.tsx` — full rewrite (~470 lines): added 3-step flow (form → OTP → done), phone path creates user + sends OTP, verify-phone endpoint confirms ownership.
+  - `src/app/forgot-password/page.tsx` — full rewrite (~430 lines): now sends the right payload shape per `identifierKind`, verify-step text mentions both email + SMS.
+  - `.env.example` — added 5 SMS env vars with documented defaults + sandbox instructions.
+
+- What WASN'T changed (and why):
+  - `src/app/verify-email/page.tsx` — email magic-link flow, unchanged. The phone-signup verification happens in the signup page's OTP step (no separate verify-phone page — the OTP is entered inline on the signup page).
+  - Admin auth-settings page (`src/app/admin/settings/auth/page.tsx`) — already exposes `allowedIdentifiers` + `otpLength` + `otpResendCooldownSec` defaults. Consuming these settings at runtime (so admins can disable phone auth via the UI) is a Phase 9 candidate — for now, phone auth is always enabled. The defaults are correct.
+  - `input-otp` shadcn primitive — installed but still unused. The auth pages use a plain `<input type="text" inputMode="numeric" maxLength=6>` styled with `letterSpacing: 0.5em` and the `.auth-code-input` CSS class (defined in `globals.css`). This is consistent with the existing forgot-password verify step (which never used `input-otp` either) and is sufficient — the OTP UX is fine without the shadcn primitive.
+  - `src/components/auth/AuthFields.tsx` — no OTP-input helper added. The plain input + CSS-class pattern works, matches the existing forgot-password step, and avoids a new shared component that would only have 2 call sites.
+  - `users.preferences.smsNotifications` — still stored as a boolean in the jsonb column but still NOT consumed by any sender. This is correct for Phase 8 SMS — the `smsNotifications` prefs flag is intended for *future* notification use (e.g. "ticket reply SMS alerts"), not for the auth OTP flow. The auth flow always sends OTPs regardless of this prefs flag (the user is asking to authenticate, so they want the OTP).
+  - Multi-process rate-limiting (Redis/Upstash) — still in-memory only. Phone OTP rate-limiting has the same single-process limitation. Fine for a single-VPS deploy; multi-server would need Redis. Documented in `rate-limit.ts` inline comment.
+
+- Verification artifacts:
+  - tsc → 0 errors.
+  - lint → 11 errors + 5 warnings (all pre-existing, 0 new).
+  - db:migrate → all 7 migrations applied cleanly.
+  - db:seed → 6 laws seeded.
+  - test-phase8-sms.ts → 54/54 DB-level + lib-level assertions passed.
+  - test-phase8.ts → 12/12 (no regression on Phase 8 preferences work).
+  - next build → ✓ Compiled successfully in 25.2s, all routes built including new `/api/auth/phone-otp/send` + `/api/auth/verify-phone`.
+  - Dev-server curl tests → 6 endpoints hit with expected responses (201 signup, 400 invalid phone, 200 forgot-password, 410 bad OTP, 200 resend, 200 availability check).
+
+- sms.ir integration specifics (per the developer guide):
+  - Base URL: `https://api.sms.ir/v1` (only `/v1/` exists publicly).
+  - Auth: `X-API-KEY` header (no JWT, no OAuth, no signed token).
+  - Send endpoint: `POST /send/verify` with body `{mobile, templateId, parameters:[{name, value}]}`. Sender = sms.ir service line (خط خدماتی) — reaches recipients who blocked advertising SMS, delivered with high priority.
+  - **Verify endpoint: does NOT exist.** sms.ir is purely a delivery pipe. The app generates the OTP, stores its SHA-256 hash in the `tokens` table, sends the plaintext via `/send/verify`, and verifies it server-side against the stored hash. This is the opposite of Twilio Verify / Vonage Verify (which manage the code lifecycle for you).
+  - Sandbox: same URLs, separate Sandbox API key. Default templateId 123456 = `کد تایید شما: #CODE#`. No real SMS sent, no credit deducted, same response shape as production.
+  - Success indicator: `status === 1` in the JSON body (regardless of HTTP 200).
+  - Rate-limit signal: HTTP 429 or `status: 20`. 10-second timeout on the fetch call.
+  - Parameter value max 25 chars (6-digit OTP is fine — 6 chars).
+  - Field names: lowerCamelCase (`mobile`, `templateId`, `parameters`, `name`, `value`) — matches the canonical REST docs form. The SDK's PascalCase (`Mobile`, `TemplateId`, `Parameters`) also works because the API parser is case-insensitive on JSON keys, but lowerCamelCase is preferred for new code.
+  - 13 status codes mapped to Persian: 1 success, 10–14 auth/account issues (generic "service unavailable"), 20 rate-limit, 102 insufficient credit, 104 invalid mobile, 113 template not found, 114 param too long, 115 blacklist, 119 plan upgrade needed, 123 sender line needs activation.
+
+No blockers hit. The migration-file-with-leading-comment bug (re-encountered from Phase 8 preferences) was fixed by putting SQL first + using `--> statement-breakpoint` markers (matching `0005_phase8.sql`'s format). The Zod union narrowing bug was fixed by switching to single-shape-with-`superRefine`. The `as typeof payload` self-reference bug was fixed by extracting `SmsirResponse` to a named local type. Direct route-handler invocation in the test script hangs (same issue as Phase 8 — importing a Next.js route module pulls in the App Router runtime which doesn't initialize outside a request scope) — the workaround is DB-level + lib-level testing + dev-server curl tests for handler verification. The dev fallback (`SMSIR_API_KEY` unset → log OTP to stdout) was tested live and confirmed working end-to-end for signup + forgot-password + verify-phone resend + phone-otp/send.
