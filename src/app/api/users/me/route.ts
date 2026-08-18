@@ -1,26 +1,18 @@
 /**
- * PATCH /api/users/me
+ * /api/users/me
+ *   GET    → current user's profile + preferences
+ *   PATCH  → update profile (name, password, preferences)
+ *   DELETE → permanently delete the account (requires currentPassword
+ *           for users who have a passwordHash)
  *
- * Update the current user's profile + preferences. Body fields:
- *   { name?: string, image?: string|null,
- *     currentPassword?: string, newPassword?: string,
- *     emailNotifications?: boolean, smsNotifications?: boolean,
- *     weeklyDigest?: boolean, bookmarkAlerts?: boolean }
+ * Phase 8: prefs now live in `users.preferences` (jsonb column).
+ * Previously we stashed them as JSON inside `users.image` (the
+ * NextAuth default schema had nowhere else). The 0005_phase8.sql
+ * migration back-fills the new column from those blobs and NULLs
+ * the image column for affected rows, so image is now reserved for
+ * real avatar URLs only.
  *
- * Password change requires `currentPassword` to match the stored hash;
- * we never reveal which field was wrong — both password + email
- * validation failures return the same generic "currentPassword is
- * incorrect" error to avoid leaking state.
- *
- * NOTE on prefs storage: the existing UI uses a `UserPreferences`
- * shape with email/sms/weeklyDigest/bookmarkAlerts toggles. There's
- * no DB column for these yet — we store them as a JSON blob on
- * `users.image` (which we use as a "misc JSON" sink because the
- * NextAuth default schema has nowhere else to put app-level user
- * metadata without a custom column). TODO Phase 7: add a
- * `preferences` jsonb column to users + migrate.
- *
- * Audit-logged.
+ * All paths audit-logged.
  */
 import { NextResponse } from "next/server";
 import { db } from "@/db/client";
@@ -31,7 +23,31 @@ import { getUserFromSession, getClientIpFromReq } from "@/lib/auth/session";
 import { verifyPassword, hashPassword } from "@/lib/auth/passwords";
 import { logAudit } from "@/lib/auth/audit";
 
-const schema = z.object({
+// ── Defaults ──────────────────────────────────────────────────────
+interface Prefs {
+  emailNotifications: boolean;
+  smsNotifications: boolean;
+  weeklyDigest: boolean;
+  bookmarkAlerts: boolean;
+  [key: string]: boolean;
+}
+
+const DEFAULT_PREFS: Prefs = {
+  emailNotifications: true,
+  weeklyDigest: true,
+  bookmarkAlerts: true,
+  smsNotifications: false,
+};
+
+function parsePrefs(raw: unknown): Prefs {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    return { ...DEFAULT_PREFS };
+  }
+  return { ...DEFAULT_PREFS, ...(raw as Record<string, boolean>) };
+}
+
+// ── Schemas ───────────────────────────────────────────────────────
+const patchSchema = z.object({
   name: z.string().trim().min(3).max(80).optional(),
   image: z.string().trim().max(2000).nullable().optional(),
   currentPassword: z.string().max(200).optional(),
@@ -42,22 +58,11 @@ const schema = z.object({
   bookmarkAlerts: z.boolean().optional(),
 });
 
-const PREFS_KEY = "__prefs"; // marker prefix in image JSON
-function parsePrefs(image: string | null): Record<string, boolean> {
-  if (!image) return { emailNotifications: true, weeklyDigest: true, bookmarkAlerts: true, smsNotifications: false };
-  try {
-    const j = JSON.parse(image);
-    if (j && typeof j === "object" && j.__prefs) {
-      return { emailNotifications: true, weeklyDigest: true, bookmarkAlerts: true, smsNotifications: false, ...j.prefs };
-    }
-  } catch {}
-  return { emailNotifications: true, weeklyDigest: true, bookmarkAlerts: true, smsNotifications: false };
-}
+const deleteSchema = z.object({
+  currentPassword: z.string().max(200).optional(),
+});
 
-function buildImageFromPrefs(prefs: Record<string, boolean>): string {
-  return JSON.stringify({ __prefs: true, prefs });
-}
-
+// ── PATCH ─────────────────────────────────────────────────────────
 export async function PATCH(req: Request) {
   const u = await getUserFromSession();
   if (!u) {
@@ -69,7 +74,7 @@ export async function PATCH(req: Request) {
   } catch {
     return NextResponse.json({ error: "بدنه نامعتبر." }, { status: 400 });
   }
-  const parsed = schema.safeParse(body);
+  const parsed = patchSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json(
       { error: parsed.error.issues[0]?.message ?? "ورودی نامعتبر." },
@@ -78,8 +83,6 @@ export async function PATCH(req: Request) {
   }
   const patch = parsed.data;
 
-  // Fetch the current row so we can verify currentPassword against
-  // the stored hash + merge prefs.
   const found = await db
     .select()
     .from(users)
@@ -95,11 +98,17 @@ export async function PATCH(req: Request) {
   // Name
   if (patch.name !== undefined) set.name = patch.name;
 
-  // Password change — only if both currentPassword + newPassword
-  // are provided. We verify currentPassword against the stored hash
-  // (or skip that check on the bootstrap path where passwordHash is
-  // null — but that case shouldn't happen for /account/me PATCH
-  // since the user is already logged in).
+  // Real avatar URL — only set if it's actually a URL, not a prefs blob.
+  // (After Phase 8, the image column should never hold prefs again,
+  // but we keep the guard for safety in case any legacy data slipped
+  // through.)
+  if (patch.image !== undefined && patch.image !== null && !patch.image.startsWith("{")) {
+    set.image = patch.image;
+  } else if (patch.image === null) {
+    set.image = null;
+  }
+
+  // Password change — verify currentPassword against stored hash.
   if (patch.newPassword) {
     if (!patch.currentPassword) {
       return NextResponse.json(
@@ -116,24 +125,16 @@ export async function PATCH(req: Request) {
     set.passwordHash = hashPassword(patch.newPassword);
   }
 
-  // Preferences — merge into the existing prefs blob.
-  const existingPrefs = parsePrefs(current.image ?? null);
-  const mergedPrefs = {
+  // Preferences — merge into the existing preferences jsonb column.
+  const existingPrefs = parsePrefs(current.preferences);
+  const mergedPrefs: Prefs = {
     ...existingPrefs,
     ...(patch.emailNotifications !== undefined ? { emailNotifications: patch.emailNotifications } : {}),
     ...(patch.smsNotifications !== undefined ? { smsNotifications: patch.smsNotifications } : {}),
     ...(patch.weeklyDigest !== undefined ? { weeklyDigest: patch.weeklyDigest } : {}),
     ...(patch.bookmarkAlerts !== undefined ? { bookmarkAlerts: patch.bookmarkAlerts } : {}),
   };
-  // If `image` (a real avatar URL) wasn't explicitly provided in the
-  // patch, preserve the existing prefs JSON; otherwise overwrite.
-  if (patch.image !== undefined && patch.image !== null && !patch.image.startsWith("{")) {
-    // Caller is setting a real image URL — keep prefs in a separate
-    // field if we add one later. For now, just store the URL.
-    set.image = patch.image;
-  } else {
-    set.image = buildImageFromPrefs(mergedPrefs);
-  }
+  set.preferences = mergedPrefs;
 
   await db.update(users).set(set).where(eq(users.id, u.id));
 
@@ -145,6 +146,7 @@ export async function PATCH(req: Request) {
     metadata: {
       changedName: patch.name !== undefined,
       changedPassword: !!patch.newPassword,
+      changedImage: patch.image !== undefined,
       changedPrefs:
         patch.emailNotifications !== undefined ||
         patch.smsNotifications !== undefined ||
@@ -166,9 +168,7 @@ export async function PATCH(req: Request) {
   });
 }
 
-/**
- * GET /api/users/me → return the current user's profile + prefs.
- */
+// ── GET ───────────────────────────────────────────────────────────
 export async function GET() {
   const u = await getUserFromSession();
   if (!u) {
@@ -183,7 +183,7 @@ export async function GET() {
     return NextResponse.json({ error: "حساب یافت نشد." }, { status: 404 });
   }
   const current = found[0];
-  const prefs = parsePrefs(current.image ?? null);
+  const prefs = parsePrefs(current.preferences);
   return NextResponse.json({
     user: {
       id: current.id,
@@ -191,9 +191,91 @@ export async function GET() {
       email: current.email,
       role: current.role,
       emailVerified: current.emailVerified?.toISOString() ?? null,
-      image: current.image && current.image.startsWith("{") ? null : current.image,
+      image: current.image,
       createdAt: current.createdAt.toISOString(),
     },
     prefs,
   });
+}
+
+// ── DELETE ────────────────────────────────────────────────────────
+//
+// Permanent account deletion. Requires `currentPassword` for users
+// who have a passwordHash — magic-link / OAuth users without a hash
+// can delete without it (they'd need to be signed in, which proves
+// control of the email). Cascade rules on the schema take down all
+// dependent rows (bookmarks, tickets, ticket_messages, purchases,
+// sessions, accounts, tokens).
+//
+// We audit-log BEFORE deleting the row, because once the user is
+// gone, the FK from audit_log.actor_user_id (ON DELETE SET NULL)
+// would orphan the entry. Logging first ensures the actor link is
+// preserved for the audit trail.
+export async function DELETE(req: Request) {
+  const u = await getUserFromSession();
+  if (!u) {
+    return NextResponse.json({ error: "ابتدا وارد شوید." }, { status: 401 });
+  }
+  let body: unknown = {};
+  try {
+    body = await req.json();
+  } catch {
+    // Allow empty body — magic-link users without passwordHash can
+    // delete without sending any payload.
+  }
+  const parsed = deleteSchema.safeParse(body);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: parsed.error.issues[0]?.message ?? "ورودی نامعتبر." },
+      { status: 400 }
+    );
+  }
+
+  const found = await db
+    .select()
+    .from(users)
+    .where(eq(users.id, u.id))
+    .limit(1);
+  if (found.length === 0) {
+    return NextResponse.json({ error: "حساب یافت نشد." }, { status: 404 });
+  }
+  const current = found[0];
+
+  // If the user has a password hash, require a matching currentPassword.
+  // This prevents a stolen session cookie alone from being enough to
+  // delete the account.
+  if (current.passwordHash) {
+    if (!parsed.data.currentPassword) {
+      return NextResponse.json(
+        { error: "برای حذف حساب، رمز عبور فعلی را وارد کنید." },
+        { status: 400 }
+      );
+    }
+    if (!verifyPassword(parsed.data.currentPassword, current.passwordHash)) {
+      return NextResponse.json(
+        { error: "رمز عبور فعلی نادرست است." },
+        { status: 403 }
+      );
+    }
+  }
+
+  // Audit-log BEFORE deletion so actor_user_id FK is still valid.
+  // Capture email + name in metadata since those columns will be
+  // gone after the cascade.
+  await logAudit({
+    actorUserId: u.id,
+    action: "user.account.delete",
+    targetType: "user",
+    targetId: u.id,
+    metadata: {
+      email: current.email,
+      name: current.name,
+      hadPassword: !!current.passwordHash,
+    },
+    ip: getClientIpFromReq(req),
+  });
+
+  await db.delete(users).where(eq(users.id, u.id));
+
+  return NextResponse.json({ ok: true });
 }

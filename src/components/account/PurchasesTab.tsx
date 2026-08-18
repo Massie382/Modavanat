@@ -126,7 +126,7 @@ export function PurchasesTab({ purchases, loading }: PurchasesTabProps) {
                             aria-label="دانلود فاکتور"
                             onClick={() => {
                               if (typeof window !== "undefined") {
-                                alert(`دانلود فاکتور #${p.invoiceNumber} (شبیه‌سازی)`);
+                                window.open(`/api/purchases/${p.id}/invoice`, "_blank", "noopener,noreferrer");
                               }
                             }}
                           >

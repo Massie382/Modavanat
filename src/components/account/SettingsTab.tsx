@@ -44,6 +44,12 @@ export function SettingsTab({
   const [pwSaving, setPwSaving] = useState(false);
   const [pwSavedAt, setPwSavedAt] = useState<string | null>(null);
 
+  // account deletion
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
   // Sync draft + prefs when the parent props change (after fetch).
   // We use a key-once check on the user identifier so we don't yank
   // the user's in-progress edits on every re-render.
@@ -276,22 +282,89 @@ export function SettingsTab({
           <p className="panel-form-section-desc">
             با حذف حساب، تمام نشانه‌ها، یادداشت‌ها و تاریخچهٔ خرید شما برای همیشه پاک می‌شود. این عمل قابل بازگشت نیست.
           </p>
-          <button
-            type="button"
-            className="btn-legal btn-legal-sm"
-            style={{
-              backgroundColor: "transparent",
-              color: "var(--destructive)",
-              borderColor: "var(--destructive)",
-            }}
-            onClick={() => {
-              if (typeof window !== "undefined" && window.confirm("آیا مطمئن هستید؟ این عمل قابل بازگشت نیست.")) {
-                window.location.href = "/signin";
-              }
-            }}
-          >
-            حذف حساب کاربری
-          </button>
+          {!deleteConfirmOpen ? (
+            <button
+              type="button"
+              className="btn-legal btn-legal-sm"
+              style={{
+                backgroundColor: "transparent",
+                color: "var(--destructive)",
+                borderColor: "var(--destructive)",
+              }}
+              onClick={() => {
+                setDeleteError(null);
+                setDeletePassword("");
+                setDeleteConfirmOpen(true);
+              }}
+            >
+              حذف حساب کاربری
+            </button>
+          ) : (
+            <div className="space-y-3">
+              <p className="panel-form-section-desc" style={{ color: "var(--destructive)" }}>
+                برای تأیید حذف دائمی حساب، رمز عبور فعلی خود را وارد کنید.
+              </p>
+              <PasswordInput
+                id="delete-confirm-password"
+                value={deletePassword}
+                onChange={(v) => setDeletePassword(v)}
+                placeholder="رمز عبور فعلی"
+                autoComplete="current-password"
+              />
+              {deleteError && (
+                <p className="text-[12.5px]" style={{ color: "var(--destructive)" }}>{deleteError}</p>
+              )}
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  className="btn-legal btn-legal-sm"
+                  style={{
+                    backgroundColor: "var(--destructive)",
+                    color: "#fff",
+                    borderColor: "var(--destructive)",
+                  }}
+                  disabled={deleting || !deletePassword}
+                  onClick={async () => {
+                    setDeleteError(null);
+                    setDeleting(true);
+                    try {
+                      const r = await fetch("/api/users/me", {
+                        method: "DELETE",
+                        headers: { "content-type": "application/json" },
+                        body: JSON.stringify({ currentPassword: deletePassword }),
+                      });
+                      const j = await r.json().catch(() => ({}));
+                      if (r.ok) {
+                        // Hard sign-out then redirect. The session JWT cookie must be cleared client-side.
+                        const { signOut } = await import("next-auth/react");
+                        await signOut({ callbackUrl: "/signin?deleted=1", redirect: true });
+                        return;
+                      }
+                      setDeleteError(j.error ?? "حذف حساب ناموفق بود.");
+                    } catch {
+                      setDeleteError("ارتباط با سرور ناموفق بود.");
+                    }
+                    setDeleting(false);
+                  }}
+                >
+                  {deleting ? "در حال حذف..." : "تأیید و حذف دائمی"}
+                </button>
+                <button
+                  type="button"
+                  className="btn-legal btn-legal-sm"
+                  style={{ backgroundColor: "transparent" }}
+                  disabled={deleting}
+                  onClick={() => {
+                    setDeleteConfirmOpen(false);
+                    setDeletePassword("");
+                    setDeleteError(null);
+                  }}
+                >
+                  انصراف
+                </button>
+              </div>
+            </div>
+          )}
         </section>
       </div>
     </>

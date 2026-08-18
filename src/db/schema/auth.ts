@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, integer, primaryKey } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, integer, primaryKey, jsonb } from "drizzle-orm/pg-core";
 
 /**
  * Auth tables — modeled per NextAuth v5 + @auth/drizzle-adapter
@@ -28,6 +28,11 @@ export const users = pgTable("users", {
   // attempt is short-circuited at the credentials provider level.
   failedLoginAttempts: integer("failed_login_attempts").notNull().default(0),
   lockedUntil: timestamp("locked_until", { withTimezone: true }),
+  // App-level preferences (notification toggles, etc.). Previously
+  // stashed as JSON inside `image` because NextAuth's default schema
+  // had nowhere else — Phase 8 added a real column. The PATCH
+  // /api/users/me handler writes here; GET reads from here.
+  preferences: jsonb("preferences").notNull().default({}),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
