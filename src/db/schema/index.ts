@@ -13,6 +13,8 @@ import * as articlesMod from "./articles";
 import * as amendmentsMod from "./amendments";
 import * as referencesMod from "./references";
 import * as authMod from "./auth";
+import * as accountMod from "./account";
+import * as settingsMod from "./settings";
 
 export * from "./_enums";
 export * from "./laws";
@@ -21,6 +23,8 @@ export * from "./articles";
 export * from "./amendments";
 export * from "./references";
 export * from "./auth";
+export * from "./account";
+export * from "./settings";
 
 export const schema = {
   ...enums,
@@ -30,4 +34,6 @@ export const schema = {
   ...amendmentsMod,
   ...referencesMod,
   ...authMod,
+  ...accountMod,
+  ...settingsMod,
 } satisfies Record<string, unknown>;

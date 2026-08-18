@@ -20,6 +20,7 @@ export default function SignUpPage() {
     password?: string | null;
     confirm?: string | null;
     agree?: string | null;
+    form?: string | null;
   }>({});
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
@@ -91,10 +92,33 @@ export default function SignUpPage() {
     if (Object.keys(next).length > 0) return;
 
     setSubmitting(true);
-    // Simulated submit — wire to the real registration API when ready.
-    await new Promise((r) => setTimeout(r, 900));
+    // POST to the real /api/auth/signup endpoint which creates the
+    // user row (scrypt-hashed password) + sends a verification magic
+    // link via the `tokens` table.
+    try {
+      const r = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          name: username.trim(),
+          email: identifier.trim().toLowerCase(),
+          password,
+        }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (r.ok) {
+        setDone(true);
+      } else if (r.status === 409) {
+        setErrors({ identifier: j.error ?? "این ایمیل قبلاً ثبت شده است." });
+      } else if (r.status === 429) {
+        setErrors({ form: j.error ?? "تلاش‌های بیش از حد. لطفاً بعداً تلاش کنید." });
+      } else {
+        setErrors({ form: j.error ?? "خطایی در زمان ثبت‌نام رخ داد." });
+      }
+    } catch {
+      setErrors({ form: "ارتباط با سرور ناموفق بود. لطفاً دوباره تلاش کنید." });
+    }
     setSubmitting(false);
-    setDone(true);
   };
 
   if (done) {
@@ -127,9 +151,6 @@ export default function SignUpPage() {
             </strong>{" "}
             ارسال شد. روی پیوند داخل پیام کلیک کنید تا حساب شما فعال شود.
           </h2>
-          <p className="text-[12px] text-[#9c9c9c] mt-4">
-            این یک نسخه نمایشی است — ایمیل واقعی ارسال نمی‌شود.
-          </p>
           <Link href="/signin" className="auth-submit mt-5" style={{ textDecoration: "none" }}>
             ادامه به ورود
           </Link>
@@ -151,6 +172,18 @@ export default function SignUpPage() {
       }
     >
       <form onSubmit={handleSubmit} noValidate className="space-y-5">
+        {errors.form && (
+          <div role="alert" style={{
+            background: "#fef2f2",
+            border: "1px solid #fecaca",
+            color: "#b91c1c",
+            padding: "0.75rem 1rem",
+            borderRadius: 6,
+            fontSize: 13,
+          }}>
+            {errors.form}
+          </div>
+        )}
         {/* Username */}
         <Field
           label="نام کاربری"

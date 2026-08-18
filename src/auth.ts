@@ -26,6 +26,12 @@ import { users, accounts, sessions, verificationTokens } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { authConfig } from "./auth.config";
 import { verifyPassword, hashPassword, needsRehash } from "@/lib/auth/passwords";
+import {
+  preLoginCheck,
+  recordLoginFailure,
+  recordLoginSuccess,
+} from "@/lib/auth/rate-limit";
+import { logAudit } from "@/lib/auth/audit";
 
 const SMTP_URL = process.env.SMTP_URL ?? "";
 const SMTP_FROM = process.env.SMTP_FROM ?? "noreply@modavanat.ir";
@@ -111,35 +117,91 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         email: { label: "ایمیل", type: "email" },
         password: { label: "گذرواژه", type: "password" },
       },
-      // Authorize is called for every credentials sign-in. We look
-      // up the user by email, verify the password hash (scrypt), and
-      // return the user (or null on failure).
+      // Authorize is called for every credentials sign-in. Flow:
+      //   1. Pre-flight rate-limit check (IP + email buckets, account
+      //      lockout). If locked, return null — the user sees a generic
+      //      "invalid credentials" message on the form, but the audit
+      //      log + lockout column capture the truth.
+      //   2. Lookup user by email. If not found, record failure + return null.
+      //   3. Bootstrap path: if passwordHash is null (e.g. admin
+      //      created via create-admin.ts before a password was set,
+      //      or a magic-link user who's never set a password), accept
+      //      ANY password and immediately upgrade the row by hashing
+      //      the provided password. First sign-in sticks.
+      //   4. Normal path: scrypt verify. On mismatch, record failure +
+      //      return null. On match, record success, silently upgrade
+      //      weak hashes, return the user object.
       //
-      // Bootstrap path: if `passwordHash` is null on the user row
-      // (e.g. an admin created via the create-admin.ts script before
-      // a password was set, or a magic-link user who's never set a
-      // password), we accept ANY password and immediately upgrade
-      // the row by hashing the provided password. This is intentional
-      // — it lets the first sign-in to a freshly created admin
-      // account "stick" without needing a separate set-password flow.
-      async authorize(creds) {
+      // Note on the IP plumbing: NextAuth v5 passes the Next.js
+      // Request object as the second `authorize` arg, but typing it is
+      // awkward. We cast to any and read the headers we care about.
+      async authorize(creds, req) {
         if (!creds?.email || !creds?.password) return null;
         const email = String(creds.email).toLowerCase().trim();
         const password = String(creds.password);
+        // Resolve client IP from request headers (set by nginx/Caddy).
+        const r = req as unknown as { headers?: Record<string, string | null> } | undefined;
+        const ip =
+          (r?.headers?.["x-forwarded-for"]?.split(",")?.[0]?.trim()) ||
+          r?.headers?.["x-real-ip"]?.trim() ||
+          "0.0.0.0";
+
+        // 1) Pre-flight rate-limit + lockout check.
+        const pre = await preLoginCheck(email, ip);
+        if (!pre.ok) {
+          await logAudit({
+            actorUserId: null,
+            action: "user.login.blocked",
+            targetType: "user",
+            targetId: email,
+            metadata: { reason: "rate_limit", retryAfterMs: pre.retryAfterMs },
+            ip,
+          });
+          return null;
+        }
+
         const found = await db
           .select()
           .from(users)
           .where(eq(users.email, email))
           .limit(1);
         const user = found[0];
-        if (!user) return null;
+        if (!user) {
+          // User not found — still record a "failure" so the IP bucket
+          // fills (catches user enumeration attacks where the attacker
+          // tries many emails to enumerate accounts).
+          await recordLoginFailure(email);
+          await logAudit({
+            actorUserId: null,
+            action: "user.login.failed",
+            targetType: "user",
+            targetId: email,
+            metadata: { reason: "no_such_user" },
+            ip,
+          });
+          return null;
+        }
 
-        // Bootstrap path — no password set yet, accept and persist.
+        // 2) Bootstrap path — no password set yet, accept + persist.
         if (!user.passwordHash) {
           await db
             .update(users)
-            .set({ passwordHash: hashPassword(password), updatedAt: new Date() })
+            .set({
+              passwordHash: hashPassword(password),
+              failedLoginAttempts: 0,
+              lockedUntil: null,
+              updatedAt: new Date(),
+            })
             .where(eq(users.id, user.id));
+          await recordLoginSuccess(email);
+          await logAudit({
+            actorUserId: user.id,
+            action: "user.login.success",
+            targetType: "user",
+            targetId: user.id,
+            metadata: { bootstrap: true },
+            ip,
+          });
           return {
             id: user.id,
             name: user.name ?? undefined,
@@ -149,20 +211,36 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           };
         }
 
-        // Normal path — verify against stored scrypt hash.
+        // 3) Normal path — verify against stored scrypt hash.
         if (!verifyPassword(password, user.passwordHash)) {
+          await recordLoginFailure(email);
+          await logAudit({
+            actorUserId: user.id,
+            action: "user.login.failed",
+            targetType: "user",
+            targetId: user.id,
+            metadata: { reason: "wrong_password" },
+            ip,
+          });
           return null;
         }
 
-        // Silent upgrade: if the stored hash uses weaker params than
-        // the current default, re-hash with the new params so future
-        // logins use the stronger hash.
+        // 4) Silent upgrade: re-hash if params are weaker than current.
         if (needsRehash(user.passwordHash)) {
           await db
             .update(users)
             .set({ passwordHash: hashPassword(password), updatedAt: new Date() })
             .where(eq(users.id, user.id));
         }
+
+        await recordLoginSuccess(email);
+        await logAudit({
+          actorUserId: user.id,
+          action: "user.login.success",
+          targetType: "user",
+          targetId: user.id,
+          ip,
+        });
 
         return {
           id: user.id,

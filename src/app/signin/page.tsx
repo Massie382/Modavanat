@@ -1,13 +1,20 @@
 "use client";
 
-import { useState, FormEvent, useEffect, useRef } from "react";
+import { Suspense, useState, FormEvent, useEffect, useRef } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { signIn } from "next-auth/react";
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import { Field, PasswordInput, AgreementCheckbox } from "@/components/auth/AuthFields";
 
 type IdentifierKind = "email" | "phone";
 
-export default function SignInPage() {
+function SignInForm() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const callbackUrl = searchParams.get("callbackUrl") ?? "/account";
+  const verified = searchParams.get("verified") === "1";
+
   const [identifierKind, setIdentifierKind] = useState<IdentifierKind>("email");
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
@@ -59,10 +66,50 @@ export default function SignInPage() {
     if (Object.keys(next).length > 0) return;
 
     setSubmitting(true);
-    // Simulated submit — wire to the real auth API when ready.
-    await new Promise((r) => setTimeout(r, 700));
+    setErrors({});
+
+    // For the credentials provider we only support email-based login
+    // (phone auth is a Phase 6+ feature). If the user typed a phone,
+    // surface an error explaining that.
+    if (identifierKind === "phone") {
+      setSubmitting(false);
+      setErrors({ form: "ورود با شماره تلفن هنوز فعال نیست. لطفاً از ایمیل استفاده کنید." });
+      return;
+    }
+
+    // Call NextAuth credentials sign-in. redirect:false so we get the
+    // result object back instead of a hard redirect — we can then
+    // surface the error or do a soft redirect.
+    const res = await signIn("credentials", {
+      email: identifier.trim().toLowerCase(),
+      password,
+      redirect: false,
+      callbackUrl,
+    });
     setSubmitting(false);
-    setSubmitted(true);
+
+    if (res?.error) {
+      // NextAuth returns "CredentialsSignin" for any authorize() null return.
+      // We surface a generic message; the audit log + lockout column
+      // capture the truth on the server side.
+      setErrors({
+        form: "ایمیل یا رمز عبور نادرست است. اگر چند بار اشتباه وارد کنید، حساب موقتاً قفل می‌شود.",
+      });
+      return;
+    }
+    if (res?.url) {
+      // Success — soft-redirect to the callback URL.
+      setSubmitted(true);
+      // Give the success screen a beat before we router.replace, so
+      // the user sees the confirmation rather than a hard flash.
+      setTimeout(() => {
+        router.replace(res.url ?? callbackUrl);
+        router.refresh();
+      }, 600);
+      return;
+    }
+    // Unknown state — surface a generic error.
+    setErrors({ form: "خطایی ناشناخته رخ داد. لطفاً دوباره تلاش کنید." });
   };
 
   if (submitted) {
@@ -90,7 +137,7 @@ export default function SignInPage() {
             className="text-[14px] font-normal text-[#3d3d3d] leading-7 outline-none"
           >
             ورود موفقیت‌آمیز بود. اگر به‌صورت خودکار منتقل نشدید،
-            <Link href="/" className="link-legal mr-1">اینجا را کلیک کنید</Link>.
+            <Link href={callbackUrl} className="link-legal mr-1">اینجا را کلیک کنید</Link>.
           </h2>
         </div>
       </AuthLayout>
@@ -101,7 +148,7 @@ export default function SignInPage() {
     <AuthLayout
       eyebrow="ورود به حساب"
       title="خوش آمدید"
-      subtitle="برای دسترسی به امکانات شخصی مدونات وارد شوید."
+      subtitle={verified ? "ایمیل شما تأیید شد. اکنون می‌توانید وارد شوید." : "برای دسترسی به امکانات شخصی مدونات وارد شوید."}
       footer={
         <div className="auth-switch">
           حساب کاربری ندارید؟
@@ -110,6 +157,31 @@ export default function SignInPage() {
       }
     >
       <form onSubmit={handleSubmit} noValidate className="space-y-5">
+        {errors.form && (
+          <div className="auth-error-banner" role="alert" style={{
+            background: "#fef2f2",
+            border: "1px solid #fecaca",
+            color: "#b91c1c",
+            padding: "0.75rem 1rem",
+            borderRadius: 6,
+            fontSize: 13,
+          }}>
+            {errors.form}
+          </div>
+        )}
+        {verified && !errors.form && (
+          <div className="auth-success-banner" style={{
+            background: "#f0fdf4",
+            border: "1px solid #bbf7d0",
+            color: "#15803d",
+            padding: "0.75rem 1rem",
+            borderRadius: 6,
+            fontSize: 13,
+          }}>
+            ایمیل شما با موفقیت تأیید شد.
+          </div>
+        )}
+
         {/* Identifier selector */}
         <div>
           <div className="auth-segmented" role="tablist" aria-label="نوع شناسه">
@@ -222,5 +294,13 @@ export default function SignInPage() {
         </Link>
       </form>
     </AuthLayout>
+  );
+}
+
+export default function SignInPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen" />}>
+      <SignInForm />
+    </Suspense>
   );
 }

@@ -1,136 +1,205 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState, useCallback } from "react";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { AccountShell, type AccountTab } from "@/components/account/AccountShell";
 import { BookmarksTab } from "@/components/account/BookmarksTab";
-import { SettingsTab, type UserSettings, type UserPreferences } from "@/components/account/SettingsTab";
+import {
+  SettingsTab,
+  type UserSettings,
+  type UserPreferences,
+} from "@/components/account/SettingsTab";
 import { TicketsTab, type Ticket } from "@/components/account/TicketsTab";
 import { PurchasesTab, type Purchase } from "@/components/account/PurchasesTab";
 
-/* ── Mock user data ──
-   Until real auth is wired up, the panel uses a simulated signed-in
-   user. Replace with `useSession()` once next-auth is configured. */
-const MOCK_USER = {
-  userName: "کاربر نمونه",
-  userIdentifier: "user@example.com",
-  userInitials: "ک‌ن",
-};
-
-const INITIAL_BOOKMARKS = [
-  { lawId: "q-madani-1307", addedAt: "۱۴۰۴/۰۴/۲۲", note: "برای پروندهٔ ارث" },
-  { lawId: "q-majazat-1392", addedAt: "۱۴۰۴/۰۴/۱۸" },
-  { lawId: "q-tejarat-1347", addedAt: "۱۴۰۴/۰۳/۱۱", note: "ماده ۲ را بازخوانی کن" },
-  { lawId: "q-kar-1369", addedAt: "۱۴۰۴/۰۲/۲۷" },
-  { lawId: "q-asasi-1368", addedAt: "۱۴۰۳/۱۲/۳۰" },
-];
-
-const INITIAL_SETTINGS: UserSettings = {
-  username: "user_example",
-  displayName: "کاربر نمونه",
-  identifierKind: "email",
-  identifier: "user@example.com",
-};
-
-const INITIAL_PREFS: UserPreferences = {
-  emailNotifications: true,
-  smsNotifications: false,
-  weeklyDigest: true,
-  bookmarkAlerts: true,
-};
-
-const INITIAL_TICKETS: Ticket[] = [
-  {
-    id: "T-1404-018",
-    subject: "مشکل در نمایش جدول ارجاعات",
-    category: "گزارش مشکل فنی",
-    status: "open",
-    createdAt: "۱۴۰۴/۰۴/۱۵",
-    updatedAt: "۱۴۰۴/۰۴/۱۷",
-    lastReply: "در حال بررسی توسط تیم فنی…",
-    messages: [
-      { from: "user", text: "در صفحهٔ قانون مدنی، جدول ارجاعات در موبایل به‌هم می‌ریزد.", at: "۱۴۰۴/۰۴/۱۵" },
-      { from: "support", text: "سپاس از گزارش. در حال بررسی هستیم؛ ظرف ۴۸ ساعت نتیجه را اعلام می‌کنیم.", at: "۱۴۰۴/۰۴/۱۷" },
-    ],
-  },
-  {
-    id: "T-1404-012",
-    subject: "درخواست افزودن قانون فعالیت احزاب",
-    category: "درخواست افزودن قانون",
-    status: "pending",
-    createdAt: "۱۴۰۴/۰۳/۲۰",
-    updatedAt: "۱۴۰۴/۰۳/۲۲",
-    lastReply: "منتظر تأیید محتوای تیم ویراستاری.",
-    messages: [
-      { from: "user", text: "لطفاً قانون فعالیت احزاب (۱۳۶۰) را اضافه کنید.", at: "۱۴۰۴/۰۳/۲۰" },
-      { from: "support", text: "درخواست شما ثبت شد و در صف بررسی است.", at: "۱۴۰۴/۰۳/۲۲" },
-    ],
-  },
-  {
-    id: "T-1403-044",
-    subject: "پرسش دربارهٔ اشتراک پریمیوم",
-    category: "سایر",
-    status: "closed",
-    createdAt: "۱۴۰۳/۱۱/۰۸",
-    updatedAt: "۱۴۰۳/۱۱/۱۰",
-    lastReply: "با تشکر، پاسخ داده شد.",
-    messages: [
-      { from: "user", text: "آیا اشتراک پریمیوم شامل دسترسی به API هم هست؟", at: "۱۴۰۳/۱۱/۰۸" },
-      { from: "support", text: "بله، در پلن سازمانی. جزئیات در صفحهٔ اشتراک.", at: "۱۴۰۳/۱۱/۱۰" },
-    ],
-  },
-];
-
-const INITIAL_PURCHASES: Purchase[] = [
-  {
-    id: "P-1404-009",
-    date: "۱۴۰۴/۰۴/۰۱",
-    description: "اشتراک پریمیوم سالانه",
-    amount: 480000,
-    status: "paid",
-    method: "درگاه بانکی (زرین‌پال)",
-    invoiceNumber: "INV-1404-009",
-  },
-  {
-    id: "P-1404-003",
-    date: "۱۴۰۴/۰۱/۱۵",
-    description: "بستهٔ API حرفه‌ای (ماهانه)",
-    amount: 95000,
-    status: "paid",
-    method: "درگاه بانکی (زرین‌پال)",
-    invoiceNumber: "INV-1404-003",
-  },
-  {
-    id: "P-1403-118",
-    date: "۱۴۰۳/۱۰/۲۰",
-    description: "اشتراک پریمیوم سالانه",
-    amount: 460000,
-    status: "paid",
-    method: "درگاه بانکی (زرین‌پال)",
-    invoiceNumber: "INV-1403-118",
-  },
-  {
-    id: "P-1403-092",
-    date: "۱۴۰۳/۰۸/۰۵",
-    description: "بستهٔ گزارش تخصصی",
-    amount: 35000,
-    status: "refunded",
-    method: "درگاه بانکی (زرین‌پال)",
-    invoiceNumber: "INV-1403-092",
-  },
-];
+// ── Types returned from our APIs ──────────────────────────────────────
+interface BookmarkRow {
+  id: string;
+  lawId: string;
+  note?: string | null;
+  createdAt: string;
+}
+interface PurchaseRow {
+  id: string;
+  description: string;
+  amount: number;
+  currency: string;
+  status: "paid" | "pending" | "refunded" | "failed";
+  method: string | null;
+  invoiceNumber: string | null;
+  paidAt: string | null;
+  createdAt: string;
+  date: string;
+}
 
 export default function AccountPage() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
+
   const [tab, setTab] = useState<AccountTab>("bookmarks");
 
-  const [bookmarks, setBookmarks] = useState(INITIAL_BOOKMARKS);
-  const [settings, setSettings] = useState<UserSettings>(INITIAL_SETTINGS);
-  const [prefs, setPrefs] = useState<UserPreferences>(INITIAL_PREFS);
-  const [tickets] = useState<Ticket[]>(INITIAL_TICKETS);
-  const [purchases] = useState<Purchase[]>(INITIAL_PURCHASES);
+  // Bookmarks
+  const [bookmarks, setBookmarks] = useState<BookmarkRow[]>([]);
+  const [bookmarksLoading, setBookmarksLoading] = useState(true);
 
-  const handleRemoveBookmark = (lawId: string) => {
+  // Settings + prefs
+  const [settings, setSettings] = useState<UserSettings>({
+    username: "",
+    displayName: "",
+    identifierKind: "email",
+    identifier: "",
+  });
+  const [prefs, setPrefs] = useState<UserPreferences>({
+    emailNotifications: true,
+    smsNotifications: false,
+    weeklyDigest: true,
+    bookmarkAlerts: true,
+  });
+  const [settingsLoading, setSettingsLoading] = useState(true);
+
+  // Tickets
+  const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [ticketsLoading, setTicketsLoading] = useState(true);
+
+  // Purchases
+  const [purchases, setPurchases] = useState<Purchase[]>([]);
+  const [purchasesLoading, setPurchasesLoading] = useState(true);
+
+  // ── Loaders ─────────────────────────────────────────────────────────
+  const loadBookmarks = useCallback(async () => {
+    setBookmarksLoading(true);
+    try {
+      const r = await fetch("/api/bookmarks");
+      if (!r.ok) return;
+      const j = await r.json();
+      setBookmarks(j.bookmarks ?? []);
+    } catch {
+      /* network error — keep last state */
+    } finally {
+      setBookmarksLoading(false);
+    }
+  }, []);
+
+  const loadSettings = useCallback(async () => {
+    setSettingsLoading(true);
+    try {
+      const r = await fetch("/api/users/me");
+      if (!r.ok) return;
+      const j = await r.json();
+      if (j.user) {
+        setSettings({
+          username: j.user.name ?? "",
+          displayName: j.user.name ?? "",
+          identifierKind: "email",
+          identifier: j.user.email ?? "",
+        });
+      }
+      if (j.prefs) {
+        setPrefs({
+          emailNotifications: j.prefs.emailNotifications ?? true,
+          smsNotifications: j.prefs.smsNotifications ?? false,
+          weeklyDigest: j.prefs.weeklyDigest ?? true,
+          bookmarkAlerts: j.prefs.bookmarkAlerts ?? true,
+        });
+      }
+    } catch {
+      /* ignore */
+    } finally {
+      setSettingsLoading(false);
+    }
+  }, []);
+
+  const loadTickets = useCallback(async () => {
+    setTicketsLoading(true);
+    try {
+      const r = await fetch("/api/tickets");
+      if (!r.ok) return;
+      const j = await r.json();
+      setTickets(j.tickets ?? []);
+    } catch {
+      /* ignore */
+    } finally {
+      setTicketsLoading(false);
+    }
+  }, []);
+
+  const loadPurchases = useCallback(async () => {
+    setPurchasesLoading(true);
+    try {
+      const r = await fetch("/api/purchases");
+      if (!r.ok) return;
+      const j = await r.json();
+      setPurchases(j.purchases ?? []);
+    } catch {
+      /* ignore */
+    } finally {
+      setPurchasesLoading(false);
+    }
+  }, []);
+
+  // ── Boot: redirect to /signin if unauthenticated, else load all ─────
+  useEffect(() => {
+    if (status === "loading") return;
+    if (status === "unauthenticated") {
+      router.replace("/signin?callbackUrl=/account");
+      return;
+    }
+    void loadBookmarks();
+    void loadSettings();
+    void loadTickets();
+    void loadPurchases();
+  }, [status, router, loadBookmarks, loadSettings, loadTickets, loadPurchases]);
+
+  // ── Handlers ────────────────────────────────────────────────────────
+  const handleRemoveBookmark = async (lawId: string) => {
+    // Optimistic update — remove locally, then hit the API.
     setBookmarks((prev) => prev.filter((b) => b.lawId !== lawId));
+    try {
+      await fetch(`/api/bookmarks?lawId=${encodeURIComponent(lawId)}`, {
+        method: "DELETE",
+      });
+    } catch {
+      // Roll back on failure.
+      void loadBookmarks();
+    }
   };
+
+  const handleUpdateSettings = async (next: UserSettings) => {
+    setSettings(next);
+    // Fire-and-forget the API call — the SettingsTab UI shows a
+    // success toast as soon as the call resolves.
+    await fetch("/api/users/me", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name: next.displayName }),
+    });
+  };
+
+  const handleUpdatePreferences = async (next: UserPreferences) => {
+    setPrefs(next);
+    await fetch("/api/users/me", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(next),
+    });
+  };
+
+  // ── Loading / unauthenticated states ─────────────────────────────────
+  if (status === "loading" || status === "unauthenticated") {
+    return <div className="min-h-[60vh]" />;
+  }
+
+  const user = session?.user;
+  const userName = user?.name ?? user?.email ?? "کاربر";
+  const userIdentifier = user?.email ?? "";
+  const userInitials =
+    (user?.name ?? user?.email ?? "?")
+      .trim()
+      .split(/\s+/)
+      .map((s) => s[0])
+      .slice(0, 2)
+      .join("") ?? "؟";
 
   const counts: Record<AccountTab, number> = {
     bookmarks: bookmarks.length,
@@ -144,29 +213,50 @@ export default function AccountPage() {
       activeTab={tab}
       onTabChange={setTab}
       counts={counts}
-      userName={MOCK_USER.userName}
-      userIdentifier={MOCK_USER.userIdentifier}
-      userInitials={MOCK_USER.userInitials}
+      userName={userName}
+      userIdentifier={userIdentifier}
+      userInitials={userInitials}
     >
       {tab === "bookmarks" && (
         <BookmarksTab
-          bookmarks={bookmarks}
+          bookmarks={bookmarks.map((b) => ({
+            lawId: b.lawId,
+            addedAt: new Date(b.createdAt).toLocaleDateString("fa-IR"),
+            note: b.note ?? undefined,
+          }))}
           onRemove={handleRemoveBookmark}
+          loading={bookmarksLoading}
         />
       )}
       {tab === "settings" && (
         <SettingsTab
           settings={settings}
           preferences={prefs}
-          onUpdateSettings={setSettings}
-          onUpdatePreferences={setPrefs}
+          onUpdateSettings={handleUpdateSettings}
+          onUpdatePreferences={handleUpdatePreferences}
+          loading={settingsLoading}
         />
       )}
       {tab === "tickets" && (
-        <TicketsTab tickets={tickets} />
+        <TicketsTab
+          tickets={tickets}
+          loading={ticketsLoading}
+          onRefresh={loadTickets}
+        />
       )}
       {tab === "purchases" && (
-        <PurchasesTab purchases={purchases} />
+        <PurchasesTab
+          purchases={purchases.map((p) => ({
+            id: p.id,
+            date: new Date(p.date).toLocaleDateString("fa-IR"),
+            description: p.description,
+            amount: p.amount,
+            status: p.status,
+            method: p.method ?? "",
+            invoiceNumber: p.invoiceNumber ?? "",
+          }))}
+          loading={purchasesLoading}
+        />
       )}
     </AccountShell>
   );

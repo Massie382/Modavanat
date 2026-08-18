@@ -22,6 +22,12 @@ export const users = pgTable("users", {
   // no password). For Phase 4 admin creation flow we'll use scrypt
   // (node:crypto, no native binary) to stay VPS-portable.
   passwordHash: text("password_hash"),
+  // Brute-force protection: count of consecutive failed credentials
+  // sign-ins. Reset to 0 on success. When it reaches the threshold
+  // (default 5), `lockedUntil` is set to now + 15min and the next
+  // attempt is short-circuited at the credentials provider level.
+  failedLoginAttempts: integer("failed_login_attempts").notNull().default(0),
+  lockedUntil: timestamp("locked_until", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useRef, useEffect, useMemo } from "react";
-import { laws } from "@/data/laws";
-import type { Law } from "@/lib/types";
+import { useState, useRef, useEffect } from "react";
+import type { Law, LawSearchHit, SearchResponse } from "@/lib/types";
 import { toFa, statusLabel, statusPillClass } from "@/lib/utils";
 
 interface SearchSuggestionsProps {
@@ -18,7 +17,7 @@ interface SearchSuggestionsProps {
    *  absolutely relative to this wrapper. */
   inputRef: React.RefObject<HTMLInputElement | null>;
   /** Max number of law suggestions to show (excluding the "search for X"
-   *  row at the top). Default: 6. */
+   *  row at the top). Default: 5. Also passed to the API as `pageSize`. */
   maxSuggestions?: number;
   /**
    * Whether to animate the dropdown open/close with a smooth max-height +
@@ -31,8 +30,44 @@ interface SearchSuggestionsProps {
   animate?: boolean;
 }
 
+// Debounce for the autocomplete fetch — 200ms per the Phase F spec.
+const AUTOCOMPLETE_DEBOUNCE_MS = 200;
+
 /**
- * Google-style search suggestions dropdown for the homepage hero search.
+ * Convert a `LawSearchHit` (API response shape) into a `Law` so the
+ * existing `onPick: (law: Law) => void` callback contract stays the
+ * same. Empty nested arrays for toc/articles/etc. — the caller only
+ * uses `law.id` for navigation; the law detail page re-fetches the
+ * full Law from `/api/laws/[id]`.
+ */
+function hitToLaw(hit: LawSearchHit): Law {
+  return {
+    id: hit.id,
+    title: hit.title,
+    shortTitle: undefined,
+    type: hit.type,
+    year: hit.year,
+    number: hit.number,
+    status: hit.status,
+    extent: "",
+    subject: hit.subject,
+    promulgatingAuthority: "",
+    approvedDate: "",
+    effectiveDate: "",
+    lastRevisionDate: "",
+    description: "",
+    longDescription: undefined,
+    toc: [],
+    articles: [],
+    amendments: [],
+    outstandingChanges: [],
+    references: [],
+  };
+}
+
+/**
+ * Google-style search suggestions dropdown for the homepage hero search
+ * and the header inline search.
  *
  * Behavior:
  *   - Appears below the input when the user types at least 1 non-space
@@ -40,17 +75,16 @@ interface SearchSuggestionsProps {
  *   - Smoothly drops down (CSS transition on max-height + opacity).
  *   - Top row: "جستجوی کامل برای «query»" → fires onSearch (goes to the
  *     full search page).
- *   - Following rows: matching laws, each with title, type/year/number
- *     meta, and a status pill. Clicking fires onPick (opens law detail).
+ *   - Following rows: matching laws from `/api/laws/search` (ranked by
+ *     `ts_rank`), each with title, type/year/number meta, and a status
+ *     pill. Clicking fires onPick (opens law detail).
  *   - Keyboard navigation: ArrowDown/ArrowUp to move the highlight,
  *     Enter to activate, Escape to close.
  *   - Mouse hover also moves the highlight.
  *   - Click-outside closes the dropdown.
- *   - Matches Persian OR ASCII digits in the query against the law's
- *     title, subject, year, number, and article text.
- *   - Matches are ranked: title startsWith > title includes > subject
- *     includes > article text includes. Ties broken by year descending
- *     (newer first).
+ *   - Fetches are debounced 200ms (AUTOCOMPLETE_DEBOUNCE_MS) so we
+ *     don't fire a request on every keystroke. The latest response wins
+ *     (stale responses are discarded via a request-token ref).
  *
  * Styling is self-contained (styled-jsx) so no globals.css edit is
  * required. The dropdown visually attaches to the bottom of the input
@@ -61,59 +95,53 @@ export function SearchSuggestions({
   onPick,
   onSearch,
   inputRef,
-  maxSuggestions = 6,
+  maxSuggestions = 5,
   animate = true,
 }: SearchSuggestionsProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [highlighted, setHighlighted] = useState(-1); // -1 = none, 0 = "search for" row, 1..N = law rows
+  const [matches, setMatches] = useState<LawSearchHit[]>([]);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
+  // Request-token ref — every fetch increments this; if a stale fetch
+  // resolves we compare its token to the latest and discard.
+  const reqTokenRef = useRef(0);
+  // Track the in-flight query so a slow response doesn't overwrite a
+  // newer one.
+  const inFlightQueryRef = useRef<string | null>(null);
 
-  // Persian→ASCII digit normalization so a query like "۱۳۰۷" matches
-  // data stored with either Persian or ASCII digits.
-  const normalize = (s: string): string =>
-    s
-      .replace(/[\u06f0-\u06f9]/g, (d) => String(d.charCodeAt(0) - 0x06f0))
-      .trim()
-      .toLowerCase();
-
-  // Compute matching laws. Memoized on query.
-  const matches = useMemo(() => {
-    const q = normalize(query);
-    if (!q) return [];
-
-    const scored: { law: Law; score: number }[] = [];
-    for (const law of laws) {
-      const titleNorm = normalize(law.title);
-      const subjectNorm = normalize(law.subject);
-      const yearStr = String(law.year);
-      const numberNorm = normalize(law.number ?? "");
-
-      let score = 0;
-      if (titleNorm.startsWith(q)) score = 100;
-      else if (titleNorm.includes(q)) score = 80;
-      else if (subjectNorm.includes(q)) score = 60;
-      else if (yearStr.includes(q)) score = 40;
-      else if (numberNorm.includes(q)) score = 30;
-      else if (
-        law.articles.some((a) => normalize(a.text).includes(q) || normalize(a.number).includes(q))
-      ) {
-        score = 20;
-      } else if (normalize(law.description).includes(q)) {
-        score = 10;
-      }
-
-      if (score > 0) {
-        scored.push({ law, score });
-      }
+  // ── Fetch matching laws from the API (debounced) ─────────────────────
+  useEffect(() => {
+    const q = query.trim();
+    if (!q) {
+      setMatches([]);
+      inFlightQueryRef.current = null;
+      return;
     }
-
-    // Sort: higher score first; tie-break by newer year first.
-    scored.sort((a, b) => {
-      if (b.score !== a.score) return b.score - a.score;
-      return b.law.year - a.law.year;
-    });
-
-    return scored.slice(0, maxSuggestions).map((s) => s.law);
+    const token = ++reqTokenRef.current;
+    inFlightQueryRef.current = q;
+    const t = window.setTimeout(() => {
+      const url = `/api/laws/search?q=${encodeURIComponent(
+        q
+      )}&pageSize=${maxSuggestions}`;
+      fetch(url)
+        .then(async (r) => {
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          return (await r.json()) as SearchResponse;
+        })
+        .then((json) => {
+          // Stale-response guard — discard if a newer fetch is in flight.
+          if (token !== reqTokenRef.current) return;
+          if (inFlightQueryRef.current !== q) return;
+          setMatches(json.laws.slice(0, maxSuggestions));
+        })
+        .catch((err) => {
+          if (token !== reqTokenRef.current) return;
+          if (inFlightQueryRef.current !== q) return;
+          console.error("[SearchSuggestions] fetch error:", err);
+          setMatches([]);
+        });
+    }, AUTOCOMPLETE_DEBOUNCE_MS);
+    return () => window.clearTimeout(t);
   }, [query, maxSuggestions]);
 
   // Total rows = 1 ("search for") + matches.length.
@@ -132,9 +160,8 @@ export function SearchSuggestions({
     const onBlur = () => {
       // Close immediately. Suggestion rows use `onMouseDown` with
       // `preventDefault()` so they don't blur the input — meaning a
-      // blur here is genuinely the user clicking elsewhere (the
-      // submit button, outside the dropdown, etc.), so we can close
-      // without the old 150ms grace delay.
+      // blur here is genuinely the user clicking elsewhere, so we can
+      // close without a grace delay.
       setIsOpen(false);
     };
 
@@ -200,19 +227,14 @@ export function SearchSuggestions({
       } else if (e.key === "Enter") {
         // If a row is highlighted, activate it instead of submitting the
         // form. The form's own onSubmit handler still fires for the
-        // non-highlighted case (highlighted === -1) — but for instances
-        // without a <form> (e.g. the /search page input, which live-
-        // updates the URL on every keystroke), nothing else would close
-        // the dropdown or deselect the text. Handle that case here too
-        // so Enter consistently collapses the dropdown and clears the
-        // browser's auto-text-selection across all instances.
+        // non-highlighted case (highlighted === -1).
         if (highlighted === 0) {
           e.preventDefault();
           onSearch(query.trim());
           setIsOpen(false);
         } else if (highlighted >= 1 && highlighted <= matches.length) {
           e.preventDefault();
-          onPick(matches[highlighted - 1]);
+          onPick(hitToLaw(matches[highlighted - 1]));
           setIsOpen(false);
         } else {
           // No row highlighted — still close the dropdown and collapse
@@ -255,8 +277,7 @@ export function SearchSuggestions({
           className={`ss-row ss-row-search ${highlighted === 0 ? "ss-highlighted" : ""}`}
           onMouseEnter={() => setHighlighted(0)}
           // Prevent the input from blurring when this row is clicked so
-          // its `onClick` fires reliably (and so a blur elsewhere is
-          // genuinely a blur — close-immediately is then safe).
+          // its `onClick` fires reliably.
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => {
             onSearch(query.trim());
@@ -296,7 +317,7 @@ export function SearchSuggestions({
               // so its `onClick` fires reliably.
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => {
-                onPick(law);
+                onPick(hitToLaw(law));
                 setIsOpen(false);
               }}
               role="option"

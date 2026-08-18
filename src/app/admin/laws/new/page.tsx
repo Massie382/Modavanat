@@ -2,10 +2,29 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { PageHead, Card, Field, Notice } from "@/components/admin/primitives";
+import { PageHead, Card, Field, Notice, faNum } from "@/components/admin/primitives";
 import { useToast } from "@/hooks/use-toast";
-import { lawTypeVocab, lawStatusVocab } from "@/lib/admin-data";
-import { faNum } from "@/components/admin/primitives";
+
+// Phase 7 — frontend only. The vocab below is the static vocabulary used
+// by the new-law form's `<select>` elements. It is intentionally inlined
+// here so the form renders without depending on the old mock module.
+// A Phase 7 task will wire this to `/api/admin/vocabularies` (a
+// read-only endpoint backed by the laws table's distinct values + a
+// static enum table).
+const lawTypeVocab = [
+  { id: "قانون عادی", label: "قانون عادی" },
+  { id: "قانون اساسی", label: "قانون اساسی" },
+  { id: "آیین‌نامه", label: "آیین‌نامه" },
+  { id: "بخشنامه", label: "بخشنامه" },
+  { id: "مقررات", label: "مقررات" },
+];
+
+const lawStatusVocab = [
+  { id: "in-force", label: "لازم‌الاجرا" },
+  { id: "amended", label: "اصلاح‌شده" },
+  { id: "revoked", label: "منسوخ" },
+  { id: "pending", label: "در انتظار" },
+];
 
 export default function NewLawPage() {
   const { toast } = useToast();
@@ -26,6 +45,10 @@ export default function NewLawPage() {
 
       <Notice variant="info">
         برای جلوگیری از قانون تکراری، پیش از افزودن، در پایگاه جستجو کنید. شناسه قانون پس از ذخیره قابل تغییر نیست.
+      </Notice>
+
+      <Notice variant="warning">
+        ذخیره قانون جدید هنوز در فاز ۷ پیاده‌سازی نشده است. این فرم اکنون فقط پیش‌نمایش است.
       </Notice>
 
       <div className="admin-grid-2">
@@ -77,7 +100,10 @@ export default function NewLawPage() {
 
       <div className="admin-row" style={{ justifyContent: "flex-end", marginTop: "1rem" }}>
         <Link href="/admin/laws" className="admin-btn admin-btn-ghost">انصراف</Link>
-        <button className="admin-btn admin-btn-primary" onClick={() => toast({ title: "ذخیره شد", description: "تنظیمات با موفقیت ثبت شد." })}>ذخیره و ادامه ویرایش</button>
+        <button
+          className="admin-btn admin-btn-primary"
+          onClick={() => toast({ title: "اطلاع", description: "ذخیره قانون جدید در فاز ۷ پیاده‌سازی خواهد شد." })}
+        >ذخیره و ادامه ویرایش</button>
       </div>
     </>
   );

@@ -1,30 +1,122 @@
 "use client";
 
-import { useState, use } from "react";
+import { useState, useEffect, use } from "react";
 import Link from "next/link";
-import { notFound } from "next/navigation";
-import { PageHead, Card, Badge, Tabs, Field, Switch, Segmented, Notice, EmptyState, faNum, statusBadgeVariant } from "@/components/admin/primitives";
+import { PageHead, Card, Badge, Tabs, Field, Switch, Notice, EmptyState, faNum, statusBadgeVariant } from "@/components/admin/primitives";
 import { useToast } from "@/hooks/use-toast";
-import {
-  getLawByIdForAdmin,
-  getAdminLawList,
-  defaultLawPdfs,
-  lawTypeVocab,
-  lawStatusVocab,
-  effectTypeVocab,
-  referenceDirectionVocab,
-  tocTypeVocab,
-  getAllReferencedLawTitles,
-  type LawPdf,
-} from "@/lib/admin-data";
+import type { Law, LawStatus, LawType, EffectType } from "@/lib/types";
+
+// Phase 7 — frontend only. The vocabularies below are static enums
+// that the law editor's `<select>` elements render against. They are
+// inlined here so the editor renders without depending on the old
+// mock module. A Phase 7 task will move them into a shared vocabulary
+// table (read from the DB) and serve via `/api/admin/vocabularies`.
+const lawTypeVocab: { id: LawType; label: string }[] = [
+  { id: "قانون عادی", label: "قانون عادی" },
+  { id: "قانون اساسی", label: "قانون اساسی" },
+  { id: "آیین‌نامه", label: "آیین‌نامه" },
+  { id: "بخشنامه", label: "بخشنامه" },
+  { id: "مقررات", label: "مقررات" },
+];
+
+const lawStatusVocab: { id: LawStatus; label: string }[] = [
+  { id: "in-force", label: "لازم‌الاجرا" },
+  { id: "amended", label: "اصلاح‌شده" },
+  { id: "revoked", label: "منسوخ" },
+  { id: "pending", label: "در انتظار" },
+];
+
+const effectTypeVocab: { id: EffectType; label: string }[] = [
+  { id: "اصلاح", label: "اصلاح" },
+  { id: "افزوده", label: "افزوده" },
+  { id: "حذف", label: "حذف" },
+  { id: "جایگزینی", label: "جایگزینی" },
+  { id: "الحاق", label: "الحاق" },
+  { id: "توضیح", label: "توضیح" },
+  { id: "اجرا", label: "اجرا" },
+  { id: "تفویض اختیار", label: "تفویض اختیار" },
+];
+
+const referenceDirectionVocab: { id: string; label: string }[] = [
+  { id: "cites", label: "ارجاع می‌کند" },
+  { id: "cited-by", label: "ارجاع داده شده" },
+  { id: "amends", label: "اصلاح می‌کند" },
+  { id: "amended-by", label: "اصلاح شده توسط" },
+  { id: "related", label: "مرتبط" },
+];
+
+const tocTypeVocab: { id: string; label: string }[] = [
+  { id: "book", label: "کتاب" },
+  { id: "part", label: "بخش" },
+  { id: "chapter", label: "فصل" },
+  { id: "section", label: "بخش فرعی" },
+  { id: "article", label: "ماده" },
+  { id: "schedule", label: "پیوست" },
+  { id: "note", label: "تبصره" },
+];
 
 export default function LawEditorPage({ params }: { params: Promise<{ id: string }> }) {
   const { toast } = useToast();
   const { id } = use(params);
-  const law = getLawByIdForAdmin(id);
-  if (!law) notFound();
+  const [law, setLaw] = useState<Law | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/laws/${encodeURIComponent(id)}`, { cache: "no-store" });
+        if (res.status === 404) {
+          if (!cancelled) setNotFound(true);
+          return;
+        }
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        if (!cancelled) {
+          setLaw(data.law ?? null);
+          setError(null);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : "خطا در بارگذاری قانون");
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [id]);
 
   const [tab, setTab] = useState("identity");
+
+  if (loading) {
+    return (
+      <>
+        <PageHead title="در حال بارگذاری…" subtitle="کمی صبر کنید…" actions={<Link href="/admin/laws" className="admin-btn admin-btn-ghost">← بازگشت</Link>} />
+        <EmptyState title="در حال بارگذاری…" />
+      </>
+    );
+  }
+
+  if (notFound) {
+    return (
+      <>
+        <PageHead title="قانون یافت نشد" subtitle={`شناسه: ${id}`} actions={<Link href="/admin/laws" className="admin-btn admin-btn-ghost">← بازگشت</Link>} />
+        <EmptyState title="قانون یافت نشد" desc="ممکن است حذف شده باشد یا شناسه اشتباه باشد." />
+      </>
+    );
+  }
+
+  if (error || !law) {
+    return (
+      <>
+        <PageHead title="خطا" subtitle={error ?? "خطای نامشخص"} actions={<Link href="/admin/laws" className="admin-btn admin-btn-ghost">← بازگشت</Link>} />
+        <div className="admin-notice admin-notice-warning">{error ?? "خطا در بارگذاری قانون"}</div>
+      </>
+    );
+  }
 
   const tabs = [
     { id: "identity", label: "مشخصات اصلی" },
@@ -33,7 +125,7 @@ export default function LawEditorPage({ params }: { params: Promise<{ id: string
     { id: "amendments", label: "اصلاحات", count: law.amendments.length },
     { id: "references", label: "ارجاعات", count: law.references.length },
     { id: "changes", label: "تغییرات معوق", count: law.outstandingChanges.length },
-    { id: "pdfs", label: "فایل‌های PDF", count: defaultLawPdfs.filter((p) => p.lawId === id).length },
+    { id: "pdfs", label: "فایل‌های PDF", count: 0 },
     { id: "settings", label: "تنظیمات نمایش" },
   ];
 
@@ -45,7 +137,10 @@ export default function LawEditorPage({ params }: { params: Promise<{ id: string
         actions={
           <>
             <Link href={`/admin/laws`} className="admin-btn admin-btn-ghost">← بازگشت</Link>
-            <button className="admin-btn admin-btn-primary" onClick={() => toast({ title: "ذخیره شد", description: "تنظیمات با موفقیت ثبت شد." })}>ذخیره تغییرات</button>
+            <button
+              className="admin-btn admin-btn-primary"
+              onClick={() => toast({ title: "اطلاع", description: "ذخیره تغییرات در فاز ۷ پیاده‌سازی خواهد شد." })}
+            >ذخیره تغییرات</button>
           </>
         }
       />
@@ -75,7 +170,7 @@ export default function LawEditorPage({ params }: { params: Promise<{ id: string
 }
 
 /* ════════════════ IDENTITY TAB ════════════════ */
-function IdentityTab({ law }: { law: NonNullable<ReturnType<typeof getLawByIdForAdmin>> }) {
+function IdentityTab({ law }: { law: Law }) {
   return (
     <div className="admin-grid-2">
       <Card title="مشخصات هویتی" desc="عنوان، نوع، سال و شناسه قانون">
@@ -149,7 +244,7 @@ function IdentityTab({ law }: { law: NonNullable<ReturnType<typeof getLawByIdFor
 }
 
 /* ════════════════ TOC TAB ════════════════ */
-function TocTab({ law }: { law: NonNullable<ReturnType<typeof getLawByIdForAdmin>> }) {
+function TocTab({ law }: { law: Law }) {
   return (
     <Card
       title="ساختار فهرست مطالب"
@@ -166,7 +261,7 @@ function TocTab({ law }: { law: NonNullable<ReturnType<typeof getLawByIdForAdmin
   );
 }
 
-function TocNode({ node, depth }: { node: any; depth: number }) {
+function TocNode({ node, depth }: { node: Law["toc"][number]; depth: number }) {
   const [open, setOpen] = useState(depth < 2);
   const hasChildren = node.children && node.children.length > 0;
   return (
@@ -190,7 +285,7 @@ function TocNode({ node, depth }: { node: any; depth: number }) {
       </div>
       {hasChildren && open && (
         <div className="admin-tree-children">
-          {node.children.map((c: any) => <TocNode key={c.id} node={c} depth={depth + 1} />)}
+          {node.children!.map((c) => <TocNode key={c.id} node={c} depth={depth + 1} />)}
         </div>
       )}
     </div>
@@ -198,7 +293,7 @@ function TocNode({ node, depth }: { node: any; depth: number }) {
 }
 
 /* ════════════════ ARTICLES TAB — custom editor ════════════════ */
-function ArticlesTab({ law }: { law: NonNullable<ReturnType<typeof getLawByIdForAdmin>> }) {
+function ArticlesTab({ law }: { law: Law }) {
   const [selectedId, setSelectedId] = useState(law.articles[0]?.id || "");
   const article = law.articles.find((a) => a.id === selectedId) || law.articles[0];
 
@@ -298,7 +393,7 @@ function ArticlesTab({ law }: { law: NonNullable<ReturnType<typeof getLawByIdFor
 }
 
 /* ════════════════ AMENDMENTS TAB ════════════════ */
-function AmendmentsTab({ law }: { law: NonNullable<ReturnType<typeof getLawByIdForAdmin>> }) {
+function AmendmentsTab({ law }: { law: Law }) {
   return (
     <Card
       title="خط زمانی اصلاحات"
@@ -346,8 +441,7 @@ function AmendmentsTab({ law }: { law: NonNullable<ReturnType<typeof getLawByIdF
 }
 
 /* ════════════════ REFERENCES TAB ════════════════ */
-function ReferencesTab({ law }: { law: NonNullable<ReturnType<typeof getLawByIdForAdmin>> }) {
-  const referencedLaws = getAllReferencedLawTitles();
+function ReferencesTab({ law }: { law: Law }) {
   return (
     <Card
       title="شبکه ارجاعات"
@@ -375,17 +469,13 @@ function ReferencesTab({ law }: { law: NonNullable<ReturnType<typeof getLawByIdF
           </div>
         ))}
         {law.references.length === 0 && <EmptyState title="ارجاعی ثبت نشده" />}
-
-        <Notice variant="info">
-          قوانین موجود در پایگاه برای انتخاب: {Object.values(referencedLaws).slice(0, 8).map((l) => l.title).join("، ")}…
-        </Notice>
       </div>
     </Card>
   );
 }
 
 /* ════════════════ OUTSTANDING CHANGES TAB ════════════════ */
-function ChangesTab({ law }: { law: NonNullable<ReturnType<typeof getLawByIdForAdmin>> }) {
+function ChangesTab({ law }: { law: Law }) {
   return (
     <Card
       title="تغییرات معوق"
@@ -415,7 +505,10 @@ function ChangesTab({ law }: { law: NonNullable<ReturnType<typeof getLawByIdForA
 
 /* ════════════════ PDFS TAB — multiple uploads ════════════════ */
 function PdfsTab({ lawId, lawTitle }: { lawId: string; lawTitle: string }) {
-  const pdfs: LawPdf[] = defaultLawPdfs.filter((p) => p.lawId === lawId);
+  // Phase 7 — frontend only. PDF uploads + storage are not yet
+  // implemented. The dropzone + table below render an empty state.
+  void lawId; void lawTitle;
+  const pdfs: never[] = [];
   return (
     <Card
       title="فایل‌های PDF"
@@ -451,23 +544,7 @@ function PdfsTab({ lawId, lawTitle }: { lawId: string; lawTitle: string }) {
               <th>آپلود توسط</th><th>تاریخ</th><th>اصلی</th><th className="col-narrow">عمل</th>
             </tr>
           </thead>
-          <tbody>
-            {pdfs.map((p) => (
-              <tr key={p.id}>
-                <td><strong>{p.title}</strong><div className="admin-muted admin-mono">{p.filename}</div></td>
-                <td><Badge variant="neutral">{p.version}</Badge></td>
-                <td className="col-num">{faNum((p.sizeKb / 1024).toFixed(2))} MB</td>
-                <td className="col-num">{faNum(p.pages)}</td>
-                <td><span className="admin-muted">{p.uploadedBy}</span></td>
-                <td><span className="admin-muted">{p.uploadedAt}</span></td>
-                <td>{p.isPrimary ? <Badge variant="accent">اصلی</Badge> : <span className="admin-muted">—</span>}</td>
-                <td className="col-narrow">
-                  <button className="admin-btn admin-btn-sm admin-btn-ghost">دانلود</button>
-                  <button className="admin-btn admin-btn-sm admin-btn-ghost">حذف</button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
+          <tbody></tbody>
         </table>
       ) : (
         <EmptyState title="فایلی آپلود نشده" desc="برای این قانون هنوز فایل PDF ثبت نشده است." />
@@ -481,7 +558,8 @@ function PdfsTab({ lawId, lawTitle }: { lawId: string; lawTitle: string }) {
 }
 
 /* ════════════════ DISPLAY SETTINGS TAB ════════════════ */
-function SettingsTab({ law }: { law: NonNullable<ReturnType<typeof getLawByIdForAdmin>> }) {
+function SettingsTab({ law }: { law: Law }) {
+  void law;
   const [showOutstanding, setShowOutstanding] = useState(true);
   const [showBreadcrumb, setShowBreadcrumb] = useState(true);
   const [showVersionToggle, setShowVersionToggle] = useState(!!law.originalVersion);

@@ -127,3 +127,61 @@ export interface DecadeStat {
   decade: string;          // «۱۳۷۰-۱۳۷۹»
   counts: { year: number; count: number }[];
 }
+
+// ─── Search hit shapes (from /api/laws/search) ─────────────────────
+//
+// These are the lightweight hit shapes returned by the FTS search
+// endpoint. They carry enough fields to render the search-results UI
+// without re-fetching each law. They are NOT the same as the full
+// nested `Law` type — there are no `toc`, `articles`, `amendments`,
+// `references`, etc. Callers that need full content should fetch
+// `/api/laws/[id]`.
+
+/**
+ * A law-level search hit. Includes a `rank` (ts_rank score) and an
+ * optional `excerpt` produced by `ts_headline()` highlighting the
+ * matching terms inside the law's first matching article (or NULL
+ * when no article in that law matched the query).
+ *
+ * `type` and `number` are included beyond the minimum spec so the
+ * SearchSuggestions dropdown and search-results UI can show the same
+ * metadata chips as the BrowseView row.
+ */
+export interface LawSearchHit {
+  id: string;
+  title: string;
+  subject: string;
+  year: number;
+  status: LawStatus;
+  type: LawType;
+  number?: string;
+  rank: number;
+  excerpt: string | null;
+}
+
+/**
+ * An article-level search hit. Returned by Stage 2 of the search
+ * endpoint when the query looks like it's targeting a specific
+ * article (contains digits or the word «ماده»). The UI deep-links
+ * these to `/law/[lawId]?article=[id]`.
+ *
+ * `label` is the article's `number` field (e.g. «ماده ۱») — the
+ * schema has no separate `label` column, so we map `number` to
+ * `label` for clarity in the API response.
+ */
+export interface ArticleSearchHit {
+  id: string;
+  lawId: string;
+  lawTitle: string;
+  label: string;       // article.number («ماده ۱»)
+  text: string;         // full article text (UI may truncate / use excerpt)
+  excerpt: string;      // ts_headline excerpt with <mark> tags
+  rank: number;
+}
+
+/** Response shape of `GET /api/laws/search?q=...`. */
+export interface SearchResponse {
+  laws: LawSearchHit[];
+  articles: ArticleSearchHit[];
+  total: number;
+}

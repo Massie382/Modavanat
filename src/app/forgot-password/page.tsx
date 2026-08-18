@@ -119,11 +119,25 @@ export default function ForgotPasswordPage() {
     if (Object.keys(next).length > 0) return;
 
     setSubmitting(true);
-    // Simulated API call — wire to real endpoint when ready.
-    await new Promise((r) => setTimeout(r, 700));
+    try {
+      const r = await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email: identifier.trim().toLowerCase() }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (r.ok || r.status === 200) {
+        setStep("verify");
+        startResendCooldown();
+      } else if (r.status === 429) {
+        setErrors({ identifier: j.error ?? "تلاش‌های بیش از حد. لطفاً بعداً تلاش کنید." });
+      } else {
+        setErrors({ identifier: j.error ?? "خطایی رخ داد. لطفاً دوباره تلاش کنید." });
+      }
+    } catch {
+      setErrors({ identifier: "ارتباط با سرور ناموفق بود." });
+    }
     setSubmitting(false);
-    setStep("verify");
-    startResendCooldown();
   };
 
   /* ─── Step 2: Verify — validate OTP code ─── */
@@ -145,8 +159,10 @@ export default function ForgotPasswordPage() {
     if (Object.keys(next).length > 0) return;
 
     setSubmitting(true);
-    // Simulated verify — accept any 6-digit code in this demo.
-    await new Promise((r) => setTimeout(r, 700));
+    // The OTP is verified as part of the final reset-password call, so
+    // there's no separate "verify" endpoint — the user just types the
+    // OTP and the new password together in step 3. We move them along
+    // to the reset step.
     setSubmitting(false);
     setStep("reset");
   };
@@ -155,10 +171,25 @@ export default function ForgotPasswordPage() {
     if (resendIn > 0 || submitting) return;
     setErrors({});
     setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 500));
+    try {
+      const r = await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email: identifier.trim().toLowerCase() }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (r.ok) {
+        startResendCooldown();
+        setCode("");
+      } else if (r.status === 429) {
+        setErrors({ identifier: j.error ?? "تلاش‌های بیش از حد. لطفاً بعداً تلاش کنید." });
+      } else {
+        setErrors({ identifier: j.error ?? "خطایی رخ داد. لطفاً دوباره تلاش کنید." });
+      }
+    } catch {
+      setErrors({ identifier: "ارتباط با سرور ناموفق بود." });
+    }
     setSubmitting(false);
-    startResendCooldown();
-    setCode("");
   };
 
   /* ─── Step 3: Reset — validate new password ─── */
@@ -184,10 +215,34 @@ export default function ForgotPasswordPage() {
     if (Object.keys(next).length > 0) return;
 
     setSubmitting(true);
-    // Simulated reset — wire to real endpoint when ready.
-    await new Promise((r) => setTimeout(r, 800));
+    try {
+      const r = await fetch("/api/auth/reset-password", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          email: identifier.trim().toLowerCase(),
+          otp: toAsciiDigits(code).replace(/\D/g, ""),
+          password,
+        }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (r.ok) {
+        setStep("done");
+      } else if (r.status === 410) {
+        setErrors({ form: j.error ?? "کد نامعتبر یا منقضی است." });
+        // Bounce back to step 1 so they can request a new OTP.
+        setStep("request");
+        setCode("");
+        setResendIn(0);
+      } else if (r.status === 429) {
+        setErrors({ form: j.error ?? "تلاش‌های بیش از حد. لطفاً بعداً تلاش کنید." });
+      } else {
+        setErrors({ form: j.error ?? "خطایی رخ داد. لطفاً دوباره تلاش کنید." });
+      }
+    } catch {
+      setErrors({ form: "ارتباط با سرور ناموفق بود." });
+    }
     setSubmitting(false);
-    setStep("done");
   };
 
   /* ─── Render ─── */
@@ -271,7 +326,7 @@ export default function ForgotPasswordPage() {
           </Field>
 
           <p className="text-[12px] text-[#9c9c9c] -mt-1">
-            حالت نمایشی: هر کد ۶ رقمی پذیرفته می‌شود.
+            کد را از ایمیل خود وارد کنید. این کد تنها ۱۵ دقیقه معتبر است.
           </p>
 
           <button

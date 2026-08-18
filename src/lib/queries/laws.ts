@@ -32,7 +32,7 @@ import {
   outstandingChanges as outstandingChangesTable,
   references as referencesTable,
 } from "@/db/schema";
-import { eq, asc, inArray, ilike, or } from "drizzle-orm";
+import { eq, asc, inArray, sql } from "drizzle-orm";
 import type {
   Law,
   ArticleNode,
@@ -363,19 +363,32 @@ async function getDecadeStatsRaw(): Promise<DecadeStat[]> {
 async function searchLawsRaw(query: string): Promise<Law[]> {
   const q = query.trim();
   if (!q) return getLawCardListRaw();
-  const pattern = `%${q}%`;
+  // Phase F: real Persian full-text search via the `search_tsv`
+  // GENERATED column + GIN index (see drizzle/0003_search_tsv.sql).
+  //
+  // Uses `plainto_tsquery('simple', $q)` so multi-word queries are
+  // AND-ed together (the standard search UX expectation). We use the
+  // 'simple' text-search config because Postgres doesn't ship a
+  // Persian dictionary — `simple` does whitespace + punctuation
+  // tokenization (no stemming, no stop-word removal), which is what
+  // we want for Persian: stemming would actually hurt because
+  // Persian prefixes/suffixes aren't recognized by the default
+  // stemmers.
+  //
+  // Ranked by `ts_rank` (descending), with year ascending as a
+  // tie-breaker so older laws surface first when scores are equal.
+  //
+  // Drizzle's query builder accepts raw `sql\`...\`` fragments in
+  // `.where()` and `.orderBy()`, so we can reference the generated
+  // column even though it isn't declared in our Drizzle schema.
   const rows = await db
     .select()
     .from(lawsTable)
-    .where(
-      or(
-        ilike(lawsTable.title, pattern),
-        ilike(lawsTable.subject, pattern),
-        ilike(lawsTable.description, pattern),
-        ilike(lawsTable.number, pattern)
-      )
-    )
-    .orderBy(asc(lawsTable.year));
+    .where(sql`search_tsv @@ plainto_tsquery('simple', ${q})`)
+    .orderBy(
+      sql`ts_rank(search_tsv, plainto_tsquery('simple', ${q})) DESC`,
+      asc(lawsTable.year)
+    );
   return rows.map(toCard);
 }
 

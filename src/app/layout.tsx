@@ -3,6 +3,7 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { CookieNotice } from "@/components/site/CookieNotice";
 import { LawsProvider } from "@/components/providers/LawsProvider";
+import { AuthProvider } from "@/components/providers/AuthProvider";
 import {
   getLawCardList,
   getReferencedLawTitles,
@@ -65,13 +66,15 @@ export default async function RootLayout({
   return (
     <html lang="fa" dir="rtl">
       <body className="font-sans antialiased bg-background text-foreground">
-        <LawsProvider
-          laws={laws}
-          referencedLawTitles={referencedLawTitles}
-          decadeStats={decadeStats}
-        >
-          {children}
-        </LawsProvider>
+        <AuthProvider>
+          <LawsProvider
+            laws={laws}
+            referencedLawTitles={referencedLawTitles}
+            decadeStats={decadeStats}
+          >
+            {children}
+          </LawsProvider>
+        </AuthProvider>
         <Toaster />
         <CookieNotice />
       </body>

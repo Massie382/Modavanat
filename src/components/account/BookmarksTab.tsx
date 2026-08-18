@@ -17,9 +17,11 @@ const PAGE_SIZE = 5;
 export function BookmarksTab({
   bookmarks,
   onRemove,
+  loading,
 }: {
   bookmarks: BookmarkItem[];
-  onRemove: (lawId: string) => void;
+  onRemove: (lawId: string) => void | Promise<void>;
+  loading?: boolean;
 }) {
   const laws = useLaws();
   const [filter, setFilter] = useState<"all" | "in-force" | "amended" | "revoked">("all");

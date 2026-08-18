@@ -1211,6 +1211,17 @@ button, a { transition: color 0.12s ease, background-color 0.12s ease, border-co
   border-radius: 2px;
 }
 
+/* Bare <mark> element — used by ts_headline excerpts returned from
+   /api/laws/search. The API wraps matching terms in
+   StartSel=<mark>, StopSel=</mark> (see HEADLINE_OPTS in
+   src/app/api/laws/search/route.ts), so the rendered excerpt is
+   pre-highlighted HTML that needs a global `mark` rule. */
+mark {
+  background: #fef08a;
+  padding: 0 2px;
+  border-radius: 2px;
+}
+
 /* ============================================================
    Modal animations — AmendmentComparisonView
    ============================================================ */

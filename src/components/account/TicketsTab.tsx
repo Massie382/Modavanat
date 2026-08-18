@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { toFa } from "@/lib/utils";
 import { Pager } from "@/components/ui/Pager";
 
@@ -17,11 +17,13 @@ export interface Ticket {
 
 interface TicketsTabProps {
   tickets: Ticket[];
+  loading?: boolean;
+  onRefresh?: () => void | Promise<void>;
 }
 
 const PAGE_SIZE = 5;
 
-export function TicketsTab({ tickets }: TicketsTabProps) {
+export function TicketsTab({ tickets, loading, onRefresh }: TicketsTabProps) {
   const [filter, setFilter] = useState<"all" | "open" | "pending" | "closed">("all");
   const [page, setPage] = useState(1);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -43,6 +45,7 @@ export function TicketsTab({ tickets }: TicketsTabProps) {
       <TicketDetail
         ticket={selected}
         onBack={() => setSelectedId(null)}
+        onRefresh={onRefresh}
       />
     );
   }
@@ -51,7 +54,10 @@ export function TicketsTab({ tickets }: TicketsTabProps) {
     return (
       <NewTicketForm
         onCancel={() => setShowNew(false)}
-        onSubmit={() => setShowNew(false)}
+        onSubmit={async () => {
+          setShowNew(false);
+          await onRefresh?.();
+        }}
       />
     );
   }
@@ -62,7 +68,9 @@ export function TicketsTab({ tickets }: TicketsTabProps) {
         <div>
           <h2 className="panel-content-title">تیکت‌ها</h2>
           <p className="panel-content-subtitle">
-            {tickets.length === 0
+            {loading
+              ? "در حال بارگذاری…"
+              : tickets.length === 0
               ? "پشتیبانی و ارتباط با تیم مدونات."
               : `${toFa(tickets.length)} تیکت · ${toFa(tickets.filter(t => t.status === "open").length)} باز`}
           </p>
@@ -77,7 +85,9 @@ export function TicketsTab({ tickets }: TicketsTabProps) {
       </div>
 
       <div className="panel-content-body">
-        {tickets.length === 0 ? (
+        {loading ? (
+          <EmptyState title="در حال بارگذاری…" text="لطفاً چند لحظه صبر کنید." />
+        ) : tickets.length === 0 ? (
           <EmptyState
             title="تیکتی وجود ندارد"
             text="برای پرسیدن سؤال، گزارش مشکل یا درخواست قابلیت جدید، روی «تیکت جدید» بزنید. تیم ما ظرف ۵ روز کاری پاسخ می‌دهد."
@@ -115,7 +125,7 @@ export function TicketsTab({ tickets }: TicketsTabProps) {
                       <span style={{ textDecoration: "none" }}>{t.subject}</span>
                     </div>
                     <div className="panel-row-meta">
-                      <span>#{t.id}</span>
+                      <span>#{t.id.slice(0, 8)}</span>
                       <span className="panel-row-meta-dot" />
                       <span>{t.category}</span>
                       <span className="panel-row-meta-dot" />
@@ -155,17 +165,67 @@ export function TicketsTab({ tickets }: TicketsTabProps) {
 function TicketDetail({
   ticket,
   onBack,
+  onRefresh,
 }: {
   ticket: Ticket;
   onBack: () => void;
+  onRefresh?: () => void | Promise<void>;
 }) {
   const [reply, setReply] = useState("");
   const [messages, setMessages] = useState(ticket.messages);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSend = () => {
+  // When the user opens a ticket detail view, also fetch the FULL
+  // message thread from the server (the list endpoint only includes
+  // the last message preview).
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/tickets/${ticket.id}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        if (cancelled || !j?.messages) return;
+        setMessages(
+          j.messages.map(
+            (m: { from: string; text: string; at: string }) => ({
+              from: m.from === "support" ? "support" : "user",
+              text: m.text,
+              at: new Date(m.at).toLocaleString("fa-IR"),
+            })
+          )
+        );
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [ticket.id]);
+
+  const handleSend = async () => {
     if (!reply.trim()) return;
-    setMessages([...messages, { from: "user", text: reply.trim(), at: "اکنون" }]);
-    setReply("");
+    setSending(true);
+    setError(null);
+    try {
+      const r = await fetch(`/api/tickets/${ticket.id}/messages`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ body: reply.trim() }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (r.ok) {
+        setMessages((prev) => [
+          ...prev,
+          { from: "user", text: reply.trim(), at: "اکنون" },
+        ]);
+        setReply("");
+        await onRefresh?.();
+      } else {
+        setError(j.error ?? "ارسال پاسخ ناموفق بود.");
+      }
+    } catch {
+      setError("ارتباط با سرور ناموفق بود.");
+    }
+    setSending(false);
   };
 
   return (
@@ -174,7 +234,7 @@ function TicketDetail({
         <div>
           <h2 className="panel-content-title">{ticket.subject}</h2>
           <p className="panel-content-subtitle">
-            #{ticket.id} · {ticket.category} · ایجاد در {ticket.createdAt}
+            #{ticket.id.slice(0, 8)} · {ticket.category} · ایجاد در {ticket.createdAt}
           </p>
         </div>
         <button type="button" className="btn-legal btn-legal-ghost btn-legal-sm" onClick={onBack}>
@@ -215,6 +275,12 @@ function TicketDetail({
           ))}
         </div>
 
+        {error && (
+          <p role="alert" style={{ color: "#b91c1c", fontSize: 13, marginBottom: 8 }}>
+            {error}
+          </p>
+        )}
+
         {/* Reply box */}
         {ticket.status !== "closed" && (
           <div className="space-y-2">
@@ -225,10 +291,16 @@ function TicketDetail({
               rows={3}
               className="auth-input"
               style={{ resize: "vertical", fontFamily: "inherit" }}
+              disabled={sending}
             />
             <div className="flex justify-end">
-              <button type="button" className="btn-legal btn-legal-sm" onClick={handleSend}>
-                ارسال پاسخ
+              <button
+                type="button"
+                className="btn-legal btn-legal-sm"
+                onClick={handleSend}
+                disabled={sending || !reply.trim()}
+              >
+                {sending ? "در حال ارسال…" : "ارسال پاسخ"}
               </button>
             </div>
           </div>
@@ -249,15 +321,38 @@ function NewTicketForm({
   onSubmit,
 }: {
   onCancel: () => void;
-  onSubmit: () => void;
+  onSubmit: () => Promise<void>;
 }) {
   const [subject, setSubject] = useState("");
   const [category, setCategory] = useState("گزارش مشکل فنی");
   const [text, setText] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!subject.trim() || !text.trim()) return;
-    onSubmit();
+    setSubmitting(true);
+    setError(null);
+    try {
+      const r = await fetch("/api/tickets", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          subject: subject.trim(),
+          category,
+          body: text.trim(),
+        }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (r.ok) {
+        await onSubmit();
+      } else {
+        setError(j.error ?? "ارسال تیکت ناموفق بود.");
+      }
+    } catch {
+      setError("ارتباط با سرور ناموفق بود.");
+    }
+    setSubmitting(false);
   };
 
   return (
@@ -273,6 +368,11 @@ function NewTicketForm({
       </div>
 
       <div className="panel-content-body space-y-4">
+        {error && (
+          <p role="alert" style={{ color: "#b91c1c", fontSize: 13 }}>
+            {error}
+          </p>
+        )}
         <div>
           <label className="auth-label" htmlFor="ticket-subject">موضوع</label>
           <input
@@ -317,16 +417,16 @@ function NewTicketForm({
         </div>
 
         <div className="flex justify-end gap-2">
-          <button type="button" className="btn-legal btn-legal-ghost btn-legal-sm" onClick={onCancel}>
+          <button type="button" className="btn-legal btn-legal-ghost btn-legal-sm" onClick={onCancel} disabled={submitting}>
             انصراف
           </button>
           <button
             type="button"
             className="btn-legal btn-legal-sm"
             onClick={handleSubmit}
-            disabled={!subject.trim() || !text.trim()}
+            disabled={submitting || !subject.trim() || !text.trim()}
           >
-            ارسال تیکت
+            {submitting ? "در حال ارسال…" : "ارسال تیکت"}
           </button>
         </div>
       </div>

@@ -16,11 +16,12 @@ export interface Purchase {
 
 interface PurchasesTabProps {
   purchases: Purchase[];
+  loading?: boolean;
 }
 
 const PAGE_SIZE = 8;
 
-export function PurchasesTab({ purchases }: PurchasesTabProps) {
+export function PurchasesTab({ purchases, loading }: PurchasesTabProps) {
   const [filter, setFilter] = useState<"all" | "paid" | "pending" | "refunded">("all");
   const [page, setPage] = useState(1);
 

@@ -20,8 +20,9 @@ export interface UserPreferences {
 interface SettingsTabProps {
   settings: UserSettings;
   preferences: UserPreferences;
-  onUpdateSettings: (s: UserSettings) => void;
-  onUpdatePreferences: (p: UserPreferences) => void;
+  onUpdateSettings: (s: UserSettings) => Promise<void> | void;
+  onUpdatePreferences: (p: UserPreferences) => Promise<void> | void;
+  loading?: boolean;
 }
 
 export function SettingsTab({
@@ -29,35 +30,77 @@ export function SettingsTab({
   preferences,
   onUpdateSettings,
   onUpdatePreferences,
+  loading,
 }: SettingsTabProps) {
   const [draft, setDraft] = useState<UserSettings>(settings);
   const [prefs, setPrefs] = useState<UserPreferences>(preferences);
   const [savedAt, setSavedAt] = useState<string | null>(null);
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [prefsSaving, setPrefsSaving] = useState(false);
 
   // password change
   const [pw, setPw] = useState({ current: "", next: "", confirm: "" });
   const [pwError, setPwError] = useState<string | null>(null);
+  const [pwSaving, setPwSaving] = useState(false);
   const [pwSavedAt, setPwSavedAt] = useState<string | null>(null);
 
-  const handleSaveProfile = () => {
-    onUpdateSettings(draft);
+  // Sync draft + prefs when the parent props change (after fetch).
+  // We use a key-once check on the user identifier so we don't yank
+  // the user's in-progress edits on every re-render.
+  const [lastSyncedId, setLastSyncedId] = useState<string>("");
+  if (
+    (settings.identifier && settings.identifier !== lastSyncedId) ||
+    (!lastSyncedId && settings.identifier)
+  ) {
+    setDraft(settings);
+    setPrefs(preferences);
+    setLastSyncedId(settings.identifier);
+  }
+
+  const handleSaveProfile = async () => {
+    setProfileSaving(true);
+    await onUpdateSettings(draft);
+    setProfileSaving(false);
     setSavedAt("ذخیره شد");
     setTimeout(() => setSavedAt(null), 3000);
   };
 
-  const handleSavePrefs = (next: UserPreferences) => {
+  const handleSavePrefs = async (next: UserPreferences) => {
     setPrefs(next);
-    onUpdatePreferences(next);
+    setPrefsSaving(true);
+    await onUpdatePreferences(next);
+    setPrefsSaving(false);
+    setSavedAt("ذخیره شد");
+    setTimeout(() => setSavedAt(null), 3000);
   };
 
-  const handleChangePassword = () => {
+  const handleChangePassword = async () => {
     setPwError(null);
     if (!pw.current) return setPwError("رمز عبور فعلی را وارد کنید.");
     if (pw.next.length < 8) return setPwError("رمز عبور جدید باید حداقل ۸ نویسه باشد.");
     if (pw.next !== pw.confirm) return setPwError("تکرار رمز عبور جدید مطابقت ندارد.");
-    setPw({ current: "", next: "", confirm: "" });
-    setPwSavedAt("رمز عبور تغییر کرد");
-    setTimeout(() => setPwSavedAt(null), 3000);
+    setPwSaving(true);
+    try {
+      const r = await fetch("/api/users/me", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          currentPassword: pw.current,
+          newPassword: pw.next,
+        }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (r.ok) {
+        setPw({ current: "", next: "", confirm: "" });
+        setPwSavedAt("رمز عبور تغییر کرد");
+        setTimeout(() => setPwSavedAt(null), 3000);
+      } else {
+        setPwError(j.error ?? "تغییر رمز عبور ناموفق بود.");
+      }
+    } catch {
+      setPwError("ارتباط با سرور ناموفق بود.");
+    }
+    setPwSaving(false);
   };
 
   return (
